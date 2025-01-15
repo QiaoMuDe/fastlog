@@ -97,3 +97,8 @@ logger.Success("这是一条成功信息")
 ```go
 logger.Close()
 ```
+
+### 优质开源项目
+强烈推荐好大哥全栈开发项目
+- gitee：https://gitee.com/pixelmax/gin-vue-admin
+- github：https://github.com/flipped-aurora/gin-vue-admin.git
