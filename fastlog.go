@@ -82,13 +82,13 @@ func DefaultConfig(logDirName string, logFileName string) LoggerConfig {
 	// 生成日志文件路径
 	logPath := filepath.Join(logDirName, logFileName)
 	return LoggerConfig{
-		LogDirName:     "logs",    // 必须提供
-		LogFileName:    "app.log", // 必须提供
-		LogPath:        logPath,   // 无需修改
-		PrintToConsole: true,      // 默认值
-		LogLevel:       Info,      // 默认值
-		ChanIntSize:    1000,      // 默认1000
-		BufferKbSize:   1024,      // 默认1MB
+		LogDirName:     logDirName,  // 必须提供
+		LogFileName:    logFileName, // 必须提供
+		LogPath:        logPath,     // 无需修改
+		PrintToConsole: true,        // 是否将日志输出到控制台,默认值为true
+		LogLevel:       Info,        // 日志过滤级别,默认值为Info
+		ChanIntSize:    1000,        // 日志通道大小, 默认1000
+		BufferKbSize:   1024,        // 缓冲区大小, 默认1MB
 	}
 }
 
