@@ -1,4 +1,4 @@
-package gitee.com/MM-Q/fastlog.git
+package fastlog
 
 import (
 	"os"
