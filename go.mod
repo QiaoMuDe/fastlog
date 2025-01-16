@@ -1,3 +1,3 @@
-module gitee.com/MM-Q/fastlog
+module fastlog
 
 go 1.23.4
