@@ -53,7 +53,7 @@
 在你的 Go 项目中，首先需要引入 `fastlog` 包：
 
 ```go
-import "fastlog"
+import "gitee.com/MM-Q/fastlog"
 ```
 
 ### 2. 创建日志配置器
