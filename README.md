@@ -16,22 +16,22 @@
 
 用于配置日志记录器，包含以下字段：
 
-| 字段名称         | 说明                                                         | 默认值 |
-| :--------------- | :----------------------------------------------------------- | :----- |
-| `LogDirName`     | 日志目录名称                                                 | 无     |
-| `LogFileName`    | 日志文件名称                                                 | 无     |
+| 字段名称           | 说明                                                                      | 默认值 |
+| :----------------- | :------------------------------------------------------------------------ | :----- |
+| `LogDirName`     | 日志目录名称                                                              | 无     |
+| `LogFileName`    | 日志文件名称                                                              | 无     |
 | `LogPath`        | 日志文件路径，由 `LogDirName` 和 `LogFileName` 拼接生成，无需手动修改 | 无     |
-| `PrintToConsole` | 是否将日志输出到控制台                                       | true   |
-| `LogLevel`       | 日志级别，可选值为 Debug、Info、Warn、Error、Success、None   | Info   |
-| `ChanIntSize`    | 日志通道大小                                                 | 1000   |
-| `BufferKbSize`   | 缓冲区大小（KB）                                             | 1MB    |
+| `PrintToConsole` | 是否将日志输出到控制台                                                    | true   |
+| `LogLevel`       | 日志级别，可选值为 Debug、Info、Warn、Error、Success、None                | Info   |
+| `ChanIntSize`    | 日志通道大小                                                              | 1000   |
+| `BufferKbSize`   | 缓冲区大小（KB）                                                          | 1MB    |
 
 ### Logger 结构体
 
 日志记录器的核心结构体，包含以下方法：
 
-| 方法名称                    | 说明                                             |
-| :-------------------------- | :----------------------------------------------- |
+| 方法名称                      | 说明                                             |
+| :---------------------------- | :----------------------------------------------- |
 | `Info(v ...interface{})`    | 记录信息级别的日志                               |
 | `Warn(v ...interface{})`    | 记录警告级别的日志                               |
 | `Error(v ...interface{})`   | 记录错误级别的日志                               |
@@ -41,10 +41,10 @@
 
 ### 其他函数
 
-| 函数名称                                                     | 说明                                                         |
-| :----------------------------------------------------------- | :----------------------------------------------------------- |
+| 函数名称                                                              | 说明                                                               |
+| :-------------------------------------------------------------------- | :----------------------------------------------------------------- |
 | `DefaultConfig(logDirName string, logFileName string) LoggerConfig` | 创建一个带有默认配置的日志配置器，需提供日志目录名称和日志文件名称 |
-| `NewLogger(cfg LoggerConfig) (*Logger, error)`               | 根据提供的 `LoggerConfig` 创建一个新的日志记录器实例         |
+| `NewLogger(cfg LoggerConfig) (*Logger, error)`                      | 根据提供的 `LoggerConfig` 创建一个新的日志记录器实例             |
 
 ## 使用流程演示
 
@@ -71,6 +71,9 @@ cfg.LogLevel = fastlog.Debug  // 设置日志级别为 Debug
 通过 `NewLogger` 函数根据配置创建日志记录器：
 
 ```go
+// 如果需要全局使用, 就通过var关键字全局声明使用
+// var logger *fastlog.Logger
+
 logger, err := fastlog.NewLogger(cfg)
 if err != nil {
     fmt.Println("创建日志记录器失败: ", err)
@@ -98,7 +101,19 @@ logger.Success("这是一条成功信息")
 logger.Close()
 ```
 
+### 6. 日志占位符
+
+如果想要通过占位符携带更多的信息，请先通过`fmt`包构造日志内容，然后传递给对应的日志方法。
+
+```go
+// 示例
+msg := fmt.Sprintf("打开文件失败: %v\n", err)
+logger.Warn(msg)
+```
+
 ## 优质开源项目
+
 强烈推荐好大哥全栈开发项目
+
 - gitee：https://gitee.com/pixelmax/gin-vue-admin
 - github：https://github.com/flipped-aurora/gin-vue-admin.git
