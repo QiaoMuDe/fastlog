@@ -16,15 +16,15 @@
 
 用于配置日志记录器，包含以下字段：
 
-| 字段名称         | 说明                                                         | 默认值    |
-| :--------------- | :----------------------------------------------------------- | :-------- |
-| `LogDirName`     | 日志目录名称                                                 | "logs"    |
-| `LogFileName`    | 日志文件名称                                                 | "app.log" |
-| `LogPath`        | 日志文件路径，由 `LogDirName` 和 `LogFileName` 拼接生成，无需手动修改 | 无        |
-| `PrintToConsole` | 是否将日志输出到控制台                                       | true      |
-| `LogLevel`       | 日志级别，可选值为 Debug、Info、Warn、Error、Success、None   | Info      |
-| `ChanIntSize`    | 日志通道大小                                                 | 1000      |
-| `BufferKbSize`   | 缓冲区大小（KB）                                             | 1MB       |
+| 字段名称         | 说明                                                         | 默认值 |
+| :--------------- | :----------------------------------------------------------- | :----- |
+| `LogDirName`     | 日志目录名称                                                 | 无     |
+| `LogFileName`    | 日志文件名称                                                 | 无     |
+| `LogPath`        | 日志文件路径，由 `LogDirName` 和 `LogFileName` 拼接生成，无需手动修改 | 无     |
+| `PrintToConsole` | 是否将日志输出到控制台                                       | true   |
+| `LogLevel`       | 日志级别，可选值为 Debug、Info、Warn、Error、Success、None   | Info   |
+| `ChanIntSize`    | 日志通道大小                                                 | 1000   |
+| `BufferKbSize`   | 缓冲区大小（KB）                                             | 1MB    |
 
 ### Logger 结构体
 
