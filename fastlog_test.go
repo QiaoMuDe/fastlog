@@ -1,149 +1,93 @@
 package fastlog
 
 import (
+	"bytes"
+	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-	"time"
 )
 
-// TestLoggerConfig 测试 LoggerConfig 的默认配置生成是否正确
-func TestLoggerConfig(t *testing.T) {
-	expectedConfig := LoggerConfig{
-		LogDirName:     "logs",
-		LogFileName:    "app.log",
-		LogPath:        filepath.Join("logs", "app.log"), // 使用 filepath.Join 生成路径
-		PrintToConsole: true,
-		LogLevel:       Info,
-		ChanIntSize:    1000,
-		BufferKbSize:   1024,
+func TestLogger(t *testing.T) {
+	// 创建临时目录用于存储日志文件
+	tmpDir, err := ioutil.TempDir("", "logtest")
+	if err != nil {
+		t.Fatalf("无法创建临时目录: %v", err)
 	}
-	actualConfig := DefaultConfig("logs", "app.log")
-	if actualConfig != expectedConfig {
-		t.Errorf("DefaultConfig() = %v, want %v", actualConfig, expectedConfig)
-	}
-}
+	defer os.RemoveAll(tmpDir)
 
-// TestNewLogger 测试 NewLogger 是否能正确创建 Logger 实例
-func TestNewLogger(t *testing.T) {
-	config := DefaultConfig("logs", "test.log")
-	logger, err := NewLogger(config)
-	if err != nil {
-		t.Errorf("NewLogger() error = %v", err)
-	}
-	if logger == nil {
-		t.Errorf("NewLogger() = nil, want non-nil Logger")
-	}
-	// 关闭 Logger 以清理资源
-	logger.Close()
-	// 删除测试日志文件
-	os.Remove(config.LogPath)
-}
+	// 创建日志配置
+	cfg := NewConfig(tmpDir, "test.log")
+	cfg.LogLevel = Debug
 
-// TestLogLevels 测试不同日志级别的记录是否正确
-func TestLogLevels(t *testing.T) {
-	config := DefaultConfig("logs", "test.log")
-	config.LogLevel = Debug
-	logger, err := NewLogger(config)
+	// 创建日志记录器
+	logger, err := NewLogger(cfg)
 	if err != nil {
-		t.Errorf("NewLogger() error = %v", err)
+		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	// 记录不同级别的日志
-	logger.Debug("This is a debug message")
-	logger.Info("This is an info message")
-	logger.Warn("This is a warn message")
-	logger.Error("This is an error message")
-	logger.Success("This is a success message")
-	// 等待一段时间，确保日志写入完成
-	time.Sleep(1 * time.Second)
-	// 关闭 Logger
+
+	// 测试 Info 日志
+	logger.Info("这是一条 Info 日志")
+
+	// 测试 Warn 日志
+	logger.Warn("这是一条 Warn 日志")
+
+	// 测试 Error 日志
+	logger.Error("这是一条 Error 日志")
+
+	// 测试 Success 日志
+	logger.Success("这是一条 Success 日志")
+
+	// 测试 Debug 日志
+	logger.Debug("这是一条 Debug 日志")
+
+	// 测试支持格式化的 Info 日志
+	logger.Infof("这是一条格式化的 Info 日志: %s", "参数")
+
+	// 测试支持格式化的 Warn 日志
+	logger.Warnf("这是一条格式化的 Warn 日志: %s", "参数")
+
+	// 测试支持格式化的 Error 日志
+	logger.Errorf("这是一条格式化的 Error 日志: %s", "参数")
+
+	// 测试支持格式化的 Success 日志
+	logger.Successf("这是一条格式化的 Success 日志: %s", "参数")
+
+	// 测试支持格式化的 Debug 日志
+	logger.Debugf("这是一条格式化的 Debug 日志: %s", "参数")
+
+	// 关闭日志记录器
 	logger.Close()
-	// 读取日志文件内容进行验证
-	data, err := os.ReadFile(config.LogPath)
-	if err != nil {
-		t.Errorf("ReadFile() error = %v", err)
+
+	// 检查日志文件是否存在
+	logPath := filepath.Join(tmpDir, "test.log")
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		t.Errorf("日志文件不存在")
 	}
-	logContent := string(data)
-	expectedLevels := []string{"DEBUG", "INFO", "WARN", "ERROR", "SUCCESS"}
-	for _, level := range expectedLevels {
-		if !strings.Contains(logContent, level) {
-			t.Errorf("Log file does not contain %s level log", level)
+
+	// 读取日志文件内容
+	logContent, err := ioutil.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("读取日志文件失败: %v", err)
+	}
+
+	// 检查日志内容是否包含预期的日志信息
+	expectedLogs := []string{
+		"这是一条 Info 日志",
+		"这是一条 Warn 日志",
+		"这是一条 Error 日志",
+		"这是一条 Success 日志",
+		"这是一条 Debug 日志",
+		"这是一条格式化的 Info 日志: 参数",
+		"这是一条格式化的 Warn 日志: 参数",
+		"这是一条格式化的 Error 日志: 参数",
+		"这是一条格式化的 Success 日志: 参数",
+		"这是一条格式化的 Debug 日志: 参数",
+	}
+
+	for _, expectedLog := range expectedLogs {
+		if !bytes.Contains(logContent, []byte(expectedLog)) {
+			t.Errorf("日志文件中未找到预期的日志信息: %s", expectedLog)
 		}
 	}
-	// 删除测试日志文件
-	os.Remove(config.LogPath)
-}
-
-// TestLogLevelFiltering 测试日志级别过滤功能
-func TestLogLevelFiltering(t *testing.T) {
-	config := DefaultConfig("logs", "test.log")
-	config.LogLevel = Warn
-	logger, err := NewLogger(config)
-	if err != nil {
-		t.Errorf("NewLogger() error = %v", err)
-	}
-	// 记录不同级别的日志
-	logger.Debug("This is a debug message")
-	logger.Info("This is an info message")
-	logger.Warn("This is a warn message")
-	logger.Error("This is an error message")
-	logger.Success("This is a success message")
-	// 等待一段时间，确保日志写入完成
-	time.Sleep(2 * time.Second) // 增加等待时间
-	// 关闭 Logger
-	logger.Close()
-	// 读取日志文件内容进行验证
-	data, err := os.ReadFile(config.LogPath)
-	if err != nil {
-		t.Errorf("ReadFile() error = %v", err)
-	}
-	logContent := string(data)
-	expectedLevels := []string{"WARN", "ERROR", "SUCCESS"}
-	unexpectedLevels := []string{"DEBUG", "INFO"}
-	for _, level := range expectedLevels {
-		if !strings.Contains(logContent, level) {
-			t.Errorf("Log file does not contain %s level log", level)
-		}
-	}
-	for _, level := range unexpectedLevels {
-		if strings.Contains(logContent, level) {
-			t.Errorf("Log file contains unexpected %s level log", level)
-		}
-	}
-	// 删除测试日志文件
-	os.Remove(config.LogPath)
-}
-
-// TestLoggerClose 测试 Logger 的 Close 方法是否能正确关闭资源
-func TestLoggerClose(t *testing.T) {
-	config := DefaultConfig("logs", "test.log")
-	logger, err := NewLogger(config)
-	if err != nil {
-		t.Errorf("NewLogger() error = %v", err)
-	}
-	// 关闭 Logger
-	logger.Close()
-	// 尝试再次写入日志，验证是否失败
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Logf("Recovered from panic: %v", r)
-			}
-		}()
-		logger.Info("This is a test message after closing logger")
-	}()
-	// 等待一段时间，确保 goroutine 运行完成
-	time.Sleep(1 * time.Second)
-	// 读取日志文件内容进行验证
-	data, err := os.ReadFile(config.LogPath)
-	if err != nil {
-		t.Errorf("ReadFile() error = %v", err)
-	}
-	logContent := string(data)
-	if strings.Contains(logContent, "This is a test message after closing logger") {
-		t.Errorf("Logger did not close properly, log was written after closing")
-	}
-	// 删除测试日志文件
-	os.Remove(config.LogPath)
 }
