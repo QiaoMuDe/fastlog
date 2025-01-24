@@ -1,93 +1,59 @@
 package fastlog
 
 import (
-	"bytes"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
+	"time"
 )
 
-func TestLogger(t *testing.T) {
-	// 创建临时目录用于存储日志文件
-	tmpDir, err := ioutil.TempDir("", "logtest")
-	if err != nil {
-		t.Fatalf("无法创建临时目录: %v", err)
+// 测试日志轮转功能
+func TestLogRotate(t *testing.T) {
+	// 设置测试环境
+	logDir := "./test_logs"
+	logFile := "test.log"
+
+	// 确保测试目录存在
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		t.Fatalf("创建日志目录失败: %v", err)
 	}
-	defer os.RemoveAll(tmpDir)
 
-	// 创建日志配置
-	cfg := NewConfig(tmpDir, "test.log")
-	cfg.LogLevel = Debug
+	// 清理旧的日志文件
+	_ = os.RemoveAll(logDir)
 
-	// 创建日志记录器
-	logger, err := NewLogger(cfg)
+	// 创建 Logger 配置
+	config := NewConfig(logDir, logFile)
+	config.EnableLogRotation = true
+	config.LogMaxSize = "1KB"         // 设置日志文件大小限制为 1KB，便于测试
+	config.LogRetentionCount = 2      // 设置保留的日志文件数量为 2
+	config.RotationInterval = 1       // 设置轮转间隔为 1 分钟
+	config.EnableCompression = true   // 启用日志压缩
+	config.CompressionFormat = "gzip" // 设置压缩格式为 gzip
+
+	// 创建 Logger
+	logger, err := NewLogger(config)
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
+	defer logger.Close()
 
-	// 测试 Info 日志
-	logger.Info("这是一条 Info 日志")
-
-	// 测试 Warn 日志
-	logger.Warn("这是一条 Warn 日志")
-
-	// 测试 Error 日志
-	logger.Error("这是一条 Error 日志")
-
-	// 测试 Success 日志
-	logger.Success("这是一条 Success 日志")
-
-	// 测试 Debug 日志
-	logger.Debug("这是一条 Debug 日志")
-
-	// 测试支持格式化的 Info 日志
-	logger.Infof("这是一条格式化的 Info 日志: %s", "参数")
-
-	// 测试支持格式化的 Warn 日志
-	logger.Warnf("这是一条格式化的 Warn 日志: %s", "参数")
-
-	// 测试支持格式化的 Error 日志
-	logger.Errorf("这是一条格式化的 Error 日志: %s", "参数")
-
-	// 测试支持格式化的 Success 日志
-	logger.Successf("这是一条格式化的 Success 日志: %s", "参数")
-
-	// 测试支持格式化的 Debug 日志
-	logger.Debugf("这是一条格式化的 Debug 日志: %s", "参数")
-
-	// 关闭日志记录器
-	logger.Close()
-
-	// 检查日志文件是否存在
-	logPath := filepath.Join(tmpDir, "test.log")
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		t.Errorf("日志文件不存在")
+	// 写入足够的日志以触发轮转
+	for i := 0; i < 1000; i++ {
+		logger.Infof("这是第 %d 条测试日志消息", i)
 	}
 
-	// 读取日志文件内容
-	logContent, err := ioutil.ReadFile(logPath)
+	// 等待轮转完成
+	time.Sleep(2 * time.Minute)
+	logger.Debug("等待轮转完成")
+
+	// 检查日志文件数量
+	files, err := os.ReadDir(logDir)
 	if err != nil {
-		t.Fatalf("读取日志文件失败: %v", err)
+		t.Fatalf("读取日志目录失败: %v", err)
 	}
 
-	// 检查日志内容是否包含预期的日志信息
-	expectedLogs := []string{
-		"这是一条 Info 日志",
-		"这是一条 Warn 日志",
-		"这是一条 Error 日志",
-		"这是一条 Success 日志",
-		"这是一条 Debug 日志",
-		"这是一条格式化的 Info 日志: 参数",
-		"这是一条格式化的 Warn 日志: 参数",
-		"这是一条格式化的 Error 日志: 参数",
-		"这是一条格式化的 Success 日志: 参数",
-		"这是一条格式化的 Debug 日志: 参数",
-	}
-
-	for _, expectedLog := range expectedLogs {
-		if !bytes.Contains(logContent, []byte(expectedLog)) {
-			t.Errorf("日志文件中未找到预期的日志信息: %s", expectedLog)
-		}
+	// 验证日志文件数量是否符合预期
+	expectedCount := config.LogRetentionCount + 1 // 当前日志文件 + 保留的日志文件数量
+	if len(files) != expectedCount {
+		t.Errorf("期望的日志文件数量为 %d，但实际为 %d", expectedCount, len(files))
 	}
 }
