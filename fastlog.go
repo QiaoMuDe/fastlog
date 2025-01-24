@@ -78,14 +78,14 @@ type Logger struct {
 	logLevel          LogLevel      // 日志级别
 	chanIntSize       int           // 通道大小 默认1000
 	bufferKbSize      int           // 缓冲区大小 默认1024 单位KB
-	logFormat         LogFormatType // 日志格式选项 [Json(json格式)|Bracket(方括号格式)|Detailed(详细格式)|Threaded(协程格式)]
+	logFormat         LogFormatType // 日志格式选项 [ Json(json格式) | Bracket(方括号格式) | Detailed(详细格式) | Threaded(协程格式) ]
 	enableLogRotation bool          // 是否启用日志切割 [true|false] 默认false
 	logRetentionDays  int           // 日志保留天数 默认7天 单位[天]
 	logMaxSize        string        // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
 	logRetentionCount int           // 日志文件保留数量 默认3 单位[个]
-	rotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[分钟]
+	rotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[秒]
 	enableCompression bool          // 是否启用日志压缩 [true|false]
-	compressionFormat string        // 日志压缩格式 ["zip"|"gzip"|"tar"|"tgz"] 默认zip
+	compressionFormat string        // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
 }
 
 // 日志配置
@@ -98,18 +98,18 @@ type LoggerConfig struct {
 	LogLevel          LogLevel      // 日志级别
 	ChanIntSize       int           // 通道大小
 	BufferKbSize      int           // 缓冲区大小
-	LogFormat         LogFormatType // 日志格式选项 [Json(json格式)|Bracket(括号格式)|Detailed(详细格式)|Threaded(协程格式)]
+	LogFormat         LogFormatType // 日志格式选项 [ Json(json格式) | Bracket(括号格式) | Detailed(详细格式) | Threaded(协程格式) ]
 	EnableLogRotation bool          // 是否启用日志切割 [true|false] 默认false
 	LogRetentionDays  int           // 日志保留天数 默认7天 单位[天]
 	LogMaxSize        string        // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
 	LogRetentionCount int           // 日志文件保留数量 默认3 单位[个]
 	EnableCompression bool          // 是否启用日志压缩 [true|false]
-	RotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[分钟]
-	CompressionFormat string        // 日志压缩格式 ["zip"|"gzip"|"tar"|"tgz"] 默认zip
+	RotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[秒]
+	CompressionFormat string        // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
 }
 
 // 全局编译正则表达式 用于匹配日志文件中的时间戳
-var timestampRegex = regexp.MustCompile(`_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.log`)
+var timestampRegex = regexp.MustCompile(`_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.(log|gz|tgz|tar|zip)$`)
 
 // 定义一个接口, 声明对外暴露的方法
 type LoggerInterface interface {
@@ -142,14 +142,14 @@ func NewConfig(logDirName string, logFileName string) LoggerConfig {
 		LogLevel:          Info,        // 日志过滤级别, 默认值为Info
 		ChanIntSize:       1000,        // 日志通道大小, 默认1000
 		BufferKbSize:      1024,        // 缓冲区大小, 默认1MB
-		LogFormat:         Detailed,    // 日志格式选项 [Json(json格式)|Bracket(括号格式)|Detailed(详细格式)|Threaded(协程格式)] 默认详细格式
+		LogFormat:         Detailed,    // 日志格式选项 [ Json(json格式) | Bracket(括号格式) | Detailed(详细格式) | Threaded(协程格式) ] 默认详细格式
 		EnableLogRotation: false,       // 是否启用日志切割 [true|false] 默认false
 		LogRetentionDays:  7,           // 日志保留天数 默认7天 单位[天]
 		LogMaxSize:        "3MB",       // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
 		LogRetentionCount: 3,           // 日志文件保留数量 默认3 单位[个]
-		RotationInterval:  10,          // 日志轮转的间隔时间 默认10分钟 单位[分钟]
+		RotationInterval:  600,         // 日志轮转的间隔时间 默认10分钟 单位[秒]
 		EnableCompression: false,       // 是否启用日志压缩 [true|false] 默认false
-		CompressionFormat: "zip",       // 日志压缩格式 ["zip"|"gzip"|"tar"|"tgz"] 默认zip
+		CompressionFormat: "zip",       // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
 	}
 }
 
@@ -236,9 +236,9 @@ func NewLogger(cfg LoggerConfig) (*Logger, error) {
 		logRetentionDays:  cfg.LogRetentionDays,  // 保存日志保留天数 默认7天 单位[天]
 		logMaxSize:        cfg.LogMaxSize,        // 保存日志文件最大大小 默认3MB 单位[MB|GB|KB]
 		logRetentionCount: cfg.LogRetentionCount, // 保存日志文件保留数量 默认3 单位[个]
-		rotationInterval:  cfg.RotationInterval,  // 保存日志轮转的间隔时间 默认10分钟 单位[分钟]
+		rotationInterval:  cfg.RotationInterval,  // 保存日志轮转的间隔时间 默认10分钟 单位[秒]
 		enableCompression: cfg.EnableCompression, // 保存是否启用日志压缩 [true|false] 默认false
-		compressionFormat: cfg.CompressionFormat, // 保存日志压缩格式 ["zip"|"gzip"|"tar"|"tgz"] 默认zip
+		compressionFormat: cfg.CompressionFormat, // 保存日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
 	}
 
 	// 验证日志配置
@@ -338,9 +338,9 @@ func validateLoggerConfig(logger *Logger) (bool, error) {
 		if logger.compressionFormat == "" {
 			logger.compressionFormat = "zip" // 默认值
 		} else {
-			supportedFormats := []string{"zip", "gzip", "tar", "tgz"}
+			supportedFormats := []string{"zip", "gz", "tar", "tgz"}
 			if !strings.Contains(strings.Join(supportedFormats, ","), logger.compressionFormat) {
-				return false, fmt.Errorf("不支持的压缩格式：%s,支持的格式: %s", logger.compressionFormat, strings.Join(supportedFormats, ","))
+				return false, fmt.Errorf("不支持的压缩格式：%s, 支持的格式: %s", logger.compressionFormat, strings.Join(supportedFormats, ","))
 			}
 		}
 	}
@@ -459,7 +459,7 @@ func (l *Logger) logWithLevel(level string, v ...interface{}) {
 		logMsg = fmt.Sprintf("[%s] %s", level, fmt.Sprint(v...))
 	// 协程格式
 	case Threaded:
-		logMsg = fmt.Sprintf(`[%s] | %-7s | [thread="%d"] %s`, time.Now().Format("2006-01-02 15:04:05"), level, getGoroutineID(), fmt.Sprint(v...))
+		logMsg = fmt.Sprintf(`%s | %-7s | [thread="%d"] %s`, time.Now().Format("2006-01-02 15:04:05"), level, getGoroutineID(), fmt.Sprint(v...))
 	// 无法识别的日志格式选项
 	default:
 		l.logger.Printf("%s", v...)
@@ -681,35 +681,6 @@ func (l *Logger) Debugf(format string, v ...interface{}) {
 	l.logWithLevel("DEBUG", msg)
 }
 
-// 关闭日志文件
-func (l *Logger) Close() {
-	// 循环检查计数器是否消费到缓存区
-	for atomic.LoadInt32(&counter) > 0 {
-		// 等待日志处理完成
-		continue
-	}
-	l.closeOnce.Do(func() {
-		// 发送停止信号
-		close(l.stopChan)
-		// 等待所有日志处理完成
-		l.wg.Wait()
-		// 确保所有缓冲区内容都被写入
-		l.flushBuffers()
-		// 关闭日志通道
-		close(l.logChan)
-		// 等待压缩操作完成
-		l.wgz.Wait()
-		// 如果开启文件日志记录，关闭文件句柄
-		if l.fileWriter != nil {
-			if l.logFile != nil {
-				if err := l.logFile.Close(); err != nil {
-					fmt.Printf("关闭日志文件失败: %v\n", err)
-				}
-			}
-		}
-	})
-}
-
 // String 方法，将 LogFormatType 转换为字符串
 func (lft LogFormatType) String() string {
 	switch lft {
@@ -751,8 +722,8 @@ func (w *Logger) addColor(s string) string {
 
 // 日志轮转主协程 启动日志切割工作协程
 func (l *Logger) startLogRotate() {
-	// 定义一个定时器 每隔10分钟检查一次
-	ticker := time.NewTicker(time.Duration(l.rotationInterval) * time.Minute)
+	// 定义一个定时器 每隔 l.rotationInterval 秒触发一次
+	ticker := time.NewTicker(time.Duration(l.rotationInterval) * time.Second)
 
 	// 启动一个单独的 goroutine 来处理日志轮转
 	l.wg.Add(1)
@@ -913,16 +884,12 @@ func (l *Logger) logFileClean() error {
 		if file.IsDir() { // 跳过目录
 			continue
 		}
-		if filepath.Ext(file.Name()) == ".log" {
+		// 检查文件扩展名是否为日志文件的扩展名 ".log", ".gz", ".zip", ".tgz", ".tar"
+		if filepath.Ext(file.Name()) == ".log" || filepath.Ext(file.Name()) == ".gz" || filepath.Ext(file.Name()) == ".zip" || filepath.Ext(file.Name()) == ".tgz" || filepath.Ext(file.Name()) == ".tar" {
 			filePath := filepath.Join(l.logDirName, file.Name()) // 拼接后的格式为 "logDirName/fileName"
 			fileInfo, err := os.Stat(filePath)
 			if err != nil {
 				l.Errorf("无法获取文件信息: %s, 错误: %v", filePath, err)
-				continue
-			}
-
-			// 如果是当前正在写入的日志文件，跳过
-			if filePath == l.logFilePath { // 跳过当前正在写入的日志文件
 				continue
 			}
 
@@ -963,8 +930,8 @@ func (l *Logger) logFileClean() error {
 	}
 
 	// 清理超出保留数量的日志文件
-	if len(logFiles) > l.logRetentionCount {
-		for i := 0; i < len(logFiles)-l.logRetentionCount; i++ {
+	if len(logFiles) > l.logRetentionCount+1 { // 当前正在读写的日志文件 + 需要保留的日志文件数量
+		for i := 0; i < len(logFiles)-l.logRetentionCount-1; i++ { // 计算需要清理的文件数量。假设 len(logFiles) 是 5，l.logRetentionCount 是 2，那么需要清理的文件数量是 5 - 2 - 1 = 2。
 			if err := os.Remove(logFiles[i].Path); err != nil {
 				l.Errorf("清理日志文件失败: %s, 错误: %v", logFiles[i].Path, err)
 			} else {
@@ -999,7 +966,7 @@ func (l *Logger) compress(format, source, target string) error {
 		err = createTarFile(source, target) // 调用 createTarFile 函数进行 tar 文件的创建
 	case "tgz":
 		err = createTarGz(source, target) // 调用 createTarGz 函数进行 tar.gz 文件的创建
-	case "gzip":
+	case "gz":
 		err = createGz(source, target) // 调用 createGz 函数进行 gzip 文件的创建
 	case "zip":
 		err = createZip(source, target) // 调用 createZip 函数进行 zip 文件的创建
@@ -1183,4 +1150,33 @@ func createTarFile(sourcePath string, tarFilePath string) error {
 	})
 
 	return err
+}
+
+// 关闭日志文件
+func (l *Logger) Close() {
+	// 循环检查计数器是否消费到缓存区
+	for atomic.LoadInt32(&counter) > 0 {
+		// 等待日志处理完成
+		continue
+	}
+	l.closeOnce.Do(func() {
+		// 发送停止信号
+		close(l.stopChan)
+		// 等待所有日志处理完成
+		l.wg.Wait()
+		// 确保所有缓冲区内容都被写入
+		l.flushBuffers()
+		// 关闭日志通道
+		close(l.logChan)
+		// 等待压缩操作完成
+		l.wgz.Wait()
+		// 如果开启文件日志记录，关闭文件句柄
+		if l.fileWriter != nil {
+			if l.logFile != nil {
+				if err := l.logFile.Close(); err != nil {
+					fmt.Printf("关闭日志文件失败: %v\n", err)
+				}
+			}
+		}
+	})
 }
