@@ -33,10 +33,11 @@ func TestLogger(t *testing.T) {
 
 	// 持续运行5分钟，每秒打印20条随机日志
 	startTime := time.Now()
+	jd := 0
 	for time.Since(startTime) < 1*time.Minute {
 		for i := 0; i < 50; i++ {
-			level := rand.Intn(5)                                 // 随机生成0-4的整数，对应Debug、Info、Warn、Error、Success
-			message := fmt.Sprintf("随机日志消息 #%d", rand.Intn(1000)) // 随机生成日志消息
+			level := rand.Intn(5)                    // 随机生成0-4的整数，对应Debug、Info、Warn、Error、Success
+			message := fmt.Sprintf("随机日志消息 #%d", jd) // 随机生成日志消息
 			switch level {
 			case 0:
 				logger.Debug(message)
@@ -49,6 +50,7 @@ func TestLogger(t *testing.T) {
 			case 4:
 				logger.Success(message)
 			}
+			jd++
 		}
 		time.Sleep(1 * time.Second)
 	}

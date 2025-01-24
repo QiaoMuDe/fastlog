@@ -58,6 +58,8 @@ type Logger struct {
 	logger        *log.Logger    // 底层日志记录器
 	fileMu        sync.Mutex     // 文件写入的互斥锁
 	consoleMu     sync.Mutex     // 控制台写入的互斥锁
+	rmLogMu       sync.Mutex     // 删除日志的互斥锁
+	isCleaning    bool           // 标志变量，表示是否已经在清理日志文件
 	logChan       chan string    // 日志通道
 	stopChan      chan string    // 停止通道
 	wg            sync.WaitGroup // 等待组，用于等待日志通道中的日志被处理
@@ -767,11 +769,7 @@ func (l *Logger) logRotateWorker() {
 	// 启动日志清理协程
 	l.Info("开始清理历史日志...")
 	go func() {
-		err := l.logFileClean() // 调用日志清理函数
-		if err != nil {
-			l.Errorf("日志清理失败: %v", err)
-			return
-		}
+		l.logFileClean() // 调用日志清理函数
 	}()
 
 }
@@ -867,80 +865,92 @@ func (l *Logger) logRotate() error {
 }
 
 // logFileClean 清理超出保留天数或保留数量的日志文件
-func (l *Logger) logFileClean() error {
-	files, err := os.ReadDir(l.logDirName)
-	if err != nil {
-		return fmt.Errorf("无法读取日志目录: %w", err)
+func (l *Logger) logFileClean() {
+	// 检查是否已经在清理日志文件
+	if l.isCleaning {
+		return
 	}
+	l.isCleaning = true // 设置标志变量 表示正在清理日志文件
 
-	// 存储日志文件信息
-	var logFiles []struct {
-		Path    string
-		ModTime time.Time
-	}
+	go func() {
+		// 获取到锁，继续执行
+		l.rmLogMu.Lock()
+		defer l.rmLogMu.Unlock()              // 执行完毕后释放锁
+		defer func() { l.isCleaning = false }() // 清理完成后重置标志变量
 
-	// 过滤出日志文件并按时间排序
-	for _, file := range files {
-		if file.IsDir() { // 跳过目录
-			continue
+		files, err := os.ReadDir(l.logDirName)
+		if err != nil {
+			l.Errorf("无法读取日志目录: %s, 错误: %v", l.logDirName, err)
+			return
 		}
-		// 检查文件扩展名是否为日志文件的扩展名 ".log", ".gz", ".zip", ".tgz", ".tar"
-		if filepath.Ext(file.Name()) == ".log" || filepath.Ext(file.Name()) == ".gz" || filepath.Ext(file.Name()) == ".zip" || filepath.Ext(file.Name()) == ".tgz" || filepath.Ext(file.Name()) == ".tar" {
-			filePath := filepath.Join(l.logDirName, file.Name()) // 拼接后的格式为 "logDirName/fileName"
-			fileInfo, err := os.Stat(filePath)
-			if err != nil {
-				l.Errorf("无法获取文件信息: %s, 错误: %v", filePath, err)
+
+		// 存储日志文件信息
+		var logFiles []struct {
+			Path    string
+			ModTime time.Time
+		}
+
+		// 过滤出日志文件并按时间排序
+		for _, file := range files {
+			if file.IsDir() { // 跳过目录
 				continue
 			}
+			// 检查文件扩展名是否为日志文件的扩展名 ".log", ".gz", ".zip", ".tgz", ".tar"
+			if filepath.Ext(file.Name()) == ".log" || filepath.Ext(file.Name()) == ".gz" || filepath.Ext(file.Name()) == ".zip" || filepath.Ext(file.Name()) == ".tgz" || filepath.Ext(file.Name()) == ".tar" {
+				filePath := filepath.Join(l.logDirName, file.Name()) // 拼接后的格式为 "logDirName/fileName"
+				fileInfo, err := os.Stat(filePath)
+				if err != nil {
+					l.Errorf("无法获取文件信息: %s, 错误: %v", filePath, err)
+					continue
+				}
 
-			// 添加到日志文件列表
-			logFiles = append(logFiles, struct {
-				Path    string
-				ModTime time.Time
-			}{Path: filePath, ModTime: fileInfo.ModTime()}) // 记录文件路径和修改时间
-		}
-	}
-
-	// 按文件名中的时间戳排序，如果文件名中没有时间戳，则按修改时间排序
-	sort.Slice(logFiles, func(i, j int) bool {
-		timestampI := l.extractTimestamp(filepath.Base(logFiles[i].Path)) // 提取文件名中的时间戳
-		timestampJ := l.extractTimestamp(filepath.Base(logFiles[j].Path)) // 提取文件名中的时间戳
-
-		if timestampI.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
-			return logFiles[i].ModTime.Before(logFiles[j].ModTime)
-		}
-		if timestampJ.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
-			return logFiles[i].ModTime.Before(logFiles[j].ModTime)
-		}
-		return timestampI.Before(timestampJ) // 按时间戳排序
-	})
-
-	// 计算保留天数前的时间
-	cutoffTime := time.Now().AddDate(0, 0, -l.logRetentionDays)
-
-	// 清理超出保留天数的日志文件
-	for _, file := range logFiles {
-		if file.ModTime.Before(cutoffTime) { // 如果文件修改时间早于保留天数前的时间
-			if err := os.Remove(file.Path); err != nil {
-				l.Errorf("清理日志文件失败: %s, 错误: %v", file.Path, err)
-			} else {
-				l.Successf("已清理超出保留天数的日志文件: %s", file.Path)
+				// 添加到日志文件列表
+				logFiles = append(logFiles, struct {
+					Path    string
+					ModTime time.Time
+				}{Path: filePath, ModTime: fileInfo.ModTime()}) // 记录文件路径和修改时间
 			}
 		}
-	}
 
-	// 清理超出保留数量的日志文件
-	if len(logFiles) > l.logRetentionCount+1 { // 当前正在读写的日志文件 + 需要保留的日志文件数量
-		for i := 0; i < len(logFiles)-l.logRetentionCount-1; i++ { // 计算需要清理的文件数量。假设 len(logFiles) 是 5，l.logRetentionCount 是 2，那么需要清理的文件数量是 5 - 2 - 1 = 2。
-			if err := os.Remove(logFiles[i].Path); err != nil {
-				l.Errorf("清理日志文件失败: %s, 错误: %v", logFiles[i].Path, err)
-			} else {
-				l.Successf("已清理超出保留数量的日志文件: %s", logFiles[i].Path)
+		// 按文件名中的时间戳排序，如果文件名中没有时间戳，则按修改时间排序
+		sort.Slice(logFiles, func(i, j int) bool {
+			timestampI := l.extractTimestamp(filepath.Base(logFiles[i].Path)) // 提取文件名中的时间戳
+			timestampJ := l.extractTimestamp(filepath.Base(logFiles[j].Path)) // 提取文件名中的时间戳
+
+			if timestampI.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
+				return logFiles[i].ModTime.Before(logFiles[j].ModTime)
+			}
+			if timestampJ.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
+				return logFiles[i].ModTime.Before(logFiles[j].ModTime)
+			}
+			return timestampI.Before(timestampJ) // 按时间戳排序
+		})
+
+		// 计算保留天数前的时间
+		cutoffTime := time.Now().AddDate(0, 0, -l.logRetentionDays)
+
+		// 清理超出保留天数的日志文件
+		for _, file := range logFiles {
+			if file.ModTime.Before(cutoffTime) { // 如果文件修改时间早于保留天数前的时间
+				if err := os.Remove(file.Path); err != nil {
+					l.Errorf("清理日志文件失败: %s, 错误: %v", file.Path, err)
+				} else {
+					l.Successf("已清理超出保留天数的日志文件: %s", file.Path)
+				}
 			}
 		}
-	}
 
-	return nil
+		// 清理超出保留数量的日志文件
+		if len(logFiles) > l.logRetentionCount+1 { // 当前正在读写的日志文件 + 需要保留的日志文件数量
+			for i := 0; i < len(logFiles)-l.logRetentionCount-1; i++ { // 计算需要清理的文件数量。假设 len(logFiles) 是 5，l.logRetentionCount 是 2，那么需要清理的文件数量是 5 - 2 - 1 = 2。
+				if err := os.Remove(logFiles[i].Path); err != nil {
+					l.Errorf("清理日志文件失败: %s, 错误: %v", logFiles[i].Path, err)
+				} else {
+					l.Successf("已清理超出保留数量的日志文件: %s", logFiles[i].Path)
+				}
+			}
+		}
+	}()
 }
 
 // 提取文件名中的时间戳
@@ -1045,10 +1055,10 @@ func createGz(source, target string) error {
 	if err != nil {
 		return err
 	}
-	defer gzFile.Close()
+	defer gzFile.Close() // 确保 gzFile 被正确关闭
 
 	gzWriter := gzip.NewWriter(gzFile)
-	defer gzWriter.Close()
+	defer gzWriter.Close() // 确保 gzipWriter 被正确关闭
 
 	_, err = io.Copy(gzWriter, file)
 	return err
@@ -1091,7 +1101,7 @@ func createZip(source, target string) error {
 			if err != nil {
 				return err
 			}
-			defer file.Close()
+			defer file.Close() // 确保文件被正确关闭
 			_, err = io.Copy(writer, file)
 			return err
 		}
@@ -1110,7 +1120,7 @@ func createTarFile(sourcePath string, tarFilePath string) error {
 
 	// 创建 tar.Writer
 	tarWriter := tar.NewWriter(tarFile)
-	defer tarWriter.Close()
+	defer tarWriter.Close() // 确保 tarWriter 被正确关闭
 
 	// 遍历源路径并添加到 tar 文件
 	err = filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
