@@ -52,7 +52,7 @@ const (
 
 // 日志记录器
 type Logger struct {
-	/*  固定级别属性  */
+	/*  私有属性 内部使用无需修改  */
 	logFile       *os.File       // 日志文件句柄
 	logFilePath   string         // 日志文件路径  内部拼接的 [logDirName+logFileName]
 	logger        *log.Logger    // 底层日志记录器
@@ -72,7 +72,7 @@ type Logger struct {
 	closeOnce     sync.Once      // 确保通道只被关闭一次
 	logSizeBytes  int64          // 日志文件大小字节数 用于比较大小, 无需提供或设置修改
 
-	/*  配置级别属性  */
+	/*  公共属性 可以通过属性自定义配置  */
 	logDirName        string        // 日志目录
 	logFileName       string        // 日志文件名
 	printToConsole    bool          // 是否将日志输出到控制台
@@ -94,7 +94,7 @@ type Logger struct {
 type LoggerConfig struct {
 	LogDirName        string        // 日志目录名称
 	LogFileName       string        // 日志文件名称
-	LogPath           string        // 日志文件路径
+	LogPath           string        // 日志文件路径 内部拼接的 [logDirName+logFileName] 无需提供
 	PrintToConsole    bool          // 是否将日志输出到控制台
 	ConsoleOnly       bool          // 是否仅输出到控制台
 	LogLevel          LogLevel      // 日志级别
@@ -767,7 +767,7 @@ func (l *Logger) logRotateWorker() {
 	}
 
 	// 启动日志清理协程
-	l.Info("开始清理历史日志...")
+	l.Debug("开始清理历史日志...")
 	go func() {
 		l.logFileClean() // 调用日志清理函数
 	}()
@@ -868,6 +868,7 @@ func (l *Logger) logRotate() error {
 func (l *Logger) logFileClean() {
 	// 检查是否已经在清理日志文件
 	if l.isCleaning {
+		l.Debug("已经有协程在清理日志文件，本次清理返回")
 		return
 	}
 	l.isCleaning = true // 设置标志变量 表示正在清理日志文件
@@ -875,7 +876,7 @@ func (l *Logger) logFileClean() {
 	go func() {
 		// 获取到锁，继续执行
 		l.rmLogMu.Lock()
-		defer l.rmLogMu.Unlock()              // 执行完毕后释放锁
+		defer l.rmLogMu.Unlock()                // 执行完毕后释放锁
 		defer func() { l.isCleaning = false }() // 清理完成后重置标志变量
 
 		files, err := os.ReadDir(l.logDirName)

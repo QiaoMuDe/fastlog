@@ -89,5 +89,15 @@ func TestLogger(t *testing.T) {
 		t.Fatalf("日志文件数量不符合预期，期望 %d 个，实际 %d 个", expectedCount, logFileCount)
 	}
 
+	// 等待1秒，确保日志压缩完成
+	time.Sleep(10 * time.Second)
+
+	// 清理日志文件
+	os.RemoveAll("applogs")
+	// 检查是否清理成功
+	if _, err := os.Stat("applogs"); !os.IsNotExist(err) {
+		t.Fatalf("日志文件清理失败: %v", err)
+	}
+
 	t.Log("日志测试通过")
 }
