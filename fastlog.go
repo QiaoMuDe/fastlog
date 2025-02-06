@@ -386,7 +386,7 @@ func ensureLogDirExists(dir string) error {
 		if err := os.MkdirAll(dir, 0755); err != nil {
 			return fmt.Errorf("创建日志目录失败: %w", err)
 		}
-		fmt.Printf("日志目录不存在，已自动创建：%s\n", dir)
+		// fmt.Printf("日志目录不存在，已自动创建：%s\n", dir)
 	} else if err != nil {
 		return fmt.Errorf("检查日志目录失败: %w", err)
 	}
