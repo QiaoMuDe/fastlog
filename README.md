@@ -31,12 +31,12 @@
 
 | 函数名称  | 参数类型                                  | 返回值类型           | 说明                                                 |
 | --------- | ----------------------------------------- | -------------------- | ---------------------------------------------------- |
-| NewConfig | `logDirName string, logFileName string` | `LoggerConfig`     | 创建一个日志配置器，日志目录和日志文件名为必需参数。 |
-| NewLogger | `cfg LoggerConfig`                      | `(*Logger, error)` | 根据配置创建一个新的日志记录器。                     |
+| NewConfig | `logDirName string, logFileName string` | `*FastLogConfig` | 创建一个日志配置器，日志目录和日志文件名为必需参数。 |
+| NewFastLog | `cfg *FastLogConfig`              | `(*FastLog, error)` | 根据配置创建一个新的日志记录器。                     |
 
 ### 结构体
 
-以下是将 `Logger` 结构体的字段及其说明：
+以下是将 `FastLog` 结构体的字段及其说明：
 
 > 私有属性：模块内部使用无需修改
 
@@ -81,7 +81,7 @@
 | enableCompression | bool          | 是否启用日志压缩。                            |
 | compressionFormat | string        | 日志压缩格式，如 zip、gz、tar ，tgz等。       |
 
-以下是将 `LoggerConfig` 结构体的字段及其说明：
+以下是将 `FastLogConfig` 结构体的字段及其说明：
 
 > 配置项属性
 
@@ -113,7 +113,7 @@
 
 ### 方法
 
-以下是将 `LoggerInterface` 中的方法及其说明：
+以下是将 `FastLogInterface` 中的方法及其说明：
 
 | 方法名称 | 参数类型                            | 说明                                             |
 | -------- | ----------------------------------- | ------------------------------------------------ |
@@ -203,7 +203,7 @@ func main() {
 	cfg.PrintToConsole = true
 
 	// 创建日志记录器
-	logger, err := fastlog.NewLogger(cfg)
+	logger, err := fastlog.NewFastLog(cfg)
 	if err != nil {
 		fmt.Println("创建日志记录器失败:", err)
 	}

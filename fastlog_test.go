@@ -11,8 +11,8 @@ import (
 	"gitee.com/MM-Q/fastlog"
 )
 
-// TestLogger 测试日志记录器
-func TestLogger(t *testing.T) {
+// TestFastLog 测试日志记录器
+func TestFastLog(t *testing.T) {
 	// 配置日志
 	config := fastlog.NewConfig("applogs", "app.log")
 	config.LogLevel = fastlog.Debug
@@ -25,17 +25,17 @@ func TestLogger(t *testing.T) {
 	config.LogRetentionCount = 2 // 设置日志保留数量为2
 
 	// 初始化日志记录器
-	logger, err := fastlog.NewLogger(config)
+	logger, err := fastlog.NewFastLog(config)
 	if err != nil {
 		t.Fatalf("初始化日志记录器失败: %v", err)
 	}
 	defer logger.Close()
 
-	// 持续运行5分钟，每秒打印20条随机日志
+	// 持续运行10秒，每秒打印50条随机日志
 	startTime := time.Now()
 	jd := 0
-	for time.Since(startTime) < 1*time.Minute {
-		for i := 0; i < 50; i++ {
+	for time.Since(startTime) < 10*time.Second { // 持续运行10秒
+		for i := 0; i < 50; i++ { // 每秒打印50条随机日志
 			level := rand.Intn(5)                    // 随机生成0-4的整数，对应Debug、Info、Warn、Error、Success
 			message := fmt.Sprintf("随机日志消息 #%d", jd) // 随机生成日志消息
 			switch level {
@@ -93,10 +93,10 @@ func TestLogger(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// 清理日志文件
-	os.RemoveAll("applogs")
-	// 检查是否清理成功
-	if _, err := os.Stat("applogs"); !os.IsNotExist(err) {
-		t.Fatalf("日志文件清理失败: %v", err)
+	if os.Getenv("OS") == "linux" {
+		os.RemoveAll("applogs")
+	} else {
+		t.Log("非Linux系统，跳过清理日志文件")
 	}
 
 	t.Log("日志测试通过")

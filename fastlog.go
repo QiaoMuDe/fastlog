@@ -51,7 +51,7 @@ const (
 )
 
 // 日志记录器
-type Logger struct {
+type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
 	logFile       *os.File       // 日志文件句柄
 	logFilePath   string         // 日志文件路径  内部拼接的 [logDirName+logFileName]
@@ -91,7 +91,7 @@ type Logger struct {
 }
 
 // 日志配置
-type LoggerConfig struct {
+type FastLogConfig struct {
 	LogDirName        string        // 日志目录名称
 	LogFileName       string        // 日志文件名称
 	LogPath           string        // 日志文件路径 内部拼接的 [logDirName+logFileName] 无需提供
@@ -114,7 +114,7 @@ type LoggerConfig struct {
 var timestampRegex = regexp.MustCompile(`_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.(log|gz|tgz|tar|zip)$`)
 
 // 定义一个接口, 声明对外暴露的方法
-type LoggerInterface interface {
+type FastLogInterface interface {
 	Info(v ...interface{})                    // 记录信息级别的日志，不支持占位符，需要自己拼接
 	Warn(v ...interface{})                    // 记录警告级别的日志，不支持占位符，需要自己拼接
 	Error(v ...interface{})                   // 记录错误级别的日志，不支持占位符，需要自己拼接
@@ -132,10 +132,10 @@ type LoggerInterface interface {
 var color = colorlib.NewColorLib()
 
 // 创建一个新的日志配置器
-func NewConfig(logDirName string, logFileName string) LoggerConfig {
+func NewConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 生成日志文件路径
 	logPath := filepath.Join(logDirName, logFileName)
-	return LoggerConfig{
+	return &FastLogConfig{
 		LogDirName:        logDirName,  // 日志目录 必须提供
 		LogFileName:       logFileName, // 日志文件名 必须提供
 		LogPath:           logPath,     // 内部自己拼接的路径,无需提供
@@ -156,7 +156,7 @@ func NewConfig(logDirName string, logFileName string) LoggerConfig {
 }
 
 // 创建一个新的日志记录器
-func NewLogger(cfg LoggerConfig) (*Logger, error) {
+func NewFastLog(cfg *FastLogConfig) (*FastLog, error) {
 	// 声明一些配置变量
 	var (
 		outputToConsole     bool          // 是否将日志输出到控制台
@@ -217,8 +217,8 @@ func NewLogger(cfg LoggerConfig) (*Logger, error) {
 	// 创建底层日志记录器
 	logger := log.New(fileWriter, "", 0)
 
-	// 创建 Logger 实例
-	lg := &Logger{
+	// 创建 FastLog 实例
+	lg := &FastLog{
 		logDirName:        cfg.LogDirName,        // 保存日志目录名称
 		logFileName:       cfg.LogFileName,       // 保存日志文件名称
 		logFile:           logFile,               // 保存日志文件句柄
@@ -275,7 +275,7 @@ func NewLogger(cfg LoggerConfig) (*Logger, error) {
 }
 
 // validateLoggerConfig 检查 Logger 结构体的配置是否合理
-func validateLoggerConfig(logger *Logger) (bool, error) {
+func validateLoggerConfig(logger *FastLog) (bool, error) {
 	// 检查日志格式是否支持
 	supportedFormats := map[string]LogFormatType{
 		"json":     Json,
@@ -403,7 +403,7 @@ func getGoroutineID() int64 {
 }
 
 // 核心日志记录函数
-func (l *Logger) logWithLevel(level string, v ...interface{}) {
+func (l *FastLog) logWithLevel(level string, v ...interface{}) {
 	// 将字符串日志级别转换为 LogLevel
 	var logLevelValue LogLevel
 	switch level {
@@ -475,7 +475,7 @@ func (l *Logger) logWithLevel(level string, v ...interface{}) {
 }
 
 // 启动异步日志记录---日志通道消费者/缓冲区生产者
-func (l *Logger) startAsyncLogging() {
+func (l *FastLog) startAsyncLogging() {
 	// 计算缓冲区大小
 	BufferSize := l.bufferKbSize * 1024
 	// 等待组计数器加1
@@ -536,7 +536,7 @@ func (l *Logger) startAsyncLogging() {
 }
 
 // 定时消费缓冲区内容到文件和控制台---缓冲区消费者
-func (l *Logger) startBufferedLogging() {
+func (l *FastLog) startBufferedLogging() {
 	// 初始化定时器, 每1秒检查一次缓冲区
 	l.ticker = time.NewTicker(1 * time.Second)
 	// 等待组计数器加1
@@ -562,7 +562,7 @@ func (l *Logger) startBufferedLogging() {
 }
 
 // 消费缓冲区内容到文件和控制台
-func (l *Logger) flushBuffers() {
+func (l *FastLog) flushBuffers() {
 	// 如果文件缓冲区中有内容, 且不是仅输出到控制台
 	if !l.consoleOnly && l.fileBuffer != nil {
 		if l.fileBuffer.Len() > 0 {
@@ -599,7 +599,7 @@ func (l *Logger) flushBuffers() {
 }
 
 // Info 级别的日志
-func (l *Logger) Info(v ...interface{}) {
+func (l *FastLog) Info(v ...interface{}) {
 	if Info < l.logLevel {
 		return // 如果日志级别低于 Info，不输出日志
 	}
@@ -607,7 +607,7 @@ func (l *Logger) Info(v ...interface{}) {
 }
 
 // Warn 级别的日志
-func (l *Logger) Warn(v ...interface{}) {
+func (l *FastLog) Warn(v ...interface{}) {
 	if Warn < l.logLevel {
 		return // 如果日志级别低于 Warn，不输出日志
 	}
@@ -615,7 +615,7 @@ func (l *Logger) Warn(v ...interface{}) {
 }
 
 // Error 级别的日志
-func (l *Logger) Error(v ...interface{}) {
+func (l *FastLog) Error(v ...interface{}) {
 	if Error < l.logLevel {
 		return // 如果日志级别低于 Error，不输出日志
 	}
@@ -623,7 +623,7 @@ func (l *Logger) Error(v ...interface{}) {
 }
 
 // Success 级别的日志
-func (l *Logger) Success(v ...interface{}) {
+func (l *FastLog) Success(v ...interface{}) {
 	if Success < l.logLevel {
 		return // 如果日志级别低于 Success，不输出日志
 	}
@@ -631,7 +631,7 @@ func (l *Logger) Success(v ...interface{}) {
 }
 
 // Debug 级别的日志
-func (l *Logger) Debug(v ...interface{}) {
+func (l *FastLog) Debug(v ...interface{}) {
 	if Debug < l.logLevel {
 		return // 如果日志级别低于 Debug，不输出日志
 	}
@@ -639,7 +639,7 @@ func (l *Logger) Debug(v ...interface{}) {
 }
 
 // 支持格式化的 Info 级别的日志
-func (l *Logger) Infof(format string, v ...interface{}) {
+func (l *FastLog) Infof(format string, v ...interface{}) {
 	if Info < l.logLevel {
 		return // 如果当前方法小于日志级别，则不输出日志
 	}
@@ -648,7 +648,7 @@ func (l *Logger) Infof(format string, v ...interface{}) {
 }
 
 // 支持格式化的 Warn 级别的日志
-func (l *Logger) Warnf(format string, v ...interface{}) {
+func (l *FastLog) Warnf(format string, v ...interface{}) {
 	if Warn < l.logLevel {
 		return // 如果当前方法小于日志级别，则不输出日志
 	}
@@ -657,7 +657,7 @@ func (l *Logger) Warnf(format string, v ...interface{}) {
 }
 
 // 支持格式化的 Error 级别的日志
-func (l *Logger) Errorf(format string, v ...interface{}) {
+func (l *FastLog) Errorf(format string, v ...interface{}) {
 	if Error < l.logLevel {
 		return // 如果当前方法小于日志级别，则不输出日志
 	}
@@ -666,7 +666,7 @@ func (l *Logger) Errorf(format string, v ...interface{}) {
 }
 
 // 支持格式化的 Success 级别的日志
-func (l *Logger) Successf(format string, v ...interface{}) {
+func (l *FastLog) Successf(format string, v ...interface{}) {
 	if Success < l.logLevel {
 		return // 如果当前方法小于日志级别，则不输出日志
 	}
@@ -675,7 +675,7 @@ func (l *Logger) Successf(format string, v ...interface{}) {
 }
 
 // 支持格式化的 Debug 级别的日志
-func (l *Logger) Debugf(format string, v ...interface{}) {
+func (l *FastLog) Debugf(format string, v ...interface{}) {
 	if Debug < l.logLevel {
 		return // 如果当前方法小于日志级别，则不输出日志
 	}
@@ -700,7 +700,7 @@ func (lft LogFormatType) String() string {
 }
 
 // 为控制台输出添加颜色
-func (w *Logger) addColor(s string) string {
+func (w *FastLog) addColor(s string) string {
 	// 使用正则表达式精确匹配日志级别，确保匹配的是独立的单词
 	re := regexp.MustCompile(`\b(INFO|WARN|ERROR|SUCCESS|DEBUG)\b`)
 	match := re.FindString(s)
@@ -723,7 +723,7 @@ func (w *Logger) addColor(s string) string {
 }
 
 // 日志轮转主协程 启动日志切割工作协程
-func (l *Logger) startLogRotate() {
+func (l *FastLog) startLogRotate() {
 	// 定义一个定时器 每隔 l.rotationInterval 秒触发一次
 	ticker := time.NewTicker(time.Duration(l.rotationInterval) * time.Second)
 
@@ -745,7 +745,7 @@ func (l *Logger) startLogRotate() {
 }
 
 // 日志切割工作方法---检查
-func (l *Logger) logRotateWorker() {
+func (l *FastLog) logRotateWorker() {
 	// 检查日志文件是否存在
 	if _, err := os.Stat(l.logFilePath); os.IsNotExist(err) {
 		l.Errorf("日志文件不存在: %s", l.logFilePath)
@@ -775,7 +775,7 @@ func (l *Logger) logRotateWorker() {
 }
 
 // 日志切割工作---切割
-func (l *Logger) logRotate() error {
+func (l *FastLog) logRotate() error {
 	// 先获取日志文件锁，堵塞写入
 	l.fileMu.Lock()
 	defer l.fileMu.Unlock()
@@ -865,7 +865,7 @@ func (l *Logger) logRotate() error {
 }
 
 // logFileClean 清理超出保留天数或保留数量的日志文件
-func (l *Logger) logFileClean() {
+func (l *FastLog) logFileClean() {
 	// 检查是否已经在清理日志文件
 	if l.isCleaning {
 		l.Debug("已经有协程在清理日志文件，本次清理返回")
@@ -955,7 +955,7 @@ func (l *Logger) logFileClean() {
 }
 
 // 提取文件名中的时间戳
-func (l *Logger) extractTimestamp(fileName string) time.Time {
+func (l *FastLog) extractTimestamp(fileName string) time.Time {
 	match := timestampRegex.FindStringSubmatch(fileName) // 匹配文件名中的时间戳
 	if len(match) > 1 {
 		timestamp, err := time.Parse("2006-01-02_15-04-05", match[1]) // 解析时间戳
@@ -969,7 +969,7 @@ func (l *Logger) extractTimestamp(fileName string) time.Time {
 	return time.Time{}
 }
 
-func (l *Logger) compress(format, source, target string) error {
+func (l *FastLog) compress(format, source, target string) error {
 	var err error
 	// 根据压缩格式调用对应的压缩函数
 	switch format {
@@ -1164,7 +1164,7 @@ func createTarFile(sourcePath string, tarFilePath string) error {
 }
 
 // 关闭日志文件
-func (l *Logger) Close() {
+func (l *FastLog) Close() {
 	// 循环检查计数器是否消费到缓存区
 	for atomic.LoadInt32(&counter) > 0 {
 		// 等待日志处理完成
