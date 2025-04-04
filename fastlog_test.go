@@ -14,15 +14,9 @@ import (
 // TestFastLog 测试日志记录器
 func TestFastLog(t *testing.T) {
 	// 配置日志
-	config := fastlog.NewConfig("applogs", "app.log")
-	config.LogLevel = fastlog.Debug
-	config.EnableLogRotation = true // 启用日志轮转
-	config.EnableCompression = true // 启用日志压缩
-	config.CompressionFormat = "zip"
+	config := fastlog.NewFastLogConfig("applogs", "app.log")
+	config.LogLevel = fastlog.DEBUG
 	config.LogFormat = fastlog.Threaded
-	config.LogMaxSize = "1kb"    // 设置日志文件大小限制为1KB，便于测试轮转
-	config.RotationInterval = 1  // 设置日志轮转间隔为1秒
-	config.LogRetentionCount = 2 // 设置日志保留数量为2
 
 	// 初始化日志记录器
 	logger, err := fastlog.NewFastLog(config)
@@ -81,22 +75,6 @@ func TestFastLog(t *testing.T) {
 		if filepath.Ext(file.Name()) == ".log" || filepath.Ext(file.Name()) == ".zip" {
 			logFileCount++
 		}
-	}
-
-	// 验证日志文件数量是否符合预期
-	expectedCount := config.LogRetentionCount + 1 // 当前日志文件 + 保留的日志文件数量
-	if logFileCount != expectedCount {
-		t.Fatalf("日志文件数量不符合预期，期望 %d 个，实际 %d 个", expectedCount, logFileCount)
-	}
-
-	// 等待1秒，确保日志压缩完成
-	time.Sleep(10 * time.Second)
-
-	// 清理日志文件
-	if os.Getenv("OS") == "linux" {
-		os.RemoveAll("applogs")
-	} else {
-		t.Log("非Linux系统，跳过清理日志文件")
 	}
 
 	t.Log("日志测试通过")

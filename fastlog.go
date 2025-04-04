@@ -1,1193 +1,307 @@
 package fastlog
 
 import (
-	"archive/tar"
-	"archive/zip"
 	"bytes"
-	"compress/gzip"
-	"errors"
+	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
-	"regexp"
-	"runtime"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
-
 	"path/filepath"
-
-	"gitee.com/MM-Q/colorlib"
+	"sync"
+	"time"
 )
 
-// 日志级别枚举
-type LogLevel int
-
-// 定义一个原子计数器
-var counter int32 = 0
-
-type LogFormatType int
-
-const (
-	// 日志格式选项
-	Detailed LogFormatType = iota // 详细格式
-	Bracket                       // 方括号格式
-	Json                          // json格式
-	Threaded                      // 协程格式
-)
-
-// 定义日志级别
-const (
-	Debug LogLevel = iota
-	Info
-	Warn
-	Error
-	Success
-	None // 用于表示不记录任何日志
-)
-
-// 日志记录器
-type FastLog struct {
-	/*  私有属性 内部使用无需修改  */
-	logFile       *os.File       // 日志文件句柄
-	logFilePath   string         // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	logger        *log.Logger    // 底层日志记录器
-	fileMu        sync.Mutex     // 文件写入的互斥锁
-	consoleMu     sync.Mutex     // 控制台写入的互斥锁
-	rmLogMu       sync.Mutex     // 删除日志的互斥锁
-	isCleaning    bool           // 标志变量，表示是否已经在清理日志文件
-	logChan       chan string    // 日志通道
-	stopChan      chan string    // 停止通道
-	wg            sync.WaitGroup // 等待组，用于等待日志通道中的日志被处理
-	wgz           sync.WaitGroup // 等待组, 用于等待日志文件被压缩
-	fileBuffer    *bytes.Buffer  // 文件缓冲区
-	consoleBuffer *bytes.Buffer  // 控制台缓冲区
-	ticker        *time.Ticker   // 定时器
-	fileWriter    io.Writer      // 文件写入器
-	consoleWriter io.Writer      // 控制台写入器
-	closeOnce     sync.Once      // 确保通道只被关闭一次
-	logSizeBytes  int64          // 日志文件大小字节数 用于比较大小, 无需提供或设置修改
-
-	/*  公共属性 可以通过属性自定义配置  */
-	logDirName        string        // 日志目录
-	logFileName       string        // 日志文件名
-	printToConsole    bool          // 是否将日志输出到控制台
-	consoleOnly       bool          // 是否仅输出到控制台
-	logLevel          LogLevel      // 日志级别
-	chanIntSize       int           // 通道大小 默认1000
-	bufferKbSize      int           // 缓冲区大小 默认1024 单位KB
-	logFormat         LogFormatType // 日志格式选项 [ Json(json格式) | Bracket(方括号格式) | Detailed(详细格式) | Threaded(协程格式) ]
-	enableLogRotation bool          // 是否启用日志切割 [true|false] 默认false
-	logRetentionDays  int           // 日志保留天数 默认7天 单位[天]
-	logMaxSize        string        // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
-	logRetentionCount int           // 日志文件保留数量 默认3 单位[个]
-	rotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[秒]
-	enableCompression bool          // 是否启用日志压缩 [true|false]
-	compressionFormat string        // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
-}
-
-// 日志配置
-type FastLogConfig struct {
-	LogDirName        string        // 日志目录名称
-	LogFileName       string        // 日志文件名称
-	LogPath           string        // 日志文件路径 内部拼接的 [logDirName+logFileName] 无需提供
-	PrintToConsole    bool          // 是否将日志输出到控制台
-	ConsoleOnly       bool          // 是否仅输出到控制台
-	LogLevel          LogLevel      // 日志级别
-	ChanIntSize       int           // 通道大小
-	BufferKbSize      int           // 缓冲区大小
-	LogFormat         LogFormatType // 日志格式选项 [ Json(json格式) | Bracket(括号格式) | Detailed(详细格式) | Threaded(协程格式) ]
-	EnableLogRotation bool          // 是否启用日志切割 [true|false] 默认false
-	LogRetentionDays  int           // 日志保留天数 默认7天 单位[天]
-	LogMaxSize        string        // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
-	LogRetentionCount int           // 日志文件保留数量 默认3 单位[个]
-	EnableCompression bool          // 是否启用日志压缩 [true|false]
-	RotationInterval  int           // 日志轮转的间隔时间 默认10分钟 单位[秒]
-	CompressionFormat string        // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
-}
-
-// 全局编译正则表达式 用于匹配日志文件中的时间戳
-var timestampRegex = regexp.MustCompile(`_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})\.(log|gz|tgz|tar|zip)$`)
-
-// 定义一个接口, 声明对外暴露的方法
-type FastLogInterface interface {
-	Info(v ...interface{})                    // 记录信息级别的日志，不支持占位符，需要自己拼接
-	Warn(v ...interface{})                    // 记录警告级别的日志，不支持占位符，需要自己拼接
-	Error(v ...interface{})                   // 记录错误级别的日志，不支持占位符，需要自己拼接
-	Success(v ...interface{})                 // 记录成功级别的日志，不支持占位符，需要自己拼接
-	Debug(v ...interface{})                   // 记录调试级别的日志，不支持占位符，需要自己拼接
-	Close()                                   // 关闭日志记录器
-	Infof(format string, v ...interface{})    // 记录信息级别的日志，支持占位符，格式化
-	Warnf(format string, v ...interface{})    // 记录警告级别的日志，支持占位符，格式化
-	Errorf(format string, v ...interface{})   // 记录错误级别的日志，支持占位符，格式化
-	Successf(format string, v ...interface{}) // 记录成功级别的日志，支持占位符，格式化
-	Debugf(format string, v ...interface{})   // 记录调试级别的日志，支持占位符，格式化
-}
-
-// 创建一个colorlib的实例
-var color = colorlib.NewColorLib()
-
-// 创建一个新的日志配置器
-func NewConfig(logDirName string, logFileName string) *FastLogConfig {
-	// 生成日志文件路径
-	logPath := filepath.Join(logDirName, logFileName)
+// NewFastLogConfig 创建一个新的FastLogConfig实例，用于配置日志记录器。
+// 参数:
+//   - logDirName: 日志目录名称，默认为"applogs"。
+//   - logFileName: 日志文件名称，默认为"app.log"。
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+func NewFastLogConfig(logDirPath string, logFileName string) *FastLogConfig {
+	// 如果日志目录名称为空，则使用默认值"logs"。
+	if logDirPath == "" {
+		logDirPath = "logs"
+	}
+	// 如果日志文件名称为空，则使用默认值"app.log"。
+	if logFileName == "" {
+		logFileName = "app.log"
+	}
+	// 合并日志目录和日志文件名称，生成日志文件路径。
+	logFilePath := filepath.Join(logDirPath, logFileName)
 	return &FastLogConfig{
-		LogDirName:        logDirName,  // 日志目录 必须提供
-		LogFileName:       logFileName, // 日志文件名 必须提供
-		LogPath:           logPath,     // 内部自己拼接的路径,无需提供
-		PrintToConsole:    true,        // 是否将日志输出到控制台, 默认值为true
-		ConsoleOnly:       false,       // 是否仅输出到控制台, 默认值为false
-		LogLevel:          Info,        // 日志过滤级别, 默认值为Info
-		ChanIntSize:       1000,        // 日志通道大小, 默认1000
-		BufferKbSize:      1024,        // 缓冲区大小, 默认1MB
-		LogFormat:         Detailed,    // 日志格式选项 [ Json(json格式) | Bracket(括号格式) | Detailed(详细格式) | Threaded(协程格式) ] 默认详细格式
-		EnableLogRotation: false,       // 是否启用日志切割 [true|false] 默认false
-		LogRetentionDays:  7,           // 日志保留天数 默认7天 单位[天]
-		LogMaxSize:        "3MB",       // 日志文件最大大小 默认3MB 单位[KB|MB|GB]
-		LogRetentionCount: 3,           // 日志文件保留数量 默认3 单位[个]
-		RotationInterval:  600,         // 日志轮转的间隔时间 默认10分钟 单位[秒]
-		EnableCompression: false,       // 是否启用日志压缩 [true|false] 默认false
-		CompressionFormat: "zip",       // 日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
+		logDirPath:     logDirPath,  // 日志目录名称
+		LogFileName:    logFileName, // 日志文件名称
+		logFilePath:    logFilePath, // 日志文件路径
+		PrintToConsole: true,        // 是否将日志输出到控制台
+		ConsoleOnly:    false,       // 是否仅输出到控制台
+		LogLevel:       INFO,        // 日志级别 默认INFO
+		ChanIntSize:    1000,        // 通道大小 默认1000
+		BufferKbSize:   1024,        // 缓冲区大小 默认1024 单位KB
+		LogFormat:      Detailed,    // 日志格式选项
 	}
 }
 
-// 创建一个新的日志记录器
-func NewFastLog(cfg *FastLogConfig) (*FastLog, error) {
+// NewFastLog 创建一个新的FastLog实例，用于记录日志。
+// 参数:
+//   - config: 一个指向FastLogConfig实例的指针，用于配置日志记录器。
+//
+// 返回值:
+//   - *FastLog: 一个指向FastLog实例的指针。
+//   - error: 如果创建日志记录器失败，则返回一个错误。
+func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 声明一些配置变量
 	var (
-		outputToConsole     bool          // 是否将日志输出到控制台
-		outputOnlyToConsole bool          // 是否仅输出到控制台
-		consoleBuffer       *bytes.Buffer // 初始化控制台缓冲区
-		fileBuffer          *bytes.Buffer // 初始化日志文件缓冲区
-		logFile             *os.File      // 日志文件句柄
-		fileWriter          io.Writer     // 文件写入器
-		err                 error         // 错误变量
+		consoleBuffer *bytes.Buffer // 初始化控制台缓冲区
+		fileBuffer    *bytes.Buffer // 初始化日志文件缓冲区
+		logFile       *os.File      // 日志文件句柄
+		fileWriter    io.Writer     // 文件写入器
+		consoleWriter io.Writer     // 控制台写入器
+		err           error         // 错误变量
 	)
 
-	// 检查是否仅输出到控制台
-	if cfg.ConsoleOnly {
-		// 如果仅输出到控制台，设置 outputToConsole 为 true，outputOnlyToConsole 为 true
-		outputToConsole = true
-		outputOnlyToConsole = true
-	} else {
-		// 如果不是仅输出到控制台：
-		// 1. 根据配置决定是否输出到控制台（由 PrintToConsole 控制）
-		// 2. 默认情况下，日志会输出到文件
-		outputToConsole = cfg.PrintToConsole
-		outputOnlyToConsole = false
-	}
-
 	// 初始化缓冲区大小 默认1MB
-	bufferSize := cfg.BufferKbSize * 1024
+	bufferSize := config.BufferKbSize * 1024
 
-	// 如果需要输出到控制台，初始化控制台缓冲区
-	if outputToConsole {
-		consoleBuffer = bytes.NewBuffer(make([]byte, bufferSize))
-		consoleBuffer.Reset()
+	// 如果允许将日志输出到控制台，或者仅输出到控制台，则初始化控制台缓冲区和写入器。
+	if config.ConsoleOnly || config.PrintToConsole {
+		consoleBuffer = bytes.NewBuffer(make([]byte, bufferSize)) // 创建一个新的缓冲区, 初始大小为 bufferSize
+		consoleBuffer.Reset()                                     // 重置缓冲区
+		consoleWriter = os.Stdout                                 // 控制台写入器
+	} else {
+		consoleWriter = io.Discard // 不输出到控制台，直接丢弃
 	}
 
-	// 如果不是仅输出到控制台，初始化文件缓冲区和打开日志文件
-	if !outputOnlyToConsole {
-		// 检查日志目录是否存在
-		if err := ensureLogDirExists(cfg.LogDirName); err != nil {
-			return nil, err
+	// 如果不是仅输出到控制台，则初始化日志文件缓冲区和写入器。
+	if !config.ConsoleOnly {
+		// 检查日志目录是否存在，如果不存在则创建。
+		if _, err := checkPath(config.logDirPath); err != nil {
+			if err := os.MkdirAll(config.logDirPath, 0644); err != nil {
+				return nil, fmt.Errorf("创建日志目录失败: %s", err)
+			}
 		}
 
-		// 打开日志文件
-		logFile, err = os.OpenFile(cfg.LogPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
+		// 打开日志文件，如果文件不存在则创建。
+		logFile, err = os.OpenFile(config.logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
-			return nil, fmt.Errorf("无法打开日志文件: %w", err)
+			return nil, fmt.Errorf("打开日志文件失败: %s", err)
 		}
 
 		// 初始化文件缓冲区
 		fileBuffer = bytes.NewBuffer(make([]byte, bufferSize))
 		fileBuffer.Reset()
 
-		// 设置文件写入器
+		// 初始化文件写入器
 		fileWriter = logFile
 	} else {
-		// 如果仅输出到控制台，文件写入器为 nil
-		fileWriter = nil
+		fileWriter = io.Discard // 仅输出到控制台，不输出到文件
 	}
 
-	// 创建底层日志记录器
-	logger := log.New(fileWriter, "", 0)
+	// 创建一个上下文，用于控制日志记录器的生命周期。
+	ctx, cancel := context.WithCancel(context.Background())
 
-	// 创建 FastLog 实例
-	lg := &FastLog{
-		logDirName:        cfg.LogDirName,        // 保存日志目录名称
-		logFileName:       cfg.LogFileName,       // 保存日志文件名称
-		logFile:           logFile,               // 保存日志文件句柄
-		logFilePath:       cfg.LogPath,           // 保存日志文件路径
-		logger:            logger,                // 保存底层日志记录器
-		printToConsole:    outputToConsole,       // 保存是否将日志输出到控制台
-		consoleOnly:       outputOnlyToConsole,   // 保存是否仅输出到控制台
-		logLevel:          cfg.LogLevel,          // 保存日志级别
-		fileWriter:        fileWriter,            // 保存文件写入器
-		consoleWriter:     os.Stdout,             // 保存控制台写入器
-		chanIntSize:       cfg.ChanIntSize,       // 保存通道大小
-		bufferKbSize:      cfg.BufferKbSize,      // 保存缓冲区大小
-		fileBuffer:        fileBuffer,            // 保存预分配内存后的文件缓冲区
-		consoleBuffer:     consoleBuffer,         // 保存预分配内存后的控制台缓冲区
-		logFormat:         cfg.LogFormat,         // 保存日志格式选项 [Json(json格式)|Bracket(括号格式)|Detailed(详细格式)|Threaded(协程格式)]
-		enableLogRotation: cfg.EnableLogRotation, // 保存是否启用日志切割 [true|false] 默认false,
-		logRetentionDays:  cfg.LogRetentionDays,  // 保存日志保留天数 默认7天 单位[天]
-		logMaxSize:        cfg.LogMaxSize,        // 保存日志文件最大大小 默认3MB 单位[MB|GB|KB]
-		logRetentionCount: cfg.LogRetentionCount, // 保存日志文件保留数量 默认3 单位[个]
-		rotationInterval:  cfg.RotationInterval,  // 保存日志轮转的间隔时间 默认10分钟 单位[秒]
-		enableCompression: cfg.EnableCompression, // 保存是否启用日志压缩 [true|false] 默认false
-		compressionFormat: cfg.CompressionFormat, // 保存日志压缩格式 [ zip | gz | tar | tgz ] 默认zip
+	// 创建一个新的FastLog实例，将配置和缓冲区赋值给实例。
+	fastLog := &FastLog{
+		logFile:        logFile,               // 日志文件句柄
+		fileWriter:     fileWriter,            // 文件写入器,
+		consoleWriter:  consoleWriter,         // 控制台写入器,
+		logFilePath:    config.logFilePath,    // 日志文件路径
+		fileBuffer:     fileBuffer,            // 日志文件缓冲区
+		consoleBuffer:  consoleBuffer,         // 控制台缓冲区
+		logDirPath:     config.logDirPath,     // 日志目录路径
+		logFileName:    config.LogFileName,    // 日志文件名
+		printToConsole: config.PrintToConsole, // 是否将日志输出到控制台
+		consoleOnly:    config.ConsoleOnly,    // 是否仅输出到控制台
+		logLevel:       config.LogLevel,       // 日志级别
+		chanIntSize:    config.ChanIntSize,    // 通道大小 默认1000
+		bufferKbSize:   config.BufferKbSize,   // 缓冲区大小 默认1024 单位KB
+		logFormat:      config.LogFormat,      // 日志格式选项
+		logCtx:         ctx,                   // 日志上下文,
+		stopChan:       cancel,                // 日志上下文取消函数,
+		isWriter:       false,                 // 是否在写入日志
 	}
 
-	// 验证日志配置
-	_, err = validateLoggerConfig(lg)
-	if err != nil {
-		return nil, err
-	}
+	// 初始化日志通道
+	fastLog.logChan = make(chan *logMessage, fastLog.chanIntSize)
 
-	// 初始化日志通道, 容量为1000
-	lg.logChan = make(chan string, lg.chanIntSize)
+	// 使用sync.Once确保只执行一次
+	var ProcessLogsOnce sync.Once
+	ProcessLogsOnce.Do(func() {
+		// 启动日志处理器
+		ProcessLogs(fastLog)
+	}) // 执行一次
 
-	// 初始化停止通道
-	lg.stopChan = make(chan string, 10)
+	// 使用sync.Once确保只执行一次
+	var startBufferedLoggingOnce sync.Once
+	startBufferedLoggingOnce.Do(func() {
+		// 启动日志缓冲器
+		startBufferedLogging(fastLog)
+	}) // 执行一次
 
-	// 启动异步日志记录 使用 sync.Once 确保只执行一次
-	onefunc := sync.OnceFunc(func() {
-		lg.startAsyncLogging()
-	})
-	onefunc() // 执行一次
-
-	//检查是否启用日志切割
-	if lg.enableLogRotation {
-		// 启动日志轮转主协程 使用 sync.Once 确保只执行一次
-		onefunc := sync.OnceFunc(func() {
-			lg.startLogRotate()
-		})
-		onefunc() // 执行一次
-	}
-
-	// 返回 Logger 实例
-	return lg, nil
+	// 返回FastLog实例和nil错误
+	return fastLog, nil
 }
 
-// validateLoggerConfig 检查 Logger 结构体的配置是否合理
-func validateLoggerConfig(logger *FastLog) (bool, error) {
-	// 检查日志格式是否支持
-	supportedFormats := map[string]LogFormatType{
-		"json":     Json,
-		"bracket":  Bracket,
-		"detailed": Detailed,
-		"threaded": Threaded,
-	}
-	userFormat := strings.ToLower(logger.logFormat.String()) // 转换为小写
-	if _, ok := supportedFormats[userFormat]; !ok {          // 获取日志格式
-		// 提取支持的格式列表
-		var supportedList []string
-		for key := range supportedFormats { // 遍历支持的格式
-			supportedList = append(supportedList, key)
-		}
-		return false, fmt.Errorf("不支持的日志格式: %s, 支持的格式: %s", userFormat, strings.Join(supportedList, ", "))
-	}
-
-	// 检查是否仅输出到控制台
-	if logger.consoleOnly {
-		return true, nil // 仅输出到控制台，无需进一步检查
-	}
-
-	// 检查日志文件名是否为空
-	if logger.logFileName == "" {
-		return false, errors.New("日志文件名不能为空")
-	}
-
-	// 检查日志文件名是否以 .log 结尾
-	if !strings.HasSuffix(logger.logFileName, ".log") {
-		return false, errors.New("日志文件名必须以 .log 结尾")
-	}
-
-	// 检查日志保留天数是否为空，如果为空则使用默认值
-	if logger.logRetentionDays <= 0 {
-		logger.logRetentionDays = 7 // 默认值
-	}
-
-	// 检查日志大小如果为空则使用默认值
-	if logger.logMaxSize == "" {
-		logger.logMaxSize = "3MB" // 默认值
-	}
-
-	// 解析日志大小字符串并转换为字节
-	sizeInBytes, err := parseSize(logger.logMaxSize)
-	if err != nil {
-		return false, fmt.Errorf("日志文件最大大小设置不合理，支持格式如 '3MB' 或 '1GB' 以及 '100KB'")
-	}
-	logger.logSizeBytes = sizeInBytes // 保存解析后的日志大小
-
-	// 检查日志文件保留数量是否合理
-	if logger.logRetentionCount <= 0 {
-		logger.logRetentionCount = 3 // 默认值
-	}
-
-	// 检查日志轮转的间隔时间是否合理
-	if logger.rotationInterval <= 0 {
-		logger.rotationInterval = 10 // 默认值
-	}
-
-	// 检查日志压缩格式是否支持
-	if logger.enableCompression { // 如果启用压缩
-		if logger.compressionFormat == "" {
-			logger.compressionFormat = "zip" // 默认值
-		} else {
-			supportedFormats := []string{"zip", "gz", "tar", "tgz"}
-			if !strings.Contains(strings.Join(supportedFormats, ","), logger.compressionFormat) {
-				return false, fmt.Errorf("不支持的压缩格式：%s, 支持的格式: %s", logger.compressionFormat, strings.Join(supportedFormats, ","))
-			}
-		}
-	}
-
-	// 返回 true 表示配置检查通过
-	return true, nil
-}
-
-// parseSize 函数用于解析表示日志大小的字符串，并返回以字节为单位的整数大小。
-// 如果解析失败，则返回错误。
-func parseSize(sizeStr string) (int64, error) {
-	// 将输入的字符串转换为大写，以便统一处理单位。
-	sizeStr = strings.ToUpper(sizeStr)
-	// 提取字符串的最后两个字符作为单位（例如 "MB" 或 "GB","KB"）。
-	unit := sizeStr[len(sizeStr)-2:]
-	// 尝试将字符串的前部分转换为整数，表示大小。
-	// 这里使用 strconv.ParseInt 函数，并指定基数为 10 和 64 位整数。
-	size, err := strconv.ParseInt(sizeStr[:len(sizeStr)-2], 10, 64)
-	if err != nil {
-		// 如果转换失败，返回错误，并使用 fmt.Errorf 包装原始错误信息。
-		return 0, fmt.Errorf("无法解析日志大小: %w", err)
-	}
-
-	// 根据单位进行不同的转换。
-	switch unit {
-	case "KB", "kb", "Kb":
-		return size * 1024, nil // 转换为字节
-	case "MB", "mb", "Mb":
-		return size * 1024 * 1024, nil // 转换为字节
-	case "GB", "gb", "Gb":
-		return size * 1024 * 1024 * 1024, nil // 转换为字节
-	default:
-		return 0, fmt.Errorf("不支持的日志大小单位: %s", unit)
-	}
-}
-
-// ensureLogDirExists 确保日志目录存在，如果不存在则创建
-func ensureLogDirExists(dir string) error {
-	_, err := os.Stat(dir)
-	if os.IsNotExist(err) { // 如果目录不存在
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return fmt.Errorf("创建日志目录失败: %w", err)
-		}
-		// fmt.Printf("日志目录不存在，已自动创建：%s\n", dir)
-	} else if err != nil {
-		return fmt.Errorf("检查日志目录失败: %w", err)
-	}
-	return nil
-}
-
-// 获取当前 Goroutine 的 ID
-func getGoroutineID() int64 {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-	idField := bytes.Fields(buf[:n])[1]
-	id, _ := strconv.ParseInt(string(idField), 10, 64)
-	return id
-}
-
-// 核心日志记录函数
-func (l *FastLog) logWithLevel(level string, v ...interface{}) {
-	// 将字符串日志级别转换为 LogLevel
-	var logLevelValue LogLevel
-	switch level {
-	case "DEBUG":
-		logLevelValue = Debug
-	case "INFO":
-		logLevelValue = Info
-	case "WARN":
-		logLevelValue = Warn
-	case "ERROR":
-		logLevelValue = Error
-	case "SUCCESS":
-		logLevelValue = Success
-	default:
-		logLevelValue = None
-	}
-
-	// 检查日志级别是否满足输出条件, 如果不满足则拦截并返回
-	if logLevelValue < l.logLevel {
-		return
-	}
-
-	// 获取调用者的信息 文件名、函数名、行号
-	_, file, line, ok := runtime.Caller(2)
-	if !ok {
-		file = "???"
-		line = 0
-	}
-
-	// 获取文件名（只保留文件名，不包含路径）
-	fileName := filepath.Base(file)
-
-	// 获取函数名
-	pc, _, _, _ := runtime.Caller(2)
-	functionName := runtime.FuncForPC(pc).Name()
-
-	// 根据日志格式选项设置日志格式
-	var logMsg string
-	switch l.logFormat {
-	// Json格式
-	case Json:
-		logMsg = fmt.Sprintf(
-			`{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`,
-			time.Now().Format("2006-01-02 15:04:05"), level, fileName, functionName, line, getGoroutineID(), fmt.Sprint(v...),
-		)
-	// 详细格式
-	case Detailed:
-		// 按照指定格式输出日志，使用%-7s让日志级别左对齐且宽度为7个字符
-		logMsg = fmt.Sprintf(
-			"%s | %-7s | %s:%s:%d - %s",
-			time.Now().Format("2006-01-02 15:04:05"), level, fileName, functionName, line, fmt.Sprint(v...),
-		)
-	// 括号格式
-	case Bracket:
-		logMsg = fmt.Sprintf("[%s] %s", level, fmt.Sprint(v...))
-	// 协程格式
-	case Threaded:
-		logMsg = fmt.Sprintf(`%s | %-7s | [thread="%d"] %s`, time.Now().Format("2006-01-02 15:04:05"), level, getGoroutineID(), fmt.Sprint(v...))
-	// 无法识别的日志格式选项
-	default:
-		l.logger.Printf("%s", v...)
-	}
-
-	// 写入日志通道
-	l.logChan <- logMsg
-
-	// 增加计数器
-	atomic.AddInt32(&counter, 1)
-}
-
-// 启动异步日志记录---日志通道消费者/缓冲区生产者
-func (l *FastLog) startAsyncLogging() {
-	// 计算缓冲区大小
-	BufferSize := l.bufferKbSize * 1024
-	// 等待组计数器加1
-	l.wg.Add(1)
-	// 启动一个单独的 goroutine 来处理日志写入
+// ProcessLogs 日志处理器，用于处理日志消息。
+// 读取通道中的日志消息并将其处理为指定的日志格式，然后写入到缓冲区中。
+func ProcessLogs(f *FastLog) {
+	f.logWait.Add(1) // 增加等待组中的计数器。
+	// 启动一个goroutine，用于处理日志消息。
 	go func() {
-		// 确保在函数退出时等待组计数器减1
-		defer l.wg.Done()
-		// 使用 for range 循环接收日志消息
+		defer func() {
+			// 减少等待组中的计数器。
+			f.logWait.Done()
+
+			// 捕获panic
+			if r := recover(); r != nil {
+				panic(r)
+			}
+		}()
+
+		// 循环监听
 		for {
 			select {
-			case <-l.stopChan:
-				// 收到停止信号，退出循环
-				return
-			// 接收日志消息
-			case logMsg := <-l.logChan:
-				// 只有当需要输出到文件时才追加日志消息到文件缓冲区
-				// 如果 consoleOnly 为 true，则不输出到文件
-				if !l.consoleOnly && l.fileBuffer != nil {
-					// 追加日志消息到文件缓冲区
-					_, err := l.fileBuffer.WriteString(logMsg + "\n")
-					if err != nil {
-						l.logger.Printf("消费日志消息到文件缓冲区失败: %v", err)
-						return
-					}
+			case logMsg := <-f.logChan:
+				// 发送缓冲区内容到文件和控制台
+				if err := sendBufferToFile(f, logMsg); err != nil {
+					panic(err)
 				}
 
-				// 如果需要输出到控制台，将日志消息追加到控制台缓冲区
-				// consoleOnly 为 true 或 printToConsole 为 true 时，输出到控制台
-				if l.printToConsole && l.consoleBuffer != nil {
-					// 为日志消息添加颜色
-					coloredLogMsg := l.addColor(logMsg)
-					_, err := l.consoleBuffer.WriteString(coloredLogMsg + "\n")
-					if err != nil {
-						l.logger.Printf("消费日志消息到控制台缓冲区失败: %v", err)
-						return
+			case <-f.logCtx.Done(): // 如果收到停止信号，则退出循环
+				// 最后循环一次，确保通道中的所有日志消息都被处理
+				for logMsg := range f.logChan {
+					if err := sendBufferToFile(f, logMsg); err != nil {
+						panic(err)
 					}
 				}
+				return // 退出goroutine
 
-				// 检查文件缓冲区大小，如果达到阈值则立即进行写入
-				if l.fileBuffer != nil && l.fileBuffer.Len() >= BufferSize {
-					if !l.consoleOnly {
-						l.flushBuffers()
-					}
-				}
-
-				// 每次处理完一条日志到缓冲区后，减少计数器
-				atomic.AddInt32(&counter, -1)
+			default:
+				// 如果通道中没有日志消息，则等待一段时间后继续循环。
+				time.Sleep(time.Millisecond * 100) // 等待100毫秒
 			}
 		}
 	}()
-
-	// 启动定时消费缓冲区内容到文件和控制台 使用 sync.Once 确保只执行一次
-	onefunc := sync.OnceFunc(func() {
-		l.startBufferedLogging()
-	})
-	onefunc() // 执行一次
 }
 
-// 定时消费缓冲区内容到文件和控制台---缓冲区消费者
-func (l *FastLog) startBufferedLogging() {
+// 日志缓冲器，用于定时调用日志写入器，将缓冲区中的日志写入到文件和控制台。
+func startBufferedLogging(f *FastLog) {
 	// 初始化定时器, 每1秒检查一次缓冲区
-	l.ticker = time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(1 * time.Second)
 	// 等待组计数器加1
-	l.wg.Add(1)
+	f.logWait.Add(1)
 	go func() {
 		// 确保在函数退出时等待组计数器减1
-		defer l.wg.Done()
+		defer func() {
+			f.logWait.Done()
+
+			// 捕获panic
+			if r := recover(); r != nil {
+				panic(r)
+			}
+		}()
 		// 使用 select 语句同时监听定时器通道和停止信号通道
 		for {
 			select {
-			case <-l.ticker.C:
+			case <-ticker.C:
 				// 定时检查并消费缓冲区内容到文件和控制台
-				l.flushBuffers()
-			case <-l.stopChan:
+				if err := logBuffersWriter(f); err != nil {
+					panic(err)
+				}
+			case <-f.logCtx.Done():
 				// 收到停止信号，停止定时器
-				l.ticker.Stop()
+				ticker.Stop()
 				// 再次检查缓冲区，确保所有日志都已处理
-				l.flushBuffers()
+				if err := logBuffersWriter(f); err != nil {
+					panic(err)
+				}
 				return
 			}
 		}
 	}()
 }
 
-// 消费缓冲区内容到文件和控制台
-func (l *FastLog) flushBuffers() {
+// 日志写入器，用于将缓冲区中的日志写入到文件和控制台。
+func logBuffersWriter(f *FastLog) error {
+	// 加锁，确保并发安全
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	// 如果正在写入日志, 则直接返回
+	if f.isWriter {
+		return nil
+	}
+	// 设置正在写入日志
+	f.isWriter = true
+
+	// 返回时重置写入标志
+	defer func() {
+		f.isWriter = false
+	}()
+
 	// 如果文件缓冲区中有内容, 且不是仅输出到控制台
-	if !l.consoleOnly && l.fileBuffer != nil {
-		if l.fileBuffer.Len() > 0 {
-			// 加锁，确保并发安全
-			l.fileMu.Lock()
+	if !f.consoleOnly && f.fileBuffer != nil {
+		if f.fileBuffer.Len() > 0 {
+
 			// 写入文件缓冲区的内容到文件
-			_, err := l.fileWriter.Write(l.fileBuffer.Bytes())
+			_, err := f.fileWriter.Write(f.fileBuffer.Bytes())
 			if err != nil {
-				l.logger.Printf("写入文件缓冲区内容到文件失败: %v", err)
+				return fmt.Errorf("写入文件缓冲区内容到文件失败: %v", err)
 			}
 			// 清空文件缓冲区
-			l.fileBuffer.Reset()
-			// 解锁
-			l.fileMu.Unlock()
+			f.fileBuffer.Reset()
 		}
 	}
+
+	// 加锁，确保并发安全
+	f.consoleMu.Lock()
+	defer f.consoleMu.Unlock()
 
 	// 如果需要输出到控制台且控制台缓冲区中有内容
-	if l.printToConsole && l.consoleBuffer != nil {
-		if l.consoleBuffer.Len() > 0 {
-			// 加锁，确保并发安全
-			l.consoleMu.Lock()
+	if f.printToConsole && f.consoleBuffer != nil {
+		if f.consoleBuffer.Len() > 0 {
 			// 写入控制台缓冲区的内容到控制台
-			_, err := l.consoleWriter.Write(l.consoleBuffer.Bytes())
+			_, err := f.consoleWriter.Write(f.consoleBuffer.Bytes())
 			if err != nil {
-				l.logger.Printf("写入控制台缓冲区内容到控制台失败: %v", err)
+				return fmt.Errorf("写入控制台缓冲区内容到控制台失败: %v", err)
 			}
 			// 清空控制台缓冲区
-			l.consoleBuffer.Reset()
-			// 解锁
-			l.consoleMu.Unlock()
+			f.consoleBuffer.Reset()
 		}
 	}
-}
-
-// Info 级别的日志
-func (l *FastLog) Info(v ...interface{}) {
-	if Info < l.logLevel {
-		return // 如果日志级别低于 Info，不输出日志
-	}
-	l.logWithLevel("INFO", v...)
-}
-
-// Warn 级别的日志
-func (l *FastLog) Warn(v ...interface{}) {
-	if Warn < l.logLevel {
-		return // 如果日志级别低于 Warn，不输出日志
-	}
-	l.logWithLevel("WARN", v...)
-}
-
-// Error 级别的日志
-func (l *FastLog) Error(v ...interface{}) {
-	if Error < l.logLevel {
-		return // 如果日志级别低于 Error，不输出日志
-	}
-	l.logWithLevel("ERROR", v...)
-}
-
-// Success 级别的日志
-func (l *FastLog) Success(v ...interface{}) {
-	if Success < l.logLevel {
-		return // 如果日志级别低于 Success，不输出日志
-	}
-	l.logWithLevel("SUCCESS", v...)
-}
-
-// Debug 级别的日志
-func (l *FastLog) Debug(v ...interface{}) {
-	if Debug < l.logLevel {
-		return // 如果日志级别低于 Debug，不输出日志
-	}
-	l.logWithLevel("DEBUG", v...)
-}
-
-// 支持格式化的 Info 级别的日志
-func (l *FastLog) Infof(format string, v ...interface{}) {
-	if Info < l.logLevel {
-		return // 如果当前方法小于日志级别，则不输出日志
-	}
-	msg := fmt.Sprintf(format, v...)
-	l.logWithLevel("INFO", msg)
-}
-
-// 支持格式化的 Warn 级别的日志
-func (l *FastLog) Warnf(format string, v ...interface{}) {
-	if Warn < l.logLevel {
-		return // 如果当前方法小于日志级别，则不输出日志
-	}
-	msg := fmt.Sprintf(format, v...)
-	l.logWithLevel("WARN", msg)
-}
-
-// 支持格式化的 Error 级别的日志
-func (l *FastLog) Errorf(format string, v ...interface{}) {
-	if Error < l.logLevel {
-		return // 如果当前方法小于日志级别，则不输出日志
-	}
-	msg := fmt.Sprintf(format, v...)
-	l.logWithLevel("ERROR", msg)
-}
-
-// 支持格式化的 Success 级别的日志
-func (l *FastLog) Successf(format string, v ...interface{}) {
-	if Success < l.logLevel {
-		return // 如果当前方法小于日志级别，则不输出日志
-	}
-	msg := fmt.Sprintf(format, v...)
-	l.logWithLevel("SUCCESS", msg)
-}
-
-// 支持格式化的 Debug 级别的日志
-func (l *FastLog) Debugf(format string, v ...interface{}) {
-	if Debug < l.logLevel {
-		return // 如果当前方法小于日志级别，则不输出日志
-	}
-	msg := fmt.Sprintf(format, v...)
-	l.logWithLevel("DEBUG", msg)
-}
-
-// String 方法，将 LogFormatType 转换为字符串
-func (lft LogFormatType) String() string {
-	switch lft {
-	case Json:
-		return "json"
-	case Bracket:
-		return "bracket"
-	case Detailed:
-		return "detailed"
-	case Threaded:
-		return "threaded"
-	default:
-		return "unknown"
-	}
-}
-
-// 为控制台输出添加颜色
-func (w *FastLog) addColor(s string) string {
-	// 使用正则表达式精确匹配日志级别，确保匹配的是独立的单词
-	re := regexp.MustCompile(`\b(INFO|WARN|ERROR|SUCCESS|DEBUG)\b`)
-	match := re.FindString(s)
-
-	// 根据匹配到的日志级别添加颜色
-	switch match {
-	case "INFO":
-		return color.Sblue(s) // Blue
-	case "WARN":
-		return color.Syellow(s) // Yellow
-	case "ERROR":
-		return color.Sred(s) // Red
-	case "SUCCESS":
-		return color.Sgreen(s) // Green
-	case "DEBUG":
-		return color.Spurple(s) // Purple
-	default:
-		return s // 如果没有匹配到日志级别，返回原始字符串
-	}
-}
-
-// 日志轮转主协程 启动日志切割工作协程
-func (l *FastLog) startLogRotate() {
-	// 定义一个定时器 每隔 l.rotationInterval 秒触发一次
-	ticker := time.NewTicker(time.Duration(l.rotationInterval) * time.Second)
-
-	// 启动一个单独的 goroutine 来处理日志轮转
-	l.wg.Add(1)
-	go func() {
-		defer l.wg.Done()
-		for {
-			select {
-			case <-ticker.C: // 定时器触发，触发日志切割工作协程
-				l.logRotateWorker()
-			case <-l.stopChan:
-				// 收到停止信号，停止定时器
-				ticker.Stop()
-				return // 退出 goroutine
-			}
-		}
-	}()
-}
-
-// 日志切割工作方法---检查
-func (l *FastLog) logRotateWorker() {
-	// 检查日志文件是否存在
-	if _, err := os.Stat(l.logFilePath); os.IsNotExist(err) {
-		l.Errorf("日志文件不存在: %s", l.logFilePath)
-		return
-	}
-
-	// 检查日志大小是否超过限制
-	fileInfo, err := os.Stat(l.logFilePath)
-	if err != nil {
-		l.Errorf("获取日志文件信息失败: %v", err)
-		return
-	}
-	if fileInfo.Size() >= l.logSizeBytes { // 检查日志大小是否超过限制
-		err := l.logRotate() // 调用日志切割函数
-		if err != nil {
-			l.Errorf("日志切割失败: %v", err)
-			return
-		}
-	}
-
-	// 启动日志清理协程
-	l.Debug("开始清理历史日志...")
-	go func() {
-		l.logFileClean() // 调用日志清理函数
-	}()
-
-}
-
-// 日志切割工作---切割
-func (l *FastLog) logRotate() error {
-	// 先获取日志文件锁，堵塞写入
-	l.fileMu.Lock()
-	defer l.fileMu.Unlock()
-
-	// 检查旧日志文件是否存在
-	if _, err := os.Stat(l.logFilePath); os.IsNotExist(err) {
-		// 如果文件不存在，记录错误并尝试重新创建日志文件
-		l.Errorf("旧日志文件 %s 不存在，尝试重新创建...", l.logFilePath)
-
-		// 关闭当前的日志文件句柄
-		if l.logFile != nil {
-			if closeErr := l.logFile.Close(); closeErr != nil {
-				l.Errorf("关闭旧日志文件时出错: %v", closeErr)
-			}
-		}
-
-		// 尝试重新创建新的日志文件
-		newLogFile, err := os.OpenFile(l.logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
-		if err != nil {
-			return fmt.Errorf("重新创建日志文件失败: %w", err)
-		}
-		l.logFile = newLogFile   // 更新日志文件句柄
-		l.fileWriter = l.logFile // 更新日志文件写入器句柄
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("检查旧日志文件失败: %w", err)
-	}
-
-	// 获取当前时间
-	currentTime := time.Now().Format("2006-01-02_15-04-05")
-
-	// 获取日志文件名以小数点为分隔符的前缀
-	logFileNameParts := strings.Split(l.logFileName, ".")
-
-	// 创建新的日志文件名
-	newLogFileName := fmt.Sprintf("%s_%s.log", logFileNameParts[0], currentTime)
-	newLogFilePath := filepath.Join(l.logDirName, newLogFileName)
-
-	// 关闭旧的日志文件
-	if err := l.logFile.Close(); err != nil {
-		return fmt.Errorf("关闭旧日志文件失败: %w", err)
-	}
-
-	// 重命名旧的日志文件
-	if err := os.Rename(l.logFilePath, newLogFilePath); err != nil {
-		return fmt.Errorf("重命名旧日志文件失败: %w", err)
-	}
-
-	// 如果启用了日志压缩，进行压缩
-	if l.enableCompression {
-		l.Infof("开始压缩日志文件: %s", newLogFilePath)
-		l.wgz.Add(1)
-		go func() {
-			defer l.wgz.Done()
-			// 获取压缩后的文件名
-			compressedFileName := fmt.Sprint(strings.Split(newLogFilePath, ".")[0] + "." + l.compressionFormat)
-
-			// 调用压缩函数进行压缩
-			err := l.compress(l.compressionFormat, newLogFilePath, compressedFileName)
-			if err != nil {
-				l.Errorf("压缩日志文件失败: %s", err)
-			} else {
-				// 删除旧的日志文件
-				if err := os.Remove(newLogFilePath); err != nil {
-					l.Errorf("删除旧日志文件失败: %s", err)
-				}
-			}
-		}() // 启动一个新的 goroutine 进行压缩操作
-	}
-
-	// 创建新的日志文件
-	newLogFile, err := os.OpenFile(l.logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0655)
-	if err != nil {
-		return fmt.Errorf("创建新日志文件失败: %w", err)
-	}
-
-	// 更新日志文件句柄
-	l.logFile = newLogFile
-
-	// 更新日志文件写入器句柄
-	l.fileWriter = l.logFile
-
-	// 可选：记录切割操作到日志
-	l.Successf("日志文件已切割: %s -> %s", l.logFilePath, newLogFilePath)
 
 	return nil
 }
 
-// logFileClean 清理超出保留天数或保留数量的日志文件
-func (l *FastLog) logFileClean() {
-	// 检查是否已经在清理日志文件
-	if l.isCleaning {
-		l.Debug("已经有协程在清理日志文件，本次清理返回")
-		return
-	}
-	l.isCleaning = true // 设置标志变量 表示正在清理日志文件
+// Close 关闭FastLog实例，并等待所有日志处理完成。
+func (f *FastLog) Close() {
+	// 打印关闭日志记录器的信息
+	f.Info("开始关闭日志记录器...")
 
-	go func() {
-		// 获取到锁，继续执行
-		l.rmLogMu.Lock()
-		defer l.rmLogMu.Unlock()                // 执行完毕后释放锁
-		defer func() { l.isCleaning = false }() // 清理完成后重置标志变量
-
-		files, err := os.ReadDir(l.logDirName)
-		if err != nil {
-			l.Errorf("无法读取日志目录: %s, 错误: %v", l.logDirName, err)
-			return
-		}
-
-		// 存储日志文件信息
-		var logFiles []struct {
-			Path    string
-			ModTime time.Time
-		}
-
-		// 过滤出日志文件并按时间排序
-		for _, file := range files {
-			if file.IsDir() { // 跳过目录
-				continue
+	// 确保只关闭一次
+	var closeOnce sync.Once
+	closeOnce.Do(func() {
+		// 关闭文件句柄, 如果输出到日志文件
+		defer func() {
+			if !f.consoleOnly && f.logFile != nil {
+				f.logFile.Close()
 			}
-			// 检查文件扩展名是否为日志文件的扩展名 ".log", ".gz", ".zip", ".tgz", ".tar"
-			if filepath.Ext(file.Name()) == ".log" || filepath.Ext(file.Name()) == ".gz" || filepath.Ext(file.Name()) == ".zip" || filepath.Ext(file.Name()) == ".tgz" || filepath.Ext(file.Name()) == ".tar" {
-				filePath := filepath.Join(l.logDirName, file.Name()) // 拼接后的格式为 "logDirName/fileName"
-				fileInfo, err := os.Stat(filePath)
-				if err != nil {
-					l.Errorf("无法获取文件信息: %s, 错误: %v", filePath, err)
-					continue
-				}
+		}()
 
-				// 添加到日志文件列表
-				logFiles = append(logFiles, struct {
-					Path    string
-					ModTime time.Time
-				}{Path: filePath, ModTime: fileInfo.ModTime()}) // 记录文件路径和修改时间
-			}
-		}
-
-		// 按文件名中的时间戳排序，如果文件名中没有时间戳，则按修改时间排序
-		sort.Slice(logFiles, func(i, j int) bool {
-			timestampI := l.extractTimestamp(filepath.Base(logFiles[i].Path)) // 提取文件名中的时间戳
-			timestampJ := l.extractTimestamp(filepath.Base(logFiles[j].Path)) // 提取文件名中的时间戳
-
-			if timestampI.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
-				return logFiles[i].ModTime.Before(logFiles[j].ModTime)
-			}
-			if timestampJ.IsZero() { // 如果文件名中没有时间戳，则按修改时间排序
-				return logFiles[i].ModTime.Before(logFiles[j].ModTime)
-			}
-			return timestampI.Before(timestampJ) // 按时间戳排序
-		})
-
-		// 计算保留天数前的时间
-		cutoffTime := time.Now().AddDate(0, 0, -l.logRetentionDays)
-
-		// 清理超出保留天数的日志文件
-		for _, file := range logFiles {
-			if file.ModTime.Before(cutoffTime) { // 如果文件修改时间早于保留天数前的时间
-				if err := os.Remove(file.Path); err != nil {
-					l.Errorf("清理日志文件失败: %s, 错误: %v", file.Path, err)
-				} else {
-					l.Successf("已清理超出保留天数的日志文件: %s", file.Path)
-				}
-			}
-		}
-
-		// 清理超出保留数量的日志文件
-		if len(logFiles) > l.logRetentionCount+1 { // 当前正在读写的日志文件 + 需要保留的日志文件数量
-			for i := 0; i < len(logFiles)-l.logRetentionCount-1; i++ { // 计算需要清理的文件数量。假设 len(logFiles) 是 5，l.logRetentionCount 是 2，那么需要清理的文件数量是 5 - 2 - 1 = 2。
-				if err := os.Remove(logFiles[i].Path); err != nil {
-					l.Errorf("清理日志文件失败: %s, 错误: %v", logFiles[i].Path, err)
-				} else {
-					l.Successf("已清理超出保留数量的日志文件: %s", logFiles[i].Path)
-				}
-			}
-		}
-	}()
-}
-
-// 提取文件名中的时间戳
-func (l *FastLog) extractTimestamp(fileName string) time.Time {
-	match := timestampRegex.FindStringSubmatch(fileName) // 匹配文件名中的时间戳
-	if len(match) > 1 {
-		timestamp, err := time.Parse("2006-01-02_15-04-05", match[1]) // 解析时间戳
-		if err != nil {
-			// 记录错误日志
-			l.Errorf("解析时间戳失败: %s, 错误: %v", fileName, err)
-			return time.Time{}
-		}
-		return timestamp
-	}
-	return time.Time{}
-}
-
-func (l *FastLog) compress(format, source, target string) error {
-	var err error
-	// 根据压缩格式调用对应的压缩函数
-	switch format {
-	case "tar":
-		err = createTarFile(source, target) // 调用 createTarFile 函数进行 tar 文件的创建
-	case "tgz":
-		err = createTarGz(source, target) // 调用 createTarGz 函数进行 tar.gz 文件的创建
-	case "gz":
-		err = createGz(source, target) // 调用 createGz 函数进行 gzip 文件的创建
-	case "zip":
-		err = createZip(source, target) // 调用 createZip 函数进行 zip 文件的创建
-	default:
-		err = fmt.Errorf("不支持的压缩格式: %s", format)
-	}
-
-	// 返回错误信息
-	if err != nil {
-		l.Errorf("压缩文件失败: %v", err)
-		return fmt.Errorf("压缩文件失败: %w", err)
-	}
-
-	// 打印压缩成功的消息
-	l.Successf("已成功压缩文件: %s -> %s", source, target)
-
-	// 返回 nil，表示压缩成功
-	return nil
-}
-
-// 创建 tar.gz 文件
-func createTarGz(source, target string) error {
-	file, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	gzipWriter := gzip.NewWriter(file)
-	defer gzipWriter.Close()
-
-	tarWriter := tar.NewWriter(gzipWriter)
-	defer tarWriter.Close()
-
-	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		header, err := tar.FileInfoHeader(info, info.Name())
-		if err != nil {
-			return err
-		}
-		relPath, err := filepath.Rel(filepath.Dir(source), path)
-		if err != nil {
-			return err
-		}
-		header.Name = relPath
-
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close()
-			_, err = io.Copy(tarWriter, file)
-			return err
-		}
-		return nil
-	})
-}
-
-// 创建 gzip 文件
-func createGz(source, target string) error {
-	file, err := os.Open(source)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	gzFile, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer gzFile.Close() // 确保 gzFile 被正确关闭
-
-	gzWriter := gzip.NewWriter(gzFile)
-	defer gzWriter.Close() // 确保 gzipWriter 被正确关闭
-
-	_, err = io.Copy(gzWriter, file)
-	return err
-}
-
-// 创建 zip 文件
-func createZip(source, target string) error {
-	zipFile, err := os.Create(target)
-	if err != nil {
-		return err
-	}
-	defer zipFile.Close()
-
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
-
-	return filepath.Walk(source, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		header, err := zip.FileInfoHeader(info)
-		if err != nil {
-			return err
-		}
-		header.Name = strings.TrimPrefix(path, filepath.Dir(source)+"/")
-		if info.IsDir() {
-			header.Name += "/"
-		} else {
-			header.Method = zip.Deflate
-		}
-
-		writer, err := zipWriter.CreateHeader(header)
-		if err != nil {
-			return err
-		}
-
-		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return err
-			}
-			defer file.Close() // 确保文件被正确关闭
-			_, err = io.Copy(writer, file)
-			return err
-		}
-		return nil
-	})
-}
-
-// createTarFile 创建一个 .tar 文件，支持单个文件或整个目录的打包
-func createTarFile(sourcePath string, tarFilePath string) error {
-	// 创建目标 tar 文件
-	tarFile, err := os.Create(tarFilePath)
-	if err != nil {
-		return fmt.Errorf("failed to create tar file: %w", err)
-	}
-	defer tarFile.Close()
-
-	// 创建 tar.Writer
-	tarWriter := tar.NewWriter(tarFile)
-	defer tarWriter.Close() // 确保 tarWriter 被正确关闭
-
-	// 遍历源路径并添加到 tar 文件
-	err = filepath.Walk(sourcePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("failed to walk path: %w", err)
-		}
-
-		// 创建 tar.Header
-		header, err := tar.FileInfoHeader(info, "")
-		if err != nil {
-			return fmt.Errorf("failed to create tar header: %w", err)
-		}
-
-		// 设置相对路径
-		header.Name, err = filepath.Rel(sourcePath, path)
-		if err != nil {
-			return fmt.Errorf("failed to get relative path: %w", err)
-		}
-
-		// 写入头信息
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return fmt.Errorf("failed to write tar header: %w", err)
-		}
-
-		// 如果是文件，写入内容
-		if !info.IsDir() {
-			file, err := os.Open(path)
-			if err != nil {
-				return fmt.Errorf("failed to open file: %w", err)
-			}
-			defer file.Close()
-			if _, err := io.Copy(tarWriter, file); err != nil {
-				return fmt.Errorf("failed to copy file content: %w", err)
-			}
-		}
-		return nil
-	})
-
-	return err
-}
-
-// 关闭日志文件
-func (l *FastLog) Close() {
-	// 循环检查计数器是否消费到缓存区
-	for atomic.LoadInt32(&counter) > 0 {
-		// 等待日志处理完成
-		continue
-	}
-	l.closeOnce.Do(func() {
-		// 发送停止信号
-		close(l.stopChan)
-		// 等待所有日志处理完成
-		l.wg.Wait()
-		// 确保所有缓冲区内容都被写入
-		l.flushBuffers()
 		// 关闭日志通道
-		close(l.logChan)
-		// 等待压缩操作完成
-		l.wgz.Wait()
-		// 如果开启文件日志记录，关闭文件句柄
-		if l.fileWriter != nil {
-			if l.logFile != nil {
-				if err := l.logFile.Close(); err != nil {
-					fmt.Printf("关闭日志文件失败: %v\n", err)
-				}
-			}
+		close(f.logChan)
+		// 调用日志上下文取消函数，发送停止信号
+		f.stopChan()
+
+		// 等待所有日志处理完成
+		f.logWait.Wait()
+
+		// 清空缓冲区
+		if f.fileBuffer != nil {
+			f.fileBuffer.Reset()
 		}
-	})
+		if f.consoleBuffer != nil {
+			f.consoleBuffer.Reset()
+		}
+	}) // 执行一次
 }
