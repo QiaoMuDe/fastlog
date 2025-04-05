@@ -3,9 +3,9 @@ package fastlog
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -45,20 +45,21 @@ const (
 // 日志记录器
 type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
-	logFile       *os.File         // 日志文件句柄
-	logFilePath   string           // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	fileBuffer    *bytes.Buffer    // 日志文件缓冲区
-	consoleBuffer *bytes.Buffer    // 控制台缓冲区
-	logChan       chan *logMessage // 日志通道  用于异步写入日志文件
-	logWait       sync.WaitGroup   // 等待组 用于等待所有goroutine完成
-	logCtx        context.Context  // 上下文 用于控制日志记录器的生命周期
-	stopChan      func()           // 上下文取消函数 用于停止日志记录器
-	fileMu        sync.Mutex       // 文件锁 用于保护文件写入操作的并发安全
-	consoleMu     sync.Mutex       // 控制台锁 用于保护控制台写入操作的并发安全
-	sendMu        sync.Mutex       // 发送锁 用于保护日志发送到缓冲区的并发安全
-	fileWriter    io.Writer        // 文件写入器
-	consoleWriter io.Writer        // 控制台写入器
-	isWriter      bool             // 是否在写入日志
+	logFile        *os.File         // 日志文件句柄
+	logFilePath    string           // 日志文件路径  内部拼接的 [logDirName+logFileName]
+	logChan        chan *logMessage // 日志通道  用于异步写入日志文件
+	logWait        sync.WaitGroup   // 等待组 用于等待所有goroutine完成
+	fileMu         sync.Mutex       // 文件锁 用于保护文件写入操作的并发安全
+	consoleMu      sync.Mutex       // 控制台锁 用于保护控制台写入操作的并发安全
+	fileWriter     io.Writer        // 文件写入器
+	consoleWriter  io.Writer        // 控制台写入器
+	startOnce      sync.Once        // 用于确保日志处理器只启动一次
+	fileBuffer     *bytes.Buffer    // 文件缓冲区 用于存储待写入的日志消息
+	consoleBuffer  *bytes.Buffer    // 控制台缓冲区 用于存储待写入的日志消息
+	flushInterval  time.Duration    // 刷新间隔，单位为秒
+	flushTicker    *time.Ticker     // 刷新定时器
+	fileBuilder    strings.Builder  // 文件构建器 用于构建待写入的日志消息
+	consoleBuilder strings.Builder  // 控制台构建器 用于构建待写入的日志消息
 
 	/*  公共属性 可以通过属性自定义配置  */
 	logDirPath     string        // 日志目录路径
@@ -67,8 +68,8 @@ type FastLog struct {
 	consoleOnly    bool          // 是否仅输出到控制台
 	logLevel       LogLevel      // 日志级别
 	chanIntSize    int           // 通道大小 默认1000
-	bufferKbSize   int           // 缓冲区大小 默认1024 单位KB
 	logFormat      LogFormatType // 日志格式选项
+	maxBufferSize  int           // 最大缓冲区大小，单位为MB，默认为1MB
 }
 
 // 获取一个新的ColorLib实例
@@ -83,8 +84,8 @@ type FastLogConfig struct {
 	ConsoleOnly    bool          // 是否仅输出到控制台
 	LogLevel       LogLevel      // 日志级别
 	ChanIntSize    int           // 通道大小 默认1000
-	BufferKbSize   int           // 缓冲区大小 默认1024 单位KB
 	LogFormat      LogFormatType // 日志格式选项
+	MaxBufferSize  int           // 最大缓冲区大小
 }
 
 // 定义一个接口, 声明对外暴露的方法

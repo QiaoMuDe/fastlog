@@ -10,7 +10,7 @@ import (
 func (l *FastLog) Info(v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
 	if INFO < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -44,7 +44,7 @@ func (l *FastLog) Info(v ...any) {
 func (l *FastLog) Debug(v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
 	if DEBUG < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -78,7 +78,7 @@ func (l *FastLog) Debug(v ...any) {
 func (l *FastLog) Warn(v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
 	if WARN < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -112,7 +112,7 @@ func (l *FastLog) Warn(v ...any) {
 func (l *FastLog) Error(v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
 	if ERROR < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -146,7 +146,7 @@ func (l *FastLog) Error(v ...any) {
 func (l *FastLog) Success(v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
 	if SUCCESS < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -180,7 +180,7 @@ func (l *FastLog) Success(v ...any) {
 func (l *FastLog) Infof(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
 	if INFO < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -214,7 +214,7 @@ func (l *FastLog) Infof(format string, v ...any) {
 func (l *FastLog) Debugf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
 	if DEBUG < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -248,7 +248,7 @@ func (l *FastLog) Debugf(format string, v ...any) {
 func (l *FastLog) Warnf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
 	if WARN < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -282,7 +282,7 @@ func (l *FastLog) Warnf(format string, v ...any) {
 func (l *FastLog) Errorf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
 	if ERROR < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息
@@ -316,7 +316,7 @@ func (l *FastLog) Errorf(format string, v ...any) {
 func (l *FastLog) Successf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
 	if SUCCESS < l.logLevel {
-
+		return
 	}
 
 	// 获取调用者的信息

@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"runtime"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -73,9 +72,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line int, ok
 	// 获取调用者信息，跳过指定的调用层数
 	pc, file, line, ok := runtime.Caller(skip)
 	if !ok {
-		file = "???"
 		line = 0
-		functionName = "???"
 		return
 	}
 
@@ -150,6 +147,10 @@ func addColor(s string) string {
 
 // formatLog 格式化日志消息。
 func formatLog(f *FastLog, l *logMessage) string {
+	if f == nil || l == nil {
+		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
+	}
+
 	// 定义一个变量，用于存储格式化后的日志消息。
 	var logMsg string
 	switch f.logFormat {
@@ -179,81 +180,4 @@ func formatLog(f *FastLog, l *logMessage) string {
 
 	// 返回格式化后的日志消息。
 	return logMsg
-}
-
-// 发送缓冲区内容到文件和控制台
-func sendBufferToFile(f *FastLog, logMsg *logMessage) error {
-	// 加锁，确保并发安全
-	f.sendMu.Lock()
-	defer f.sendMu.Unlock()
-
-	// 计算缓冲区大小
-	BufferSize := f.bufferKbSize * 1024
-
-	// 先检查文件缓冲区大小，如果达到阈值则立即进行写入
-	if f.fileBuffer != nil && f.fileBuffer.Len() >= BufferSize {
-		if !f.consoleOnly {
-			if err := logBuffersWriter(f); err != nil {
-				return fmt.Errorf("写入文件缓冲区内容到文件失败: %v", err)
-			}
-		}
-	}
-
-	// 初始化控制台字符串构建器
-	var consoleBuilder strings.Builder
-
-	// 初始化日志文件字符串构建器
-	var fileBuilder strings.Builder
-
-	// 格式化日志消息
-	formattedLog := formatLog(f, logMsg)
-
-	// 如果允许将日志输出到控制台，或者仅输出到控制台
-	if f.consoleOnly || f.printToConsole {
-		// 检查控制台缓冲区剩余空间
-		remainingConsoleSpace := BufferSize - f.consoleBuffer.Len()
-		if len(formattedLog) > remainingConsoleSpace {
-			// 如果日志消息长度超过了控制台缓冲区剩余空间，触发写入操作
-			if err := logBuffersWriter(f); err != nil {
-				return fmt.Errorf("写入控制台缓冲区内容到控制台失败: %v", err)
-			}
-		}
-
-		// 调用addColor方法给日志消息添加颜色
-		formattedLog = addColor(formattedLog)
-
-		// 给格式化后的日志消息添加换行符
-		consoleBuilder.WriteString(formattedLog)
-		consoleBuilder.WriteString("\n")
-		formattedLog = consoleBuilder.String()
-
-		// 将格式化后的日志消息写入到控制台缓冲区中
-		if _, err := f.consoleBuffer.WriteString(formattedLog); err != nil {
-			return fmt.Errorf("写入控制台缓冲区失败: %v", err)
-		}
-	}
-
-	// 如果不是仅输出到控制台，则将日志消息写入到日志文件缓冲区中。
-	if !f.consoleOnly {
-		// 检查缓冲区剩余空间
-		remainingSpace := BufferSize - f.fileBuffer.Len()
-		if len(formattedLog) > remainingSpace {
-			// 如果日志消息长度超过了缓冲区剩余空间，触发写入操作
-			if err := logBuffersWriter(f); err != nil {
-				return fmt.Errorf("写入文件缓冲区内容到文件失败: %v", err)
-			}
-		}
-
-		// 给格式化后的日志消息添加换行符
-		fileBuilder.WriteString(formattedLog)
-		fileBuilder.WriteString("\n")
-		formattedLog = fileBuilder.String()
-
-		// 将格式化后的日志消息写入到日志文件缓冲区中
-		if _, err := f.fileBuffer.WriteString(formattedLog); err != nil {
-			return fmt.Errorf("写入文件缓冲区失败: %v", err)
-		}
-	}
-
-	return nil
 }
