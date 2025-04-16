@@ -34,13 +34,15 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 初始化配置
     config := &fastlog.FastLogConfig{
-        LogDirPath:     "./logs",
-        LogFileName:    "app.log",
-        PrintToConsole: true,
-        LogLevel:       fastlog.DEBUG,
-        LogFormat:      fastlog.Detailed,
-        MaxBufferSize:  1, // MB
-    }
+		logDirPath:     "logs",           // 日志目录名称
+		LogFileName:    "app.log",        // 日志文件名称
+		PrintToConsole: true,             // 是否将日志输出到控制台
+		ConsoleOnly:    false,            // 是否仅输出到控制台
+		LogLevel:       fastlog.DEBUG,    // 日志级别
+		ChanIntSize:    1000,             // 通道大小
+		LogFormat:      fastlog.Detailed, // 日志格式选项
+		MaxBufferSize:  1,                // 最大缓冲区大小 默认1MB，单位为MB
+	}
 
     // 创建日志实例
     logger, err := fastlog.NewFastLog(config)
