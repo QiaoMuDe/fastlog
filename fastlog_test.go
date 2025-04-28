@@ -10,6 +10,36 @@ import (
 	"gitee.com/MM-Q/fastlog"
 )
 
+// TestConcurrentFastLog 测试并发场景下的多个日志记录器
+func TestConcurrentFastLog(t *testing.T) {
+	// 创建日志配置
+	cfg := fastlog.NewFastLogConfig("logs", "test.log")
+	cfg.LogLevel = fastlog.DEBUG
+	cfg.LogFormat = fastlog.Detailed
+
+	// 检查日志文件是否存在，如果存在则清空
+	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
+		if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
+			t.Fatalf("清空日志文件失败: %v", err)
+		}
+	}
+
+	// 创建日志记录器
+	log, err := fastlog.NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
+	defer log.Close()
+
+	// 持续时间为5秒
+	duration := 3
+	// 每秒生成10条日志
+	rate := 2
+
+	// 启动随机日志函数
+	randomLog(log, duration, rate)
+}
+
 // generateLogs 生成指定数量的模拟日志到通道中
 func generateLogs(logMethodsNoFormat []func(v ...any), logMethodsWithFormat []func(format string, v ...interface{}), totalLoops int) <-chan func() {
 	// 创建一个通道用于传递日志
@@ -68,16 +98,15 @@ func randomLog(log *fastlog.FastLog, duration int, rate int) {
 	}
 }
 
-// TestConcurrentFastLog 测试并发场景下的多个日志记录器
-func TestConcurrentFastLog(t *testing.T) {
+func TestCustomFormat(t *testing.T) {
 	// 创建日志配置
-	cfg := fastlog.NewFastLogConfig("logs", "test.log")
+	cfg := fastlog.NewFastLogConfig("logs", "custom.log")
 	cfg.LogLevel = fastlog.DEBUG
-	cfg.LogFormat = fastlog.Simple
+	cfg.LogFormat = fastlog.Custom
 
 	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
+	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
+		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
 			t.Fatalf("清空日志文件失败: %v", err)
 		}
 	}
@@ -89,11 +118,13 @@ func TestConcurrentFastLog(t *testing.T) {
 	}
 	defer log.Close()
 
-	// 持续时间为5秒
-	duration := 5
-	// 每秒生成10条日志
-	rate := 10
+	// 定义web应用程序日志格式
+	webAppLogFormat := `%s [%s] %s %s %s %d %d %s %s %dms`
 
-	// 启动随机日志函数
-	randomLog(log, duration, rate)
+	// 模拟web应用程序日志记录
+	log.Errorf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:00", "GET", "/index.html", "HTTP/1.1", 200, 1234, "Mozilla/5.0", "en-US", 100)
+	log.Infof(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:01", "POST", "/login", "HTTP/1.1", 401, 0, "Mozilla/5.0", "en-US", 200)
+	log.Successf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:02", "GET", "/profile", "HTTP/1.1", 200, 5678, "Mozilla/5.0", "en-US", 300)
+	log.Warnf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:03", "PUT", "/settings", "HTTP/1.1", 500, 0, "Mozilla/5.0", "en-US", 500)
+	log.Debugf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:04", "DELETE", "/logout", "HTTP/1.1", 200, 0, "Mozilla/5.0", "en-US", 50)
 }

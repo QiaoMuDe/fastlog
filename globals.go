@@ -23,6 +23,7 @@ const (
 	Json                          // json格式
 	Threaded                      // 协程格式
 	Simple                        // 简约格式
+	Custom                        // 自定义格式
 )
 
 // 日志级别枚举
@@ -118,5 +119,5 @@ var logFormatMap = map[LogFormatType]string{
 	Detailed: `%s | %-7s | %s:%s:%d - %s`,                                                                        // 详细格式
 	Bracket:  `[%s] %s`,                                                                                          // 方括号格式
 	Threaded: `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
-	Simple:   `%s | %-7s | %s`,                                                                                   // 简约格式
+	Simple:   `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
 }

@@ -211,7 +211,7 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 	// 如果允许将日志输出到控制台，或者仅输出到控制台
 	if f.consoleOnly || f.printToConsole {
 		// 调用addColor方法给日志消息添加颜色
-		consoleLog := addColor(formattedLog)
+		consoleLog := addColor(rawMsg, formattedLog)
 
 		// 给格式化后的日志消息添加换行符
 		f.consoleBuilder.WriteString(consoleLog)

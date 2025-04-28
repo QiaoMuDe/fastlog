@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strconv"
 	"time"
@@ -21,9 +20,6 @@ type PathInfo struct {
 	Mode    os.FileMode // 文件权限
 	ModTime time.Time   // 文件修改时间
 }
-
-// 定义正则表达式，用于匹配日志级别
-var re = regexp.MustCompile(`\b(INFO|WARN|ERROR|SUCCESS|DEBUG)\b`)
 
 // checkPath 检查给定路径的信息
 func checkPath(path string) (PathInfo, error) {
@@ -105,6 +101,7 @@ func getGoroutineID() int64 {
 // 返回值：
 // string - 对应的日志级别字符串，如果 level 无效，则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
+	// 使用 switch 语句根据日志级别返回对应的字符串
 	switch level {
 	case DEBUG:
 		return "DEBUG"
@@ -124,24 +121,21 @@ func logLevelToString(level LogLevel) string {
 }
 
 // addColor 根据日志级别添加颜色
-func addColor(s string) string {
-	// 使用正则表达式精确匹配日志级别，确保匹配的是独立的单词
-	match := re.FindString(s)
-
+func addColor(l *logMessage, f string) string {
 	// 根据匹配到的日志级别添加颜色
-	switch match {
-	case "INFO":
-		return CL.Sblue(s) // Blue
-	case "WARN":
-		return CL.Syellow(s) // Yellow
-	case "ERROR":
-		return CL.Sred(s) // Red
-	case "SUCCESS":
-		return CL.Sgreen(s) // Green
-	case "DEBUG":
-		return CL.Spurple(s) // Purple
+	switch l.level {
+	case INFO:
+		return CL.Sblue(f) // Blue
+	case WARN:
+		return CL.Syellow(f) // Yellow
+	case ERROR:
+		return CL.Sred(f) // Red
+	case SUCCESS:
+		return CL.Sgreen(f) // Green
+	case DEBUG:
+		return CL.Spurple(f) // Purple
 	default:
-		return s // 如果没有匹配到日志级别，返回原始字符串
+		return f // 如果没有匹配到日志级别，返回原始字符串
 	}
 }
 
@@ -153,6 +147,8 @@ func formatLog(f *FastLog, l *logMessage) string {
 
 	// 定义一个变量，用于存储格式化后的日志消息。
 	var logMsg string
+
+	// 根据日志格式选项，格式化日志消息。
 	switch f.logFormat {
 	// Json格式
 	case Json:
@@ -176,6 +172,9 @@ func formatLog(f *FastLog, l *logMessage) string {
 	// 简约格式
 	case Simple:
 		logMsg = fmt.Sprintf(logFormatMap[Simple], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.message)
+	// 自定义格式
+	case Custom:
+		logMsg = l.message
 	// 无法识别的日志格式选项
 	default:
 		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.logFormat)
