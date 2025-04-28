@@ -241,7 +241,6 @@ func (l *FastLog) Debugf(format string, v ...any) {
 
 	// 将日志消息发送到日志通道
 	l.logChan <- logMsg
-
 }
 
 // Warnf 记录警告级别的日志，支持占位符，格式化

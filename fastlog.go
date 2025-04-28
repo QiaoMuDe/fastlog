@@ -2,6 +2,7 @@ package fastlog
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -116,11 +117,13 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 创建定时刷新任务
 	f.flushTicker = time.NewTicker(f.flushInterval)
 
-	f.logWait.Add(1) // 增加等待组中的计数器。
+	// 创建 context 用于控制协程退出
+	f.ctx, f.cancel = context.WithCancel(context.Background())
+
 	// 使用 sync.Once 确保日志处理器只启动一次
 	f.startOnce.Do(func() {
-		go processLogs(f) // 启动日志处理器
-		go flushBuffer(f) // 启动定时刷新缓冲区
+		go f.processLogs() // 启动日志处理器
+		go f.flushBuffer() // 启动定时刷新缓冲区
 	})
 
 	// 返回FastLog实例和nil错误
@@ -129,77 +132,128 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 // processLogs 日志处理器，用于处理日志消息。
 // 读取通道中的日志消息并将其处理为指定的日志格式，然后写入到缓冲区中。
-func processLogs(f *FastLog) {
-	defer func() {
-		// 减少等待组中的计数器。
-		f.logWait.Done()
+func (f *FastLog) processLogs() {
+	f.logWait.Add(1) // 增加等待组中的计数器
 
-		// 捕获panic
-		if r := recover(); r != nil {
-			panic(fmt.Sprintf("日志处理器发生panic: %v", r))
+	// 创建一个goroutine，用于处理日志消息
+	go func() {
+		defer func() {
+			// 减少等待组中的计数器。
+			f.logWait.Done()
+
+			// 捕获panic
+			if r := recover(); r != nil {
+				f.Errorf("日志处理器发生panic: %v", r)
+			}
+		}()
+
+		// 计算最大缓冲区大小的80%
+		maxBufferSize := int(float64(f.maxBufferSize) * 0.8)
+
+		// 初始化控制台字符串构建器
+		for {
+			select {
+			// 监听通道，如果通道关闭，则退出循环
+			case <-f.ctx.Done():
+				// 处理通道中剩余的日志消息
+				for rawMsg := range f.logChan {
+					f.handleLog(rawMsg, maxBufferSize)
+				}
+				return
+			// 监听通道，如果通道中有日志消息，则处理日志消息
+			case rawMsg, ok := <-f.logChan:
+				if !ok {
+					return
+				}
+
+				// 处理日志消息
+				f.handleLog(rawMsg, maxBufferSize)
+			}
 		}
 	}()
+}
 
-	// 计算最大缓冲区大小的80%
-	maxBufferSize := int(float64(f.maxBufferSize) * 0.8)
+// handleLog 处理单条日志消息的逻辑
+// 格式化日志消息，然后写入到缓冲区中。
+// 如果缓冲区大小达到80%，则立即刷新缓冲区。
+// 参数:
+//   - rawMsg: 日志消息
+//   - maxBufferSize: 最大缓冲区大小
+//
+// 返回值:
+//   - 无
+func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
+	// 检查缓冲区大小是否达到80%
+	if f.fileBuffer.Len() >= maxBufferSize || f.consoleBuffer.Len() >= maxBufferSize {
+		f.flushBufferNow()
+	}
 
-	// 初始化控制台字符串构建器
-	for rawMsg := range f.logChan {
-		// 检查缓冲区大小是否达到80%
-		if f.fileBuffer.Len() >= maxBufferSize || f.consoleBuffer.Len() >= maxBufferSize {
-			f.flushBufferNow()
+	// 格式化日志消息
+	formattedLog := formatLog(f, rawMsg)
+
+	// 如果不是仅输出到控制台，则将日志消息写入到日志文件缓冲区中。
+	if !f.consoleOnly {
+		// 复制格式化后的日志消息到文件日志变量中
+		fileLog := formattedLog
+
+		// 给格式化后的日志消息添加换行符
+		f.fileBuilder.WriteString(fileLog)
+		f.fileBuilder.WriteString("\n")
+		fileLog = f.fileBuilder.String()
+
+		// 将格式化后的日志消息写入到文件缓冲区中
+		if _, err := f.fileBuffer.WriteString(fileLog); err != nil {
+			f.Errorf("写入文件缓冲区失败: %v", err)
 		}
+		f.fileBuilder.Reset()
+	}
 
-		// 格式化日志消息
-		formattedLog := formatLog(f, rawMsg)
+	// 如果允许将日志输出到控制台，或者仅输出到控制台
+	if f.consoleOnly || f.printToConsole {
+		// 调用addColor方法给日志消息添加颜色
+		consoleLog := addColor(formattedLog)
 
-		// 如果不是仅输出到控制台，则将日志消息写入到日志文件缓冲区中。
-		if !f.consoleOnly {
-			// 复制格式化后的日志消息到文件日志变量中
-			fileLog := formattedLog
+		// 给格式化后的日志消息添加换行符
+		f.consoleBuilder.WriteString(consoleLog)
+		f.consoleBuilder.WriteString("\n")
+		consoleLog = f.consoleBuilder.String()
 
-			// 给格式化后的日志消息添加换行符
-			f.fileBuilder.WriteString(fileLog) // 将格式化后的日志消息写入到构建器中
-			f.fileBuilder.WriteString("\n")    // 添加换行符
-			fileLog = f.fileBuilder.String()   // 将构建器中的内容赋值给 formattedLog
-
-			// 将格式化后的日志消息写入到日志文件缓冲区中
-			if _, err := f.fileBuffer.WriteString(fileLog); err != nil {
-				panic(fmt.Errorf("写入文件缓冲区失败: %v", err))
-			}
-
-			f.fileBuilder.Reset() // 重置构建器
+		// 将格式化后的日志消息写入到控制台缓冲区中
+		if _, err := f.consoleBuffer.WriteString(consoleLog); err != nil {
+			f.Errorf("写入控制台缓冲区失败: %v", err)
 		}
-
-		// 如果允许将日志输出到控制台，或者仅输出到控制台
-		if f.consoleOnly || f.printToConsole {
-			// 复制格式化后的日志消息到控制台日志变量中
-			consoleLog := formattedLog
-
-			// 调用addColor方法给日志消息添加颜色
-			consoleLog = addColor(formattedLog)
-
-			// 给格式化后的日志消息添加换行符
-			f.consoleBuilder.WriteString(consoleLog) // 将格式化后的日志消息写入到构建器中
-			f.consoleBuilder.WriteString("\n")       // 添加换行符
-			consoleLog = f.consoleBuilder.String()   // 将构建器中的内容赋值给 formattedLog
-
-			// 将格式化后的日志消息写入到控制台缓冲区中
-			if _, err := f.consoleBuffer.WriteString(consoleLog); err != nil {
-				panic(fmt.Errorf("写入控制台缓冲区失败: %v", err))
-			}
-
-			f.consoleBuilder.Reset() // 重置构建器
-		}
+		f.consoleBuilder.Reset()
 	}
 }
 
 // flushBuffer 定时刷新缓冲区
-func flushBuffer(f *FastLog) {
-	// 使用定时器，每隔flushInterval时间触发一次
-	for range f.flushTicker.C {
-		f.flushBufferNow()
-	}
+func (f *FastLog) flushBuffer() {
+	f.logWait.Add(1)
+
+	// 创建一个goroutine，用于定时刷新缓冲区
+	go func() {
+		defer func() {
+			f.logWait.Done()
+
+			// 捕获panic
+			if r := recover(); r != nil {
+				f.Errorf("刷新缓冲区发生panic: %v", r)
+			}
+		}()
+
+		// 定义一个定时器，用于定时刷新缓冲区
+		ticker := f.flushTicker.C
+
+		// 循环监听定时器
+		for {
+			select {
+			case <-f.ctx.Done():
+				return // 当 context 被取消时，退出协程
+			case <-ticker:
+				f.flushBufferNow() // 刷新缓冲区
+			}
+		}
+	}()
 }
 
 // flushBufferNow 立即刷新缓冲区
@@ -215,7 +269,7 @@ func (f *FastLog) flushBufferNow() {
 
 		// 将文件缓冲区的内容写入到文件中
 		if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
-			fmt.Fprintf(os.Stderr, "写入文件失败: %v\n", err)
+			f.Errorf("写入文件失败: %v", err)
 		}
 
 		// 重置缓冲区
@@ -233,7 +287,7 @@ func (f *FastLog) flushBufferNow() {
 
 		// 将控制台缓冲区的内容写入到控制台
 		if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
-			fmt.Fprintf(os.Stderr, "写入控制台失败: %v\n", err)
+			f.Errorf("写入控制台失败: %v", err)
 		}
 
 		// 重置缓冲区
@@ -252,11 +306,14 @@ func (f *FastLog) Close() {
 		// 关闭日志通道
 		close(f.logChan)
 
-		// 等待所有日志处理完成
-		f.logWait.Wait()
-
 		// 停止定时刷新任务
 		f.flushTicker.Stop()
+
+		// 取消 context，通知 flushBuffer 协程退出
+		f.cancel()
+
+		// 等待所有日志处理完成
+		f.logWait.Wait()
 
 		// 刷新剩余的日志
 		f.flushBufferNow()

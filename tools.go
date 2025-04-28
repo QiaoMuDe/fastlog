@@ -157,22 +157,25 @@ func formatLog(f *FastLog, l *logMessage) string {
 	// Json格式
 	case Json:
 		logMsg = fmt.Sprintf(
-			`{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`,
+			logFormatMap[Json],
 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.goroutineID, l.message,
 		)
 	// 详细格式
 	case Detailed:
 		// 按照指定格式输出日志，使用%-7s让日志级别左对齐且宽度为7个字符
 		logMsg = fmt.Sprintf(
-			"%s | %-7s | %s:%s:%d - %s",
+			logFormatMap[Detailed],
 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.message,
 		)
 	// 括号格式
 	case Bracket:
-		logMsg = fmt.Sprintf("[%s] %s", logLevelToString(l.level), l.message)
+		logMsg = fmt.Sprintf(logFormatMap[Bracket], logLevelToString(l.level), l.message)
 	// 协程格式
 	case Threaded:
-		logMsg = fmt.Sprintf(`%s | %-7s | [thread="%d"] %s`, l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.goroutineID, l.message)
+		logMsg = fmt.Sprintf(logFormatMap[Threaded], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.goroutineID, l.message)
+	// 简约格式
+	case Simple:
+		logMsg = fmt.Sprintf(logFormatMap[Simple], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.message)
 	// 无法识别的日志格式选项
 	default:
 		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.logFormat)
