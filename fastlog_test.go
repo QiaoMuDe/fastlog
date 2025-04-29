@@ -15,7 +15,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.LogLevel = fastlog.DEBUG
-	cfg.LogFormat = fastlog.Detailed
+	cfg.LogFormat = fastlog.Simple
 
 	// 检查日志文件是否存在，如果存在则清空
 	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
@@ -32,9 +32,9 @@ func TestConcurrentFastLog(t *testing.T) {
 	defer log.Close()
 
 	// 持续时间为5秒
-	duration := 3
+	duration := 5
 	// 每秒生成10条日志
-	rate := 2
+	rate := 100
 
 	// 启动随机日志函数
 	randomLog(log, duration, rate)
@@ -128,3 +128,47 @@ func TestCustomFormat(t *testing.T) {
 	log.Warnf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:03", "PUT", "/settings", "HTTP/1.1", 500, 0, "Mozilla/5.0", "en-US", 500)
 	log.Debugf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:04", "DELETE", "/logout", "HTTP/1.1", 200, 0, "Mozilla/5.0", "en-US", 50)
 }
+
+// func TestLogRotation(t *testing.T) {
+// 	// 创建日志配置
+// 	cfg := fastlog.NewFastLogConfig("logs", "rotation_test.log")
+// 	cfg.LogLevel = fastlog.DEBUG
+// 	cfg.RotationEnabled = true
+// 	cfg.MaxLogFileSize = 1              // 1MB
+// 	cfg.RotationCheckIntervalSecond = 1 // 每秒检查一次
+
+// 	// // 检查日志文件是否存在，如果存在则删除
+// 	// logPath := filepath.Join("logs", "rotation_test.log")
+// 	// if _, err := os.Stat(logPath); err == nil {
+// 	// 	if err := os.Remove(logPath); err != nil {
+// 	// 		t.Fatalf("删除旧日志文件失败: %v", err)
+// 	// 	}
+// 	// }
+
+// 	// 创建日志记录器
+// 	log, err := fastlog.NewFastLog(cfg)
+// 	if err != nil {
+// 		t.Fatalf("创建日志记录器失败: %v", err)
+// 	}
+
+// 	// 生成足够大的日志以触发轮转
+// 	// message := strings.Repeat("a", 1024*512) // 512KB
+// 	// for i := 0; i < 3; i++ {
+// 	// 	log.Info(message)
+// 	// 	time.Sleep(500 * time.Millisecond)
+// 	// }
+
+// 	// 调用randomLog函数
+// 	randomLog(log, 25, 1000)
+
+// 	log.Close()
+
+// 	// 检查是否生成了轮转文件
+// 	matches, err := filepath.Glob(filepath.Join("logs", "rotation_test_*.log"))
+// 	if err != nil {
+// 		t.Fatalf("查找轮转文件失败: %v", err)
+// 	}
+// 	if len(matches) == 0 {
+// 		t.Error("未找到轮转后的日志文件")
+// 	}
+// }

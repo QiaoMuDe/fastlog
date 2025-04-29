@@ -64,6 +64,7 @@ type FastLog struct {
 	maxLogFileHour              time.Duration // 日志文件的最大保留小时数
 	rotationCheckIntervalSecond time.Duration // 定时检查日志轮转的间隔时间(秒)
 	currentLogFileSize          int64         // 当前日志文件的大小，单位为字节
+	rotationEnabled             bool          // 是否启用日志轮转功能
 
 	/*  公共属性 可以通过属性自定义配置  */
 	logDirName     string        // 日志目录路径
@@ -81,19 +82,19 @@ var CL = colorlib.NewColorLib()
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
-	logDirName     string        // 日志目录路径
-	LogFileName    string        // 日志文件名
-	logFilePath    string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	PrintToConsole bool          // 是否将日志输出到控制台
-	ConsoleOnly    bool          // 是否仅输出到控制台
-	LogLevel       LogLevel      // 日志级别
-	ChanIntSize    int           // 通道大小 默认1000
-	LogFormat      LogFormatType // 日志格式选项
-	MaxBufferSize  int           // 最大缓冲区大小
-
-	MaxLogFileSize              int64 // 单个日志文件的最大大小，单位为MB
-	MaxLogFileHour              int   // 日志文件的最大保留小时数
-	RotationCheckIntervalSecond int   // 定时检查日志轮转的间隔时间(秒)
+	logDirName                  string        // 日志目录路径
+	LogFileName                 string        // 日志文件名
+	logFilePath                 string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
+	PrintToConsole              bool          // 是否将日志输出到控制台
+	ConsoleOnly                 bool          // 是否仅输出到控制台
+	LogLevel                    LogLevel      // 日志级别
+	ChanIntSize                 int           // 通道大小 默认1000
+	LogFormat                   LogFormatType // 日志格式选项
+	MaxBufferSize               int           // 最大缓冲区大小
+	MaxLogFileSize              int           // 单个日志文件的最大大小，单位为MB
+	MaxLogFileHour              int           // 日志文件的最大保留小时数
+	RotationCheckIntervalSecond int           // 定时检查日志轮转的间隔时间(秒)
+	RotationEnabled             bool          // 是否启用日志轮转功能，默认为false
 }
 
 // 定义一个接口, 声明对外暴露的方法
