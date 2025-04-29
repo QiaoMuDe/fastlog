@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 )
@@ -18,27 +19,34 @@ import (
 //
 // 返回值:
 //   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-func NewFastLogConfig(logDirPath string, logFileName string) *FastLogConfig {
+func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 如果日志目录名称为空，则使用默认值"logs"。
-	if logDirPath == "" {
-		logDirPath = "logs"
+	if logDirName == "" {
+		logDirName = "logs"
 	}
+
 	// 如果日志文件名称为空，则使用默认值"app.log"。
 	if logFileName == "" {
 		logFileName = "app.log"
 	}
+
 	// 合并日志目录和日志文件名称，生成日志文件路径。
-	logFilePath := filepath.Join(logDirPath, logFileName)
+	logFilePath := filepath.Join(logDirName, logFileName)
+
+	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		logDirPath:     logDirPath,  // 日志目录名称
-		LogFileName:    logFileName, // 日志文件名称
-		logFilePath:    logFilePath, // 日志文件路径
-		PrintToConsole: true,        // 是否将日志输出到控制台
-		ConsoleOnly:    false,       // 是否仅输出到控制台
-		LogLevel:       INFO,        // 日志级别 默认INFO
-		ChanIntSize:    1000,        // 通道大小 默认1000
-		LogFormat:      Detailed,    // 日志格式选项
-		MaxBufferSize:  1,           // 最大缓冲区大小 默认1MB，单位为MB
+		logDirName:                  logDirName,  // 日志目录名称
+		LogFileName:                 logFileName, // 日志文件名称
+		logFilePath:                 logFilePath, // 日志文件路径 = 工作目录 + 日志目录名称 + 日志文件名称
+		PrintToConsole:              true,        // 是否将日志输出到控制台
+		ConsoleOnly:                 false,       // 是否仅输出到控制台
+		LogLevel:                    INFO,        // 日志级别 默认INFO
+		ChanIntSize:                 1000,        // 通道大小 默认1000
+		LogFormat:                   Detailed,    // 日志格式选项
+		MaxBufferSize:               1,           // 最大缓冲区大小 默认1MB，单位为MB
+		MaxLogFileSize:              1,           // 单个日志文件的最大大小，默认1MB
+		MaxLogFileHour:              72,          // 单个日志文件的最大保存时间，默认72小时
+		RotationCheckIntervalSecond: 3600,        // 定时检查日志轮转的间隔时间(秒) 默认1小时,
 	}
 }
 
@@ -68,8 +76,8 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 如果不是仅输出到控制台，则初始化日志文件缓冲区和写入器。
 	if !config.ConsoleOnly {
 		// 检查日志目录是否存在，如果不存在则创建。
-		if _, err := checkPath(config.logDirPath); err != nil {
-			if err := os.MkdirAll(config.logDirPath, 0644); err != nil {
+		if _, err := checkPath(config.logDirName); err != nil {
+			if err := os.MkdirAll(config.logDirName, 0644); err != nil {
 				return nil, fmt.Errorf("创建日志目录失败: %s", err)
 			}
 		}
@@ -92,7 +100,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		fileWriter:     fileWriter,                         // 文件写入器,
 		consoleWriter:  consoleWriter,                      // 控制台写入器,
 		logFilePath:    config.logFilePath,                 // 日志文件路径
-		logDirPath:     config.logDirPath,                  // 日志目录路径
+		logDirName:     config.logDirName,                  // 日志目录路径
 		logFileName:    config.LogFileName,                 // 日志文件名
 		printToConsole: config.PrintToConsole,              // 是否将日志输出到控制台
 		consoleOnly:    config.ConsoleOnly,                 // 是否仅输出到控制台
@@ -101,6 +109,11 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		logFormat:      config.LogFormat,                   // 日志格式选项
 		maxBufferSize:  config.MaxBufferSize * 1024 * 1024, // 最大缓冲区大小 默认1MB
 		flushInterval:  1 * time.Second,                    // 刷新间隔，单位为秒
+
+		maxLogFileSize:              config.MaxLogFileSize * 1024 * 1024,               // 单个日志文件的最大大小，单位为字节
+		maxLogFileHour:              time.Duration(config.MaxLogFileHour),              // 单个日志文件的最大保存时间，单位为小时,
+		rotationCheckIntervalSecond: time.Duration(config.RotationCheckIntervalSecond), // 定时检查日志轮转的间隔时间(秒) 默认1小时,
+		currentLogFileSize:          0,                                                 // 当前日志文件的大小，单位为字节
 	}
 
 	// 初始化日志通道
@@ -114,9 +127,6 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	f.consoleBuffer = bytes.NewBuffer(make([]byte, f.maxBufferSize))
 	f.consoleBuffer.Reset() // 重置缓冲区，清空内容
 
-	// 创建定时刷新任务
-	f.flushTicker = time.NewTicker(f.flushInterval)
-
 	// 创建 context 用于控制协程退出
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
@@ -124,6 +134,8 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	f.startOnce.Do(func() {
 		go f.processLogs() // 启动日志处理器
 		go f.flushBuffer() // 启动定时刷新缓冲区
+		// 启动日志轮转检查协程
+		go f.rotateLogsPeriodically()
 	})
 
 	// 返回FastLog实例和nil错误
@@ -228,12 +240,22 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 
 // flushBuffer 定时刷新缓冲区
 func (f *FastLog) flushBuffer() {
+	// 新增一个等待组，用于等待刷新缓冲区的协程完成
 	f.logWait.Add(1)
+
+	// 定义一个定时器，用于定时刷新缓冲区
+	ticker := time.NewTicker(f.flushInterval)
 
 	// 创建一个goroutine，用于定时刷新缓冲区
 	go func() {
 		defer func() {
+			// 减少等待组中的计数器。
 			f.logWait.Done()
+
+			// 关闭定时器
+			if ticker != nil {
+				ticker.Stop()
+			}
 
 			// 捕获panic
 			if r := recover(); r != nil {
@@ -241,15 +263,12 @@ func (f *FastLog) flushBuffer() {
 			}
 		}()
 
-		// 定义一个定时器，用于定时刷新缓冲区
-		ticker := f.flushTicker.C
-
 		// 循环监听定时器
 		for {
 			select {
 			case <-f.ctx.Done():
 				return // 当 context 被取消时，退出协程
-			case <-ticker:
+			case <-ticker.C:
 				f.flushBufferNow() // 刷新缓冲区
 			}
 		}
@@ -306,10 +325,7 @@ func (f *FastLog) Close() {
 		// 关闭日志通道
 		close(f.logChan)
 
-		// 停止定时刷新任务
-		f.flushTicker.Stop()
-
-		// 取消 context，通知 flushBuffer 协程退出
+		// 关闭协程
 		f.cancel()
 
 		// 等待所有日志处理完成
@@ -324,4 +340,174 @@ func (f *FastLog) Close() {
 		}
 
 	}) // 执行一次
+}
+
+// rotateLogsPeriodically 定时检查日志文件是否需要轮转和清理
+func (f *FastLog) rotateLogsPeriodically() {
+	// 新增一个等待组，用于等待刷新缓冲区的协程完成
+	f.logWait.Add(1)
+
+	go func() {
+		defer func() {
+			// 减少等待组中的计数器。
+			f.logWait.Done()
+
+			// 捕获panic
+			if r := recover(); r != nil {
+				f.Errorf("日志轮转发生panic: %v", r)
+			}
+		}()
+
+		// 创建一个定时器，用于定时检查日志文件是否需要轮转和清理
+		ticker := time.NewTicker(time.Duration(f.rotationCheckIntervalSecond))
+		defer ticker.Stop()
+
+		// 检查是否为控制台输出
+		if f.consoleOnly {
+			f.Errorf("当前仅为控制台输出, 无需进行日志轮转")
+			return
+		}
+
+		// 循环监听定时器
+		for {
+			select {
+			case <-f.ctx.Done():
+				return
+			case <-ticker.C:
+				f.checkAndRotateLogs() // 检查并轮转日志文件
+				f.cleanupOldLogs()     // 清理旧的日志文件
+			}
+		}
+	}()
+}
+
+// checkAndRotateLogs 检查当前日志文件大小是否超过最大限制，如果超过则进行日志轮转
+func (f *FastLog) checkAndRotateLogs() {
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	// 获取当前日志文件的大小
+	fileInfo, err := f.logFile.Stat()
+	if err != nil {
+		f.Errorf("获取日志文件信息失败: %v", err)
+		return
+	}
+	f.currentLogFileSize = fileInfo.Size()
+
+	// 检查是否需要轮转
+	if f.currentLogFileSize >= f.maxLogFileSize {
+		f.rotateLogFile() // 进行日志轮转切割
+	}
+}
+
+// cleanupOldLogs 清理超过最大保留天数的日志文件
+func (f *FastLog) cleanupOldLogs() {
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	// 切换到日志目录
+	if err := os.Chdir(f.logDirName); err != nil {
+		f.Errorf("切换到日志目录失败: %v", err)
+		return
+	}
+
+	// 通过正则表达式获取日志文件列表
+	files, err := filepath.Glob(`^.*_.*\.log$`)
+	if err != nil {
+		f.Errorf("获取日志文件列表失败: %v", err)
+		return
+	}
+
+	// 获取当前时间
+	now := time.Now()
+
+	// 遍历日志目录下的所有文件
+	for _, file := range files {
+		// 如果是目录，则跳过
+		fileInfo, statErr := os.Stat(file)
+		if statErr == nil && fileInfo.IsDir() {
+			// 跳过目录
+			continue
+		} else if statErr != nil {
+			// 处理文件不存在的情况
+			f.Errorf("获取文件信息失败: %v", statErr)
+			continue
+		}
+
+		// 获取文件的修改时间
+		modTime := fileInfo.ModTime()
+
+		// 检查文件是否超过最大保留天数
+		if now.Sub(modTime) > f.maxLogFileHour {
+			// 删除超过最大保留天数的文件
+			if err := os.Remove(file); err != nil {
+				f.Errorf("删除日志文件失败: %v", err)
+			}
+		}
+	}
+}
+
+// rotateLogFile 进行日志轮转切割
+func (f *FastLog) rotateLogFile() {
+	// 检查是否仅为控制台输出
+	if f.consoleOnly {
+		f.Errorf("当前仅为控制台输出, 无需进行日志轮转")
+		return
+	}
+
+	// 获取文件写入写入锁，确保线程安全
+	f.fileMu.Lock()
+	defer f.fileMu.Unlock()
+
+	// 关闭当前日志文件
+	if f.logFile != nil {
+		f.logFile.Close()
+	}
+
+	// 检查父目录是否存在，如果不存在则创建
+	if _, err := os.Stat(f.logDirName); os.IsNotExist(err) {
+		if err := os.MkdirAll(f.logDirName, 0644); err != nil {
+			f.Errorf("创建日志目录失败: %s", err)
+			return
+		}
+	}
+
+	// 检查日志文件名是否为.log结尾，如果是则提取文件名部分
+	var logFileName string
+	if filepath.Ext(f.logFileName) == ".log" {
+		// 通过.分割字符串，获取文件名部分
+		logFileName = strings.TrimSuffix(f.logFileName, ".log")
+	} else {
+		// 直接使用文件名
+		logFileName = f.logFileName
+	}
+
+	// 生成备份文件名
+	timestamp := time.Now().Format("20060102150405")
+	backupFileName := fmt.Sprintf("%s_%s.log", logFileName, timestamp)
+
+	// 重命名当前日志文件为备份文件
+	if _, err := os.Stat(f.logFilePath); err != nil {
+		f.Errorf("日志文件不存在: %s,日志轮转失败", f.logFilePath)
+		return
+	}
+	if err := os.Rename(f.logFilePath, filepath.Join(f.logDirName, backupFileName)); err != nil {
+		f.Errorf("重命名日志文件失败: %s,日志轮转失败", err)
+		return
+	}
+
+	// 创建新的日志文件
+	logFile, err := os.OpenFile(f.logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		f.Errorf("创建新的日志文件失败: %s,日志轮转失败", err)
+		return
+	}
+
+	// 更新日志文件句柄和当前日志文件大小
+	f.logFile = logFile
+	f.fileWriter = logFile
+	f.currentLogFileSize = 0
+
+	// 打印日志轮转成功信息
+	f.Successf("日志文件轮转成功: %s -> %s", f.logFileName, backupFileName)
 }

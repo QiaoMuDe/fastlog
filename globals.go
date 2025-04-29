@@ -43,7 +43,7 @@ const (
 type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
 	logFile        *os.File           // 日志文件句柄
-	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName]
+	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName] 绝对路径
 	logChan        chan *logMessage   // 日志通道  用于异步写入日志文件
 	logWait        sync.WaitGroup     // 等待组 用于等待所有goroutine完成
 	fileMu         sync.Mutex         // 文件锁 用于保护文件写入操作的并发安全
@@ -54,14 +54,19 @@ type FastLog struct {
 	fileBuffer     *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息
 	consoleBuffer  *bytes.Buffer      // 控制台缓冲区 用于存储待写入的日志消息
 	flushInterval  time.Duration      // 刷新间隔，单位为秒
-	flushTicker    *time.Ticker       // 刷新定时器
 	fileBuilder    strings.Builder    // 文件构建器 用于构建待写入的日志消息
 	consoleBuilder strings.Builder    // 控制台构建器 用于构建待写入的日志消息
 	ctx            context.Context    // 控制刷新器的上下文
 	cancel         context.CancelFunc // 控制刷新器的取消函数
 
+	/*  测试属性  */
+	maxLogFileSize              int64         // 单个日志文件的最大大小，单位为字节
+	maxLogFileHour              time.Duration // 日志文件的最大保留小时数
+	rotationCheckIntervalSecond time.Duration // 定时检查日志轮转的间隔时间(秒)
+	currentLogFileSize          int64         // 当前日志文件的大小，单位为字节
+
 	/*  公共属性 可以通过属性自定义配置  */
-	logDirPath     string        // 日志目录路径
+	logDirName     string        // 日志目录路径
 	logFileName    string        // 日志文件名
 	printToConsole bool          // 是否将日志输出到控制台
 	consoleOnly    bool          // 是否仅输出到控制台
@@ -76,7 +81,7 @@ var CL = colorlib.NewColorLib()
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
-	logDirPath     string        // 日志目录路径
+	logDirName     string        // 日志目录路径
 	LogFileName    string        // 日志文件名
 	logFilePath    string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
 	PrintToConsole bool          // 是否将日志输出到控制台
@@ -85,6 +90,10 @@ type FastLogConfig struct {
 	ChanIntSize    int           // 通道大小 默认1000
 	LogFormat      LogFormatType // 日志格式选项
 	MaxBufferSize  int           // 最大缓冲区大小
+
+	MaxLogFileSize              int64 // 单个日志文件的最大大小，单位为MB
+	MaxLogFileHour              int   // 日志文件的最大保留小时数
+	RotationCheckIntervalSecond int   // 定时检查日志轮转的间隔时间(秒)
 }
 
 // 定义一个接口, 声明对外暴露的方法
