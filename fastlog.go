@@ -76,9 +76,9 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 如果不是仅输出到控制台，则初始化日志文件缓冲区和写入器。
 	if !config.ConsoleOnly {
 		// 检查日志目录是否存在，如果不存在则创建。
-		if _, err := checkPath(config.logDirName); err != nil {
-			if err := os.MkdirAll(config.logDirName, 0644); err != nil {
-				return nil, fmt.Errorf("创建日志目录失败: %s", err)
+		if _, checkPathErr := checkPath(config.logDirName); checkPathErr != nil {
+			if mkdirErr := os.MkdirAll(config.logDirName, 0644); mkdirErr != nil {
+				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
 			}
 		}
 
