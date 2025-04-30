@@ -1,2 +1,8 @@
 gitee.com/MM-Q/colorlib v1.1.6 h1:x8MQRLzfepb113sJEiTYvlw64rWITau8qAv9Bg+MwLc=
 gitee.com/MM-Q/colorlib v1.1.6/go.mod h1:k7AxDD3mOIFVdGRqLqz3jYOGRC2vV7QVjnZWpt/J3Ds=
+gitee.com/MM-Q/logrotatex v0.0.0-20250430011543-2fc1032cb638 h1:b0VD3oY8yCTwBMI4c70uwVoTP9V7lPOGO5FR+HziRdg=
+gitee.com/MM-Q/logrotatex v0.0.0-20250430011543-2fc1032cb638/go.mod h1:YbBl2hAcdDHqKIRbAA+pY5yNDjQNS/alMA2z1JaS3UY=
+gitee.com/MM-Q/logrotatex v0.0.0-20250430013856-e276acc89d09 h1:6XJVeeelXHRPq/CwzrbM4w1tGPPKRqEveN7SmfPngUI=
+gitee.com/MM-Q/logrotatex v0.0.0-20250430013856-e276acc89d09/go.mod h1:YbBl2hAcdDHqKIRbAA+pY5yNDjQNS/alMA2z1JaS3UY=
+gitee.com/MM-Q/logrotatex v0.0.1 h1:2jNubQjLQotZKl6nizxwrjRDo/axsrN0MVFPuQ7IsIo=
+gitee.com/MM-Q/logrotatex v0.0.1/go.mod h1:YbBl2hAcdDHqKIRbAA+pY5yNDjQNS/alMA2z1JaS3UY=

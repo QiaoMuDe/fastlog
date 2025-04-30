@@ -15,14 +15,15 @@ func TestConcurrentFastLog(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.LogLevel = fastlog.DEBUG
-	cfg.LogFormat = fastlog.Simple
+	cfg.LogFormat = fastlog.Detailed
+	cfg.MaxLogFileSize = 1
 
 	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
-			t.Fatalf("清空日志文件失败: %v", err)
-		}
-	}
+	// if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
+	// 	if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
+	// 		t.Fatalf("清空日志文件失败: %v", err)
+	// 	}
+	// }
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -32,9 +33,9 @@ func TestConcurrentFastLog(t *testing.T) {
 	defer log.Close()
 
 	// 持续时间为5秒
-	duration := 5
+	duration := 10
 	// 每秒生成10条日志
-	rate := 100
+	rate := 1000
 
 	// 启动随机日志函数
 	randomLog(log, duration, rate)

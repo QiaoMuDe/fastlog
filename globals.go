@@ -5,12 +5,12 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"os"
 	"strings"
 	"sync"
 	"time"
 
 	"gitee.com/MM-Q/colorlib"
+	"gitee.com/MM-Q/logrotatex"
 )
 
 // 日志格式选项
@@ -42,7 +42,6 @@ const (
 // 日志记录器
 type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
-	logFile        *os.File           // 日志文件句柄
 	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName] 绝对路径
 	logChan        chan *logMessage   // 日志通道  用于异步写入日志文件
 	logWait        sync.WaitGroup     // 等待组 用于等待所有goroutine完成
@@ -59,12 +58,8 @@ type FastLog struct {
 	ctx            context.Context    // 控制刷新器的上下文
 	cancel         context.CancelFunc // 控制刷新器的取消函数
 
-	/*  测试属性  */
-	maxLogFileSize              int64         // 单个日志文件的最大大小，单位为字节
-	maxLogFileHour              time.Duration // 日志文件的最大保留小时数
-	rotationCheckIntervalSecond time.Duration // 定时检查日志轮转的间隔时间(秒)
-	currentLogFileSize          int64         // 当前日志文件的大小，单位为字节
-	rotationEnabled             bool          // 是否启用日志轮转功能
+	/* logrotatex 日志文件切割 */
+	logGer *logrotatex.LogRotateX // 日志文件切割器
 
 	/*  公共属性 可以通过属性自定义配置  */
 	logDirName     string        // 日志目录路径
@@ -82,19 +77,22 @@ var CL = colorlib.NewColorLib()
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
-	logDirName                  string        // 日志目录路径
-	LogFileName                 string        // 日志文件名
-	logFilePath                 string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	PrintToConsole              bool          // 是否将日志输出到控制台
-	ConsoleOnly                 bool          // 是否仅输出到控制台
-	LogLevel                    LogLevel      // 日志级别
-	ChanIntSize                 int           // 通道大小 默认1000
-	LogFormat                   LogFormatType // 日志格式选项
-	MaxBufferSize               int           // 最大缓冲区大小
-	MaxLogFileSize              int           // 单个日志文件的最大大小，单位为MB
-	MaxLogFileHour              int           // 日志文件的最大保留小时数
-	RotationCheckIntervalSecond int           // 定时检查日志轮转的间隔时间(秒)
-	RotationEnabled             bool          // 是否启用日志轮转功能，默认为false
+	logDirName     string        // 日志目录路径
+	LogFileName    string        // 日志文件名
+	logFilePath    string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
+	PrintToConsole bool          // 是否将日志输出到控制台
+	ConsoleOnly    bool          // 是否仅输出到控制台
+	LogLevel       LogLevel      // 日志级别
+	ChanIntSize    int           // 通道大小 默认1000
+	LogFormat      LogFormatType // 日志格式选项
+	MaxBufferSize  int           // 最大缓冲区大小
+
+	/* 测试配置 */
+	MaxLogFileSize int  // 最大日志文件大小，单位为MB, 默认10MB
+	MaxLogAge      int  // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxLogBackups  int  // 最大日志文件保留数量, 默认为0, 表示不做限制
+	IsLocalTime    bool // 是否使用本地时间 默认使用UTC时间
+	EnableCompress bool // 是否启用日志文件压缩 默认不启用
 }
 
 // 定义一个接口, 声明对外暴露的方法

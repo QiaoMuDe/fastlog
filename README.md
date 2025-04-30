@@ -1,8 +1,8 @@
-# FastLog - 高性能Go日志库
+# FastLog - 高性能 Go 日志库
 
 ![License](https://img.shields.io/badge/license-GPL-blue.svg)
 
-`FastLog`是一个高性能、异步、可扩展的Go语言日志库，支持多种日志格式和级别，提供文件和控制台双输出。
+`FastLog`是一个高性能、异步、可扩展的 Go 语言日志库，支持多种日志格式和级别，提供文件和控制台双输出。
 
 ## 功能特性
 
@@ -28,6 +28,7 @@ import "gitee.com/MM-Q/fastlog"
 ## 快速开始
 
 ### 完整配置示例
+
 ```go
 package main
 
@@ -36,18 +37,20 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 完整结构体配置
     config1 := &fastlog.FastLogConfig{
-		LogDirPath:     "logs",           // 日志目录路径
-		LogFileName:    "app.log",        // 日志文件名称
-		PrintToConsole: true,             // 是否将日志输出到控制台
-		ConsoleOnly:    false,            // 是否仅输出到控制台
-		LogLevel:       fastlog.DEBUG,    // 日志级别
-		ChanIntSize:    1000,             // 通道大小
-		LogFormat:      fastlog.Detailed, // 日志格式选项
-		MaxBufferSize:  1,                // 最大缓冲区大小 默认1MB，单位为MB
-		RotationEnabled: true,            // 启用日志轮转功能
-		MaxLogFileSize: 1,                // 单个日志文件最大1MB
-		RotationCheckIntervalSecond: 60,  // 每60秒检查一次日志轮转
-	}
+        LogDirPath:     "logs",           // 日志目录路径
+        LogFileName:    "app.log",        // 日志文件名称
+        PrintToConsole: true,             // 是否将日志输出到控制台
+        ConsoleOnly:    false,            // 是否仅输出到控制台
+        LogLevel:       fastlog.DEBUG,    // 日志级别
+        ChanIntSize:    1000,             // 通道大小
+        LogFormat:      fastlog.Detailed, // 日志格式选项
+        MaxBufferSize:  1,                // 最大缓冲区大小 默认1MB，单位为MB
+        MaxLogFileSize: 1,                // 单个日志文件最大1MB
+        MaxLogAge:      30,               // 日志文件保留天数
+        MaxLogBackups:  10,               // 日志文件保留数量
+        IsLocalTime:    true,             // 是否使用本地时间
+        EnableCompress: false,            // 是否启用压缩
+    }
 
     // 创建日志实例
     logger, err := fastlog.NewFastLog(config1)
@@ -64,6 +67,7 @@ func main() {
 ```
 
 ### 简化配置示例
+
 ```go
 package main
 
@@ -88,6 +92,7 @@ func main() {
 ```
 
 ### 默认配置示例
+
 ```go
 package main
 
@@ -110,51 +115,57 @@ func main() {
     logger.Error("发生了一个错误")
 }
 ```
+
 ## 日志轮转功能
 
-FastLog提供了自动日志轮转功能，当满足以下条件时会自动创建新的日志文件：
+FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创建新的日志文件：
+
 1. 当前日志文件大小超过`MaxLogFileSize`设置的值
 2. 启用了`RotationEnabled`配置项
 
 轮转后的日志文件会以原文件名加上时间戳的形式保存，例如：`app_20230101120000.log`
+
 ## 配置选项
 
-| 属性名称                    | 类型          | 说明                                                   | 默认值   |
-| --------------------------- | ------------- | ------------------------------------------------------ | -------- |
-| LogDirPath                  | string        | 日志目录路径                                           | 必填     |
-| LogFileName                 | string        | 日志文件名                                             | 必填     |
-| PrintToConsole              | bool          | 是否输出到控制台                                       | false    |
-| ConsoleOnly                 | bool          | 是否仅输出到控制台                                     | false    |
-| ChanIntSize                 | int           | 日志通道缓冲区大小                                     | 1000     |
-| LogFormat                   | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
-| MaxBufferSize               | int           | 最大缓冲区大小(MB)                                     | 1        |
-| RotationEnabled             | bool          | 是否启用日志轮转功能                                   | false    |
-| MaxLogFileSize              | int           | 单个日志文件的最大大小(MB)                             | 1(1MB)   |
-| RotationCheckIntervalSecond | time.Duration | 日志轮转检查间隔(秒)                                   | 60       |
+| 属性名称        | 类型          | 说明                                                   | 默认值   |
+| --------------- | ------------- | ------------------------------------------------------ | -------- |
+| LogDirPath      | string        | 日志目录路径                                           | 必填     |
+| LogFileName     | string        | 日志文件名                                             | 必填     |
+| PrintToConsole  | bool          | 是否输出到控制台                                       | false    |
+| ConsoleOnly     | bool          | 是否仅输出到控制台                                     | false    |
+| ChanIntSize     | int           | 日志通道缓冲区大小                                     | 1000     |
+| LogFormat       | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
+| MaxBufferSize   | int           | 最大缓冲区大小(MB)                                     | 1        |
+| MaxLogFileSize  | int           | 单个日志文件最大大小(MB)                               | 10       |
+| MaxLogAge       | int           | 日志文件保留天数                                       | 0        |
+| MaxLogBackups   | int           | 日志文件保留数量                                       | 0        |
+| IsLocalTime     | bool          | 是否使用本地时间                                       | false    |
+| EnableCompress  | bool          | 是否启用压缩                                           | false    |
+| RotationEnabled | bool          | 是否启用日志轮转                                       | false    |
 
 ## 日志级别
 
-| 级别    | 值   | 说明           |
-| ------- | ---- | -------------- |
-| DEBUG   | 10   | 调试信息       |
-| INFO    | 20   | 普通信息       |
-| SUCCESS | 30   | 成功信息       |
-| WARN    | 40   | 警告信息       |
-| ERROR   | 50   | 错误信息       |
-| None    | 999  | 不记录任何日志 |
+| 级别    | 值  | 说明           |
+| ------- | --- | -------------- |
+| DEBUG   | 10  | 调试信息       |
+| INFO    | 20  | 普通信息       |
+| SUCCESS | 30  | 成功信息       |
+| WARN    | 40  | 警告信息       |
+| ERROR   | 50  | 错误信息       |
+| None    | 999 | 不记录任何日志 |
 
 ## 日志格式
 
-FastLog支持以下几种日志格式：
+FastLog 支持以下几种日志格式：
 
-| 格式名称 | 说明                                             |
-| -------- | ------------------------------------------------ |
-| Json     | 以JSON格式输出日志                               |
-| Bracket  | 以方括号格式输出日志                             |
-| Detailed | 详细格式，包含时间、级别、文件、函数、行号等信息 |
-| Threaded | 包含线程ID的详细格式                             |
-| Simple   | 简单格式，仅包含时间、级别和消息                 |
-| Custom   | 自定义格式，通过类似于fmt.Printf()格式进行自定义 |
+| 格式名称 | 说明                                              |
+| -------- | ------------------------------------------------- |
+| Json     | 以 JSON 格式输出日志                              |
+| Bracket  | 以方括号格式输出日志                              |
+| Detailed | 详细格式，包含时间、级别、文件、函数、行号等信息  |
+| Threaded | 包含线程 ID 的详细格式                            |
+| Simple   | 简单格式，仅包含时间、级别和消息                  |
+| Custom   | 自定义格式，通过类似于 fmt.Printf()格式进行自定义 |
 
 1. **Detailed** (默认)
 
@@ -165,7 +176,15 @@ FastLog支持以下几种日志格式：
 2. **Json**
 
 ```json
-{"time":"2023-01-01 12:00:00","level":"INFO","file":"main.go","function":"main","line":"10","thread":"1","message":"日志信息"}
+{
+  "time": "2023-01-01 12:00:00",
+  "level": "INFO",
+  "file": "main.go",
+  "function": "main",
+  "line": "10",
+  "thread": "1",
+  "message": "日志信息"
+}
 ```
 
 3. **Bracket**
@@ -194,8 +213,8 @@ FastLog支持以下几种日志格式：
 
 ## 性能优化
 
-- 异步处理：所有日志操作通过channel异步处理
-- 缓冲区：使用内存缓冲区减少IO操作
+- 异步处理：所有日志操作通过 channel 异步处理
+- 缓冲区：使用内存缓冲区减少 IO 操作
 - 批量写入：定时刷新缓冲区
 
 ## 函数
