@@ -45,9 +45,9 @@ type FastLog struct {
 	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName] 绝对路径
 	logChan        chan *logMessage   // 日志通道  用于异步写入日志文件
 	logWait        sync.WaitGroup     // 等待组 用于等待所有goroutine完成
-	fileMu         sync.Mutex         // 文件锁 用于保护文件写入操作的并发安全
-	consoleMu      sync.Mutex         // 控制台锁 用于保护控制台写入操作的并发安全
 	fileWriter     io.Writer          // 文件写入器
+	fileMu         sync.Mutex         // 文件锁 用于保护文件缓冲区的写入操作
+	consoleMu      sync.Mutex         // 控制台锁 用于保护控制台缓冲区的写入操作
 	consoleWriter  io.Writer          // 控制台写入器
 	startOnce      sync.Once          // 用于确保日志处理器只启动一次
 	fileBuffer     *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息

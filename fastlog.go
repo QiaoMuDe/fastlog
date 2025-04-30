@@ -69,14 +69,14 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		consoleWriter io.Writer // 控制台写入器
 	)
 
-	// 如果允许将日志输出到控制台，或者仅输出到控制台，则初始化控制台缓冲区和写入器。
+	// 如果允许将日志输出到控制台，或者仅输出到控制台，则初始化控制台写入器。
 	if config.ConsoleOnly || config.PrintToConsole {
 		consoleWriter = os.Stdout // 控制台写入器
 	} else {
 		consoleWriter = io.Discard // 不输出到控制台，直接丢弃
 	}
 
-	// 如果不是仅输出到控制台，则初始化日志文件缓冲区和写入器。
+	// 如果不是仅输出到控制台，则初始化日志文件写入器。
 	var logger *logrotatex.LogRotateX
 	if !config.ConsoleOnly {
 		// 检查日志目录是否存在，如果不存在则创建。
@@ -214,10 +214,18 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		f.fileBuilder.WriteString("\n")
 		fileLog = f.fileBuilder.String()
 
+		// 写入文件锁
+		f.fileMu.Lock()
+
 		// 将格式化后的日志消息写入到文件缓冲区中
 		if _, err := f.fileBuffer.WriteString(fileLog); err != nil {
 			f.Errorf("写入文件缓冲区失败: %v", err)
 		}
+
+		// 释放文件锁
+		f.fileMu.Unlock()
+
+		// 重置构建器，以便下次使用
 		f.fileBuilder.Reset()
 	}
 
@@ -231,10 +239,18 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		f.consoleBuilder.WriteString("\n")
 		consoleLog = f.consoleBuilder.String()
 
+		// 写入控制台锁
+		f.consoleMu.Lock()
+
 		// 将格式化后的日志消息写入到控制台缓冲区中
 		if _, err := f.consoleBuffer.WriteString(consoleLog); err != nil {
 			f.Errorf("写入控制台缓冲区失败: %v", err)
 		}
+
+		// 释放控制台锁
+		f.consoleMu.Unlock()
+
+		// 重置构建器，以便下次使用
 		f.consoleBuilder.Reset()
 	}
 }
@@ -278,44 +294,51 @@ func (f *FastLog) flushBuffer() {
 
 // flushBufferNow 立即刷新缓冲区
 func (f *FastLog) flushBufferNow() {
-	// 写入文件
-	if f.fileBuffer.Len() > 0 {
-		// 获取文件写入写入锁，确保线程安全
-		f.fileMu.Lock()
 
-		// 获取文件缓冲区的内容
-		bufferContent := f.fileBuffer.String()
+	// 如果不是仅输出到控制台，则刷新文件缓冲区
+	if !f.consoleOnly {
+		// 检查文件缓冲区大小是否大于0
+		if f.fileBuffer.Len() > 0 {
+			// 获取文件锁
+			f.fileMu.Lock()
 
-		// 将文件缓冲区的内容写入到文件中
-		if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
-			f.Errorf("写入文件失败: %v", err)
+			// 获取文件缓冲区的内容
+			bufferContent := f.fileBuffer.String()
+
+			// 重置缓冲区
+			f.fileBuffer.Reset()
+
+			// 释放文件锁
+			f.fileMu.Unlock()
+
+			// 将文件缓冲区的内容写入到文件中
+			if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
+				f.Errorf("写入文件失败: %v", err)
+			}
 		}
-
-		// 重置缓冲区
-		f.fileBuffer.Reset()
-
-		// 释放文件写入锁
-		f.fileMu.Unlock()
 	}
 
-	// 写入控制台
-	if f.consoleBuffer.Len() > 0 {
-		// 获取控制台写入写入锁，确保线程安全
-		f.consoleMu.Lock()
+	// 如果允许将日志输出到控制台，或者仅输出到控制台
+	if f.printToConsole || f.consoleOnly {
+		// 检查控制台缓冲区大小是否大于0
+		if f.consoleBuffer.Len() > 0 {
+			// 获取控制台写入锁
+			f.consoleMu.Lock()
 
-		// 获取控制台缓冲区的内容
-		bufferContent := f.consoleBuffer.String()
+			// 获取控制台缓冲区的内容
+			bufferContent := f.consoleBuffer.String()
 
-		// 将控制台缓冲区的内容写入到控制台
-		if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
-			f.Errorf("写入控制台失败: %v", err)
+			// 重置缓冲区
+			f.consoleBuffer.Reset()
+
+			// 释放控制台写入锁
+			f.consoleMu.Unlock()
+
+			// 将控制台缓冲区的内容写入到控制台
+			if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
+				f.Errorf("写入控制台失败: %v", err)
+			}
 		}
-
-		// 重置缓冲区
-		f.consoleBuffer.Reset()
-
-		// 释放控制台写入锁
-		f.consoleMu.Unlock()
 	}
 }
 
