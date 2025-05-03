@@ -8,6 +8,11 @@
 
 - 项目地址：[https://deepwiki.com/QiaoMuDe/fastlog](https://deepwiki.com/QiaoMuDe/fastlog)
 
+## 托管平台
+
+- Gitee：[https://gitee.com/MM-Q/fastlog](https://gitee.com/MM-Q/fastlog)
+- Github：[https://github.com/QiaoMuDe/fastlog](https://github.com/QiaoMuDe/fastlog)
+
 ## 功能特性
 
 - 🚀 异步非阻塞日志记录
