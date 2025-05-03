@@ -4,6 +4,10 @@
 
 `FastLog`是一个高性能、异步、可扩展的 Go 语言日志库，支持多种日志格式和级别，提供文件和控制台双输出。
 
+## DeepWiKi介绍
+
+- 项目地址：[https://deepwiki.com/QiaoMuDe/fastlog](https://deepwiki.com/QiaoMuDe/fastlog)
+
 ## 功能特性
 
 - 🚀 异步非阻塞日志记录
