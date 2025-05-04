@@ -151,6 +151,35 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 | IsLocalTime     | bool          | 是否使用本地时间                                       | false    |
 | EnableCompress  | bool          | 是否启用压缩                                           | false    |
 | RotationEnabled | bool          | 是否启用日志轮转                                       | false    |
+| NoColor         | bool          | 是否禁用终端颜色输出                                   | false    |
+
+## NoColor功能
+
+FastLog支持通过设置`NoColor`属性为`true`来全局禁用颜色输出。当`NoColor`为`true`时，所有日志输出将直接显示原始文本，不添加任何颜色代码。
+
+### 使用方法
+
+```go
+// 创建日志配置
+cfg := fastlog.NewFastLogConfig("logs", "nocolor.log")
+cfg.NoColor = true // 禁用终端颜色
+
+// 创建日志实例
+logger, err := fastlog.NewFastLog(cfg)
+if err != nil {
+    panic(err)
+}
+defer logger.Close()
+
+// 此时所有日志输出将不会有颜色
+logger.Info("这是一条无颜色信息日志")
+logger.Error("这是一条无颜色错误日志")
+```
+
+### 使用场景
+- 当终端不支持ANSI颜色代码时
+- 需要将输出重定向到文件时
+- 其他需要禁用颜色的场景
 
 ## 日志级别
 

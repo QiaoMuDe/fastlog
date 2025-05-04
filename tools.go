@@ -121,21 +121,27 @@ func logLevelToString(level LogLevel) string {
 }
 
 // addColor 根据日志级别添加颜色
-func addColor(l *logMessage, f string) string {
+// 参数：
+// f - FastLog 实例
+// l - 日志消息
+// s - 原始字符串
+// 返回值：
+// string - 带有颜色的字符串
+func addColor(f *FastLog, l *logMessage, s string) string {
 	// 根据匹配到的日志级别添加颜色
 	switch l.level {
 	case INFO:
-		return CL.Sblue(f) // Blue
+		return f.cl.Sblue(s) // Blue
 	case WARN:
-		return CL.Syellow(f) // Yellow
+		return f.cl.Syellow(s) // Yellow
 	case ERROR:
-		return CL.Sred(f) // Red
+		return f.cl.Sred(s) // Red
 	case SUCCESS:
-		return CL.Sgreen(f) // Green
+		return f.cl.Sgreen(s) // Green
 	case DEBUG:
-		return CL.Spurple(f) // Purple
+		return f.cl.Spurple(s) // Purple
 	default:
-		return f // 如果没有匹配到日志级别，返回原始字符串
+		return s // 如果没有匹配到日志级别，返回原始字符串
 	}
 }
 

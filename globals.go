@@ -57,6 +57,7 @@ type FastLog struct {
 	consoleBuilder strings.Builder    // 控制台构建器 用于构建待写入的日志消息
 	ctx            context.Context    // 控制刷新器的上下文
 	cancel         context.CancelFunc // 控制刷新器的取消函数
+	cl             *colorlib.ColorLib // 提供终端颜色输出的库
 
 	/* logrotatex 日志文件切割 */
 	logGer *logrotatex.LogRotateX // 日志文件切割器
@@ -70,10 +71,8 @@ type FastLog struct {
 	chanIntSize    int           // 通道大小 默认1000
 	logFormat      LogFormatType // 日志格式选项
 	maxBufferSize  int           // 最大缓冲区大小，单位为MB，默认为1MB
+	noColor        bool          // 是否禁用终端颜色
 }
-
-// 获取一个新的ColorLib实例
-var CL = colorlib.NewColorLib()
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
@@ -86,13 +85,12 @@ type FastLogConfig struct {
 	ChanIntSize    int           // 通道大小 默认1000
 	LogFormat      LogFormatType // 日志格式选项
 	MaxBufferSize  int           // 最大缓冲区大小
-
-	/* 测试配置 */
-	MaxLogFileSize int  // 最大日志文件大小，单位为MB, 默认10MB
-	MaxLogAge      int  // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxLogBackups  int  // 最大日志文件保留数量, 默认为0, 表示不做限制
-	IsLocalTime    bool // 是否使用本地时间 默认使用UTC时间
-	EnableCompress bool // 是否启用日志文件压缩 默认不启用
+	MaxLogFileSize int           // 最大日志文件大小，单位为MB, 默认10MB
+	MaxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	IsLocalTime    bool          // 是否使用本地时间 默认使用UTC时间
+	EnableCompress bool          // 是否启用日志文件压缩 默认不启用
+	NoColor        bool          // 是否禁用终端颜色
 }
 
 // 定义一个接口, 声明对外暴露的方法

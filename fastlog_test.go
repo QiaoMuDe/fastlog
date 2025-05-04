@@ -100,6 +100,7 @@ func randomLog(log *fastlog.FastLog, duration int, rate int) {
 	}
 }
 
+// TestCustomFormat 测试自定义日志格式
 func TestCustomFormat(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "custom.log")
@@ -131,46 +132,41 @@ func TestCustomFormat(t *testing.T) {
 	log.Debugf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:04", "DELETE", "/logout", "HTTP/1.1", 200, 0, "Mozilla/5.0", "en-US", 50)
 }
 
-// func TestLogRotation(t *testing.T) {
-// 	// 创建日志配置
-// 	cfg := fastlog.NewFastLogConfig("logs", "rotation_test.log")
-// 	cfg.LogLevel = fastlog.DEBUG
-// 	cfg.RotationEnabled = true
-// 	cfg.MaxLogFileSize = 1              // 1MB
-// 	cfg.RotationCheckIntervalSecond = 1 // 每秒检查一次
+// TestNoColor 测试无颜色日志
+func TestNoColor(t *testing.T) {
+	// 创建日志配置
+	cfg := fastlog.NewFastLogConfig("logs", "nocolor.log")
+	cfg.LogLevel = fastlog.DEBUG
+	cfg.NoColor = true // 禁用终端颜色
 
-// 	// // 检查日志文件是否存在，如果存在则删除
-// 	// logPath := filepath.Join("logs", "rotation_test.log")
-// 	// if _, err := os.Stat(logPath); err == nil {
-// 	// 	if err := os.Remove(logPath); err != nil {
-// 	// 		t.Fatalf("删除旧日志文件失败: %v", err)
-// 	// 	}
-// 	// }
+	// 检查日志文件是否存在，如果存在则清空
+	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
+		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
+			t.Fatalf("清空日志文件失败: %v", err)
+		}
+	}
 
-// 	// 创建日志记录器
-// 	log, err := fastlog.NewFastLog(cfg)
-// 	if err != nil {
-// 		t.Fatalf("创建日志记录器失败: %v", err)
-// 	}
+	// 创建日志记录器
+	log, err := fastlog.NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
+	defer log.Close()
 
-// 	// 生成足够大的日志以触发轮转
-// 	// message := strings.Repeat("a", 1024*512) // 512KB
-// 	// for i := 0; i < 3; i++ {
-// 	// 	log.Info(message)
-// 	// 	time.Sleep(500 * time.Millisecond)
-// 	// }
+	// 打印测试日志
+	log.Info("测试无颜色日志")
+	log.Warn("测试无颜色日志")
+	log.Error("测试无颜色日志")
+	log.Debug("测试无颜色日志")
+	log.Success("测试无颜色日志")
+}
 
-// 	// 调用randomLog函数
-// 	randomLog(log, 25, 1000)
-
-// 	log.Close()
-
-// 	// 检查是否生成了轮转文件
-// 	matches, err := filepath.Glob(filepath.Join("logs", "rotation_test_*.log"))
-// 	if err != nil {
-// 		t.Fatalf("查找轮转文件失败: %v", err)
-// 	}
-// 	if len(matches) == 0 {
-// 		t.Error("未找到轮转后的日志文件")
-// 	}
-// }
+func TestRmLogs(t *testing.T) {
+	// 检查当前目录下是否存在logs目录
+	if _, err := os.Stat("logs"); err == nil {
+		// 删除logs目录及其下的所有文件和子目录
+		if err := os.RemoveAll("logs"); err != nil {
+			t.Fatalf("删除logs目录失败: %v", err)
+		}
+	}
+}

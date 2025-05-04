@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/logrotatex"
 )
 
@@ -45,13 +46,12 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		ChanIntSize:    1000,        // 通道大小 默认1000
 		LogFormat:      Detailed,    // 日志格式选项
 		MaxBufferSize:  1,           // 最大缓冲区大小 默认1MB，单位为MB
-
-		/* 日志文件切割配置项 */
-		MaxLogFileSize: 10,    // 最大日志文件大小，单位为MB, 默认10MB
-		MaxLogAge:      0,     // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:  0,     // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:    false, // 是否使用本地时间 默认使用UTC时间
-		EnableCompress: false, // 是否启用日志文件压缩 默认不启用
+		MaxLogFileSize: 10,          // 最大日志文件大小，单位为MB, 默认10MB
+		MaxLogAge:      0,           // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:  0,           // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:    false,       // 是否使用本地时间 默认使用UTC时间
+		EnableCompress: false,       // 是否启用日志文件压缩 默认不启用
+		NoColor:        false,       // 是否禁用终端颜色
 	}
 }
 
@@ -117,6 +117,13 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		logFormat:      config.LogFormat,                   // 日志格式选项
 		maxBufferSize:  config.MaxBufferSize * 1024 * 1024, // 最大缓冲区大小 默认1MB
 		flushInterval:  1 * time.Second,                    // 刷新间隔，单位为秒
+		noColor:        config.NoColor,                     // 是否禁用终端颜色
+		cl:             colorlib.NewColorLib(),             // 颜色库实例
+	}
+
+	// 根据noColor的值，设置颜色库的颜色选项
+	if f.noColor {
+		f.cl.NoColor = true // 设置颜色库的颜色选项为禁用
 	}
 
 	// 初始化日志通道
@@ -232,7 +239,7 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 	// 如果允许将日志输出到控制台，或者仅输出到控制台
 	if f.consoleOnly || f.printToConsole {
 		// 调用addColor方法给日志消息添加颜色
-		consoleLog := addColor(rawMsg, formattedLog)
+		consoleLog := addColor(f, rawMsg, formattedLog)
 
 		// 给格式化后的日志消息添加换行符
 		f.consoleBuilder.WriteString(consoleLog)
