@@ -16,8 +16,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.LogLevel = fastlog.DEBUG
 	cfg.LogFormat = fastlog.Simple
-	cfg.MaxLogFileSize = 1
-	cfg.IsLocalTime = true
+	cfg.IsLocalTime = true // 使用本地时间
 
 	// 检查日志文件是否存在，如果存在则清空
 	// if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {

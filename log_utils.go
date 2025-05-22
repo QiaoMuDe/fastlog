@@ -9,7 +9,7 @@ import (
 // Info 记录信息级别的日志，不支持占位符
 func (l *FastLog) Info(v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
-	if INFO < l.logLevel {
+	if INFO < l.config.LogLevel {
 		return
 	}
 
@@ -43,7 +43,7 @@ func (l *FastLog) Info(v ...any) {
 // debug 记录调试级别的日志，不支持占位符
 func (l *FastLog) Debug(v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
-	if DEBUG < l.logLevel {
+	if DEBUG < l.config.LogLevel {
 		return
 	}
 
@@ -77,7 +77,7 @@ func (l *FastLog) Debug(v ...any) {
 // Warn 记录警告级别的日志，不支持占位符
 func (l *FastLog) Warn(v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
-	if WARN < l.logLevel {
+	if WARN < l.config.LogLevel {
 		return
 	}
 
@@ -111,7 +111,7 @@ func (l *FastLog) Warn(v ...any) {
 // Error 记录错误级别的日志，不支持占位符
 func (l *FastLog) Error(v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
-	if ERROR < l.logLevel {
+	if ERROR < l.config.LogLevel {
 		return
 	}
 
@@ -145,7 +145,7 @@ func (l *FastLog) Error(v ...any) {
 // Success 记录成功级别的日志，不支持占位符
 func (l *FastLog) Success(v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
-	if SUCCESS < l.logLevel {
+	if SUCCESS < l.config.LogLevel {
 		return
 	}
 
@@ -179,7 +179,7 @@ func (l *FastLog) Success(v ...any) {
 // Infof 记录信息级别的日志，支持占位符，格式化
 func (l *FastLog) Infof(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
-	if INFO < l.logLevel {
+	if INFO < l.config.LogLevel {
 		return
 	}
 
@@ -213,7 +213,7 @@ func (l *FastLog) Infof(format string, v ...any) {
 // Debugf 记录调试级别的日志，支持占位符，格式化
 func (l *FastLog) Debugf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
-	if DEBUG < l.logLevel {
+	if DEBUG < l.config.LogLevel {
 		return
 	}
 
@@ -246,7 +246,7 @@ func (l *FastLog) Debugf(format string, v ...any) {
 // Warnf 记录警告级别的日志，支持占位符，格式化
 func (l *FastLog) Warnf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
-	if WARN < l.logLevel {
+	if WARN < l.config.LogLevel {
 		return
 	}
 
@@ -280,7 +280,7 @@ func (l *FastLog) Warnf(format string, v ...any) {
 // Errorf 记录错误级别的日志，支持占位符，格式化
 func (l *FastLog) Errorf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
-	if ERROR < l.logLevel {
+	if ERROR < l.config.LogLevel {
 		return
 	}
 
@@ -314,7 +314,7 @@ func (l *FastLog) Errorf(format string, v ...any) {
 // Successf 记录成功级别的日志，支持占位符，格式化
 func (l *FastLog) Successf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
-	if SUCCESS < l.logLevel {
+	if SUCCESS < l.config.LogLevel {
 		return
 	}
 

@@ -155,7 +155,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 	var logMsg string
 
 	// 根据日志格式选项，格式化日志消息。
-	switch f.logFormat {
+	switch f.config.LogFormat {
 	// Json格式
 	case Json:
 		logMsg = fmt.Sprintf(
@@ -183,7 +183,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 		logMsg = l.message
 	// 无法识别的日志格式选项
 	default:
-		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.logFormat)
+		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.LogFormat)
 	}
 
 	// 返回格式化后的日志消息。

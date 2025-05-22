@@ -52,7 +52,6 @@ type FastLog struct {
 	startOnce      sync.Once          // 用于确保日志处理器只启动一次
 	fileBuffer     *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息
 	consoleBuffer  *bytes.Buffer      // 控制台缓冲区 用于存储待写入的日志消息
-	flushInterval  time.Duration      // 刷新间隔，单位为秒
 	fileBuilder    strings.Builder    // 文件构建器 用于构建待写入的日志消息
 	consoleBuilder strings.Builder    // 控制台构建器 用于构建待写入的日志消息
 	ctx            context.Context    // 控制刷新器的上下文
@@ -62,16 +61,8 @@ type FastLog struct {
 	/* logrotatex 日志文件切割 */
 	logGer *logrotatex.LogRotateX // 日志文件切割器
 
-	/*  公共属性 可以通过属性自定义配置  */
-	logDirName     string        // 日志目录路径
-	logFileName    string        // 日志文件名
-	printToConsole bool          // 是否将日志输出到控制台
-	consoleOnly    bool          // 是否仅输出到控制台
-	logLevel       LogLevel      // 日志级别
-	chanIntSize    int           // 通道大小 默认1000
-	logFormat      LogFormatType // 日志格式选项
-	maxBufferSize  int           // 最大缓冲区大小，单位为MB，默认为1MB
-	noColor        bool          // 是否禁用终端颜色
+	/* 嵌入的配置结构体 */
+	config *FastLogConfig // 配置结构体
 }
 
 // 定义一个配置结构体，用于配置日志记录器
@@ -84,13 +75,13 @@ type FastLogConfig struct {
 	LogLevel       LogLevel      // 日志级别
 	ChanIntSize    int           // 通道大小 默认1000
 	LogFormat      LogFormatType // 日志格式选项
-	MaxBufferSize  int           // 最大缓冲区大小
+	MaxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
+	NoColor        bool          // 是否禁用终端颜色
 	MaxLogFileSize int           // 最大日志文件大小，单位为MB, 默认10MB
 	MaxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
 	MaxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	IsLocalTime    bool          // 是否使用本地时间 默认使用UTC时间
 	EnableCompress bool          // 是否启用日志文件压缩 默认不启用
-	NoColor        bool          // 是否禁用终端颜色
 }
 
 // 定义一个接口, 声明对外暴露的方法
