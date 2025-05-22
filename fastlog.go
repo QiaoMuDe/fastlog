@@ -44,6 +44,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		ConsoleOnly:    false,       // 是否仅输出到控制台
 		LogLevel:       INFO,        // 日志级别 默认INFO
 		ChanIntSize:    1000,        // 通道大小 默认1000
+		FlushInterval:  1,           // 刷新间隔 默认1秒
 		LogFormat:      Detailed,    // 日志格式选项
 		MaxBufferSize:  1,           // 最大缓冲区大小 默认1MB，单位为MB
 		MaxLogFileSize: 10,          // 最大日志文件大小，单位为MB, 默认10MB
@@ -116,7 +117,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		chanIntSize:    config.ChanIntSize,                 // 通道大小 默认1000
 		logFormat:      config.LogFormat,                   // 日志格式选项
 		maxBufferSize:  config.MaxBufferSize * 1024 * 1024, // 最大缓冲区大小 默认1MB
-		flushInterval:  1 * time.Second,                    // 刷新间隔，单位为秒
+		flushInterval:  config.FlushInterval * time.Second, // 刷新间隔，单位为秒(默认1秒)
 		noColor:        config.NoColor,                     // 是否禁用终端颜色
 		cl:             colorlib.NewColorLib(),             // 颜色库实例
 	}

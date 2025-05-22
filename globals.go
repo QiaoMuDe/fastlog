@@ -81,6 +81,7 @@ type FastLogConfig struct {
 	logFilePath    string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
 	PrintToConsole bool          // 是否将日志输出到控制台
 	ConsoleOnly    bool          // 是否仅输出到控制台
+	FlushInterval  time.Duration // 刷新间隔，单位为秒
 	LogLevel       LogLevel      // 日志级别
 	ChanIntSize    int           // 通道大小 默认1000
 	LogFormat      LogFormatType // 日志格式选项
