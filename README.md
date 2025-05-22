@@ -138,7 +138,7 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 
 | 属性名称        | 类型          | 说明                                                   | 默认值   |
 | --------------- | ------------- | ------------------------------------------------------ | -------- |
-| LogDirPath      | string        | 日志目录路径                                           | 必填     |
+| LogDirName      | string        | 日志目录名                                             | 必填     |
 | LogFileName     | string        | 日志文件名                                             | 必填     |
 | PrintToConsole  | bool          | 是否输出到控制台                                       | false    |
 | ConsoleOnly     | bool          | 是否仅输出到控制台                                     | false    |
@@ -150,8 +150,8 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 | MaxLogBackups   | int           | 日志文件保留数量                                       | 0        |
 | IsLocalTime     | bool          | 是否使用本地时间                                       | false    |
 | EnableCompress  | bool          | 是否启用压缩                                           | false    |
-| RotationEnabled | bool          | 是否启用日志轮转                                       | false    |
 | NoColor         | bool          | 是否禁用终端颜色输出                                   | false    |
+| FlushInterval   | time.Duration | 刷新缓冲区的时间间隔                                   | 1s       |
 
 ## NoColor功能
 

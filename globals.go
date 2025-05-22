@@ -42,7 +42,7 @@ const (
 // 日志记录器
 type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
-	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName] 绝对路径
+	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName]
 	logChan        chan *logMessage   // 日志通道  用于异步写入日志文件
 	logWait        sync.WaitGroup     // 等待组 用于等待所有goroutine完成
 	fileWriter     io.Writer          // 文件写入器
@@ -76,9 +76,8 @@ type FastLog struct {
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
-	logDirName     string        // 日志目录路径
+	LogDirName     string        // 日志目录路径
 	LogFileName    string        // 日志文件名
-	logFilePath    string        // 日志文件路径  内部拼接的 [logDirName+logFileName]
 	PrintToConsole bool          // 是否将日志输出到控制台
 	ConsoleOnly    bool          // 是否仅输出到控制台
 	FlushInterval  time.Duration // 刷新间隔，单位为秒

@@ -32,14 +32,10 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		logFileName = "app.log"
 	}
 
-	// 合并日志目录和日志文件名称，生成日志文件路径。
-	logFilePath := filepath.Join(logDirName, logFileName)
-
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		logDirName:     logDirName,  // 日志目录名称
+		LogDirName:     logDirName,  // 日志目录名称
 		LogFileName:    logFileName, // 日志文件名称
-		logFilePath:    logFilePath, // 日志文件路径 = 工作目录 + 日志目录名称 + 日志文件名称
 		PrintToConsole: true,        // 是否将日志输出到控制台
 		ConsoleOnly:    false,       // 是否仅输出到控制台
 		LogLevel:       INFO,        // 日志级别 默认INFO
@@ -77,19 +73,25 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		consoleWriter = io.Discard // 不输出到控制台，直接丢弃
 	}
 
+	// 拼接日志文件路径
+	var logFilePath string
+	if config.LogDirName != "" || config.LogFileName != "" {
+		logFilePath = filepath.Join(config.LogDirName, config.LogFileName)
+	}
+
 	// 如果不是仅输出到控制台，则初始化日志文件写入器。
 	var logger *logrotatex.LogRotateX
 	if !config.ConsoleOnly {
 		// 检查日志目录是否存在，如果不存在则创建。
-		if _, checkPathErr := checkPath(config.logDirName); checkPathErr != nil {
-			if mkdirErr := os.MkdirAll(config.logDirName, 0644); mkdirErr != nil {
+		if _, checkPathErr := checkPath(config.LogDirName); checkPathErr != nil {
+			if mkdirErr := os.MkdirAll(config.LogDirName, 0644); mkdirErr != nil {
 				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
 			}
 		}
 
 		// 初始化日志文件切割器
 		logger = &logrotatex.LogRotateX{
-			Filename:   config.logFilePath,    // 日志文件路径,
+			Filename:   logFilePath,           // 日志文件路径,
 			MaxSize:    config.MaxLogFileSize, // 最大日志文件大小，单位为MB
 			MaxAge:     config.MaxLogAge,      // 最大日志文件保留天数
 			MaxBackups: config.MaxLogBackups,  // 最大日志文件保留数量
@@ -108,8 +110,8 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		logGer:         logger,                             // 日志文件切割器
 		fileWriter:     fileWriter,                         // 文件写入器,
 		consoleWriter:  consoleWriter,                      // 控制台写入器,
-		logFilePath:    config.logFilePath,                 // 日志文件路径
-		logDirName:     config.logDirName,                  // 日志目录路径
+		logFilePath:    logFilePath,                        // 日志文件路径
+		logDirName:     config.LogDirName,                  // 日志目录路径
 		logFileName:    config.LogFileName,                 // 日志文件名
 		printToConsole: config.PrintToConsole,              // 是否将日志输出到控制台
 		consoleOnly:    config.ConsoleOnly,                 // 是否仅输出到控制台
