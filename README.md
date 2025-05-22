@@ -23,6 +23,7 @@
 - ⏱️ 定时自动刷新缓冲区
 - 🛡️ 线程安全设计
 - 🔄 自动日志轮转功能
+- 🔧 可配置的日志切割策略
 
 ## 安装与引入
 
@@ -46,19 +47,21 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 完整结构体配置
     config1 := &fastlog.FastLogConfig{
-        LogDirPath:     "logs",           // 日志目录路径
-        LogFileName:    "app.log",        // 日志文件名称
-        PrintToConsole: true,             // 是否将日志输出到控制台
-        ConsoleOnly:    false,            // 是否仅输出到控制台
-        LogLevel:       fastlog.DEBUG,    // 日志级别
-        ChanIntSize:    1000,             // 通道大小
-        LogFormat:      fastlog.Detailed, // 日志格式选项
-        MaxBufferSize:  1,                // 最大缓冲区大小 默认1MB，单位为MB
-        MaxLogFileSize: 1,                // 单个日志文件最大1MB
-        MaxLogAge:      30,               // 日志文件保留天数
-        MaxLogBackups:  10,               // 日志文件保留数量
-        IsLocalTime:    true,             // 是否使用本地时间
-        EnableCompress: false,            // 是否启用压缩
+        LogDirName:     "logs",              // 日志目录名
+        LogFileName:    "app.log",           // 日志文件名
+        PrintToConsole: true,                // 是否将日志输出到控制台
+        ConsoleOnly:    false,               // 是否仅输出到控制台
+        FlushInterval:  1 * time.Second,     // 刷新间隔
+        LogLevel:       fastlog.DEBUG,       // 日志级别
+        ChanIntSize:    1000,                // 通道大小
+        LogFormat:      fastlog.Detailed,    // 日志格式选项
+        MaxBufferSize:  1 * 1024 * 1024,     // 最大缓冲区大小(MB)
+        NoColor:        false,               // 是否禁用终端颜色
+        MaxLogFileSize: 1,                   // 单个日志文件最大大小(MB)
+        MaxLogAge:      30,                  // 日志文件保留天数
+        MaxLogBackups:  10,                  // 日志文件保留数量
+        IsLocalTime:    true,                // 是否使用本地时间
+        EnableCompress: false,               // 是否启用压缩
     }
 
     // 创建日志实例
@@ -135,22 +138,23 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 
 ## 配置选项
 
-| 属性名称        | 类型          | 说明                                                   | 默认值   |
-| --------------- | ------------- | ------------------------------------------------------ | -------- |
-| LogDirName      | string        | 日志目录名                                             | 必填     |
-| LogFileName     | string        | 日志文件名                                             | 必填     |
-| PrintToConsole  | bool          | 是否输出到控制台                                       | false    |
-| ConsoleOnly     | bool          | 是否仅输出到控制台                                     | false    |
-| ChanIntSize     | int           | 日志通道缓冲区大小                                     | 1000     |
-| LogFormat       | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
-| MaxBufferSize   | int           | 最大缓冲区大小(MB)                                     | 1        |
-| MaxLogFileSize  | int           | 单个日志文件最大大小(MB)                               | 10       |
-| MaxLogAge       | int           | 日志文件保留天数                                       | 0        |
-| MaxLogBackups   | int           | 日志文件保留数量                                       | 0        |
-| IsLocalTime     | bool          | 是否使用本地时间                                       | false    |
-| EnableCompress  | bool          | 是否启用压缩                                           | false    |
-| NoColor         | bool          | 是否禁用终端颜色输出                                   | false    |
-| FlushInterval   | time.Duration | 刷新缓冲区的时间间隔                                   | 1s       |
+| 属性名称       | 类型          | 说明                                                   | 默认值   |
+| -------------- | ------------- | ------------------------------------------------------ | -------- |
+| LogDirName     | string        | 日志目录名                                             | 必填     |
+| LogFileName    | string        | 日志文件名                                             | 必填     |
+| PrintToConsole | bool          | 是否输出到控制台                                       | false    |
+| ConsoleOnly    | bool          | 是否仅输出到控制台                                     | false    |
+| FlushInterval  | time.Duration | 刷新缓冲区的时间间隔(秒)                               | 1s       |
+| LogLevel       | LogLevel      | 日志级别                                               | DEBUG    |
+| ChanIntSize    | int           | 日志通道缓冲区大小                                     | 1000     |
+| LogFormat      | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
+| MaxBufferSize  | int           | 最大缓冲区大小(MB)                                     | 1        |
+| NoColor        | bool          | 是否禁用终端颜色输出                                   | false    |
+| MaxLogFileSize | int           | 单个日志文件最大大小(MB)                               | 10       |
+| MaxLogAge      | int           | 日志文件保留天数                                       | 0        |
+| MaxLogBackups  | int           | 日志文件保留数量                                       | 0        |
+| IsLocalTime    | bool          | 是否使用本地时间                                       | false    |
+| EnableCompress | bool          | 是否启用压缩                                           | false    |
 
 ## NoColor功能
 
@@ -253,6 +257,8 @@ FastLog 支持以下几种日志格式：
 - 异步处理：所有日志操作通过 channel 异步处理
 - 缓冲区：使用内存缓冲区减少 IO 操作
 - 批量写入：定时刷新缓冲区
+- 内存优化：减少内存分配次数
+- 并发控制：优化锁粒度提升并发性能
 
 ## 函数
 
