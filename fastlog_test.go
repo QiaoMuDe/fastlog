@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"gitee.com/MM-Q/fastlog"
+	"gitee.com/MM-Q/fastlog/v2"
 )
 
 // TestConcurrentFastLog 测试并发场景下的多个日志记录器

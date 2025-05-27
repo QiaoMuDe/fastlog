@@ -27,11 +27,21 @@
 
 ## 安装与引入
 
+> **注意**: 1.x  版本已不再更新，请使用 2.x 版本，同时 2.x 版本的配置方式略微差异。不可直接使用 1.x 版本的配置方式。
+
 ```bash
 # 确保在自己项目路径下，并且存在go.mog文件，不存在则 go init 项目名 创建
+# 下载2.x.x  版本
+go get gitee.com/MM-Q/fastlog/v2
+
+# 下载1.x.x  版本
 go get gitee.com/MM-Q/fastlog
 
-# 引入
+
+# 引入 v2版本
+import "gitee.com/MM-Q/fastlog/v2"
+
+# 引入 v1版本
 import "gitee.com/MM-Q/fastlog"
 ```
 
@@ -42,7 +52,7 @@ import "gitee.com/MM-Q/fastlog"
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog"
+import "gitee.com/MM-Q/fastlog/v2"
 
 func main() {
     // 完整结构体配置
@@ -83,7 +93,7 @@ func main() {
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog"
+import "gitee.com/MM-Q/fastlog/v2"
 
 func main() {
     // 仅指定日志目录和文件名的简化配置
@@ -108,7 +118,7 @@ func main() {
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog"
+import "gitee.com/MM-Q/fastlog/v2"
 
 func main() {
     // 完全使用默认配置
