@@ -5,13 +5,69 @@ import (
 	"strings"
 )
 
+// ColorLib 结构体用于管理颜色输出和日志级别映射。
 type ColorLib struct {
-	// 空结构体，用于实现接口
-	LevelMap map[string]string // LevelMap 是一个映射，用于将日志级别映射到对应的前缀,// 日志级别映射到对应的前缀, 后面留空, 方便后面拼接提示内容
-	ColorMap map[string]string // colorMap 是一个映射，用于将颜色名称映射到对应的 ANSI 颜色代码。
-	LvlMap   map[string]string // LvlMap 是一个映射，用于将日志级别映射到对应的日志级别名称。
-	NoColor  bool              // NoColor 控制是否禁用颜色输出
+	levelMap     map[string]string // LevelMap 是一个映射，用于将日志级别映射到对应的前缀,// 日志级别映射到对应的前缀, 后面留空, 方便后面拼接提示内容
+	colorMap     map[string]int    // colorMap 是一个映射，用于将颜色名称映射到对应的 ANSI 颜色代码。
+	NoColor      bool              // NoColor 控制是否禁用颜色输出
+	formatBuffer strings.Builder   // formatBuffer 用于构建格式化后的字符串。
+	NoBold       bool              // NoBold 控制是否禁用字体加粗
 }
+
+const (
+	reset   = 0  // Reset 重置所有属性
+	Black   = 30 // Black 黑色
+	Red     = 31 // Red 红色
+	Green   = 32 // Green 绿色
+	Yellow  = 33 // Yellow 黄色
+	Blue    = 34 // Blue 蓝色
+	Purple  = 35 // Purple 紫色
+	Cyan    = 36 // Cyan 青色
+	White   = 37 // White 白色
+	Gray    = 90 // Gray 灰色
+	Lred    = 91 // Lred 亮红色
+	Lgreen  = 92 // Lgreen 亮绿色
+	Lyellow = 93 // Lyellow 亮黄色
+	Lblue   = 94 // Lblue 亮蓝色
+	Lpurple = 95 // Lpurple 亮紫色
+	Lcyan   = 96 // Lcyan 亮青色
+	Lwhite  = 97 // Lwhite 亮白色
+)
+
+// 定义日志级别和颜色的映射
+var (
+	colorMap = map[string]int{
+		"black":   Black,
+		"red":     Red,
+		"green":   Green,
+		"yellow":  Yellow,
+		"blue":    Blue,
+		"purple":  Purple,
+		"cyan":    Cyan,
+		"white":   White,
+		"gray":    Gray,
+		"lred":    Lred,
+		"lgreen":  Lgreen,
+		"lyellow": Lyellow,
+		"lblue":   Lblue,
+		"lpurple": Lpurple,
+		"lcyan":   Lcyan,
+		"lwhite":  Lwhite,
+	}
+
+	levelMap = map[string]string{
+		"success": "[Success] ", // 成功信息级别的前缀
+		"error":   "[Error] ",   // 错误信息级别的前缀
+		"warning": "[Warning] ", // 警告信息级别的前缀
+		"info":    "[Info] ",    // 信息信息级别的前缀
+		"debug":   "[Debug] ",   // 调试信息级别的前缀
+		"ok":      "ok: ",       // 简写形式
+		"err":     "err: ",      // 简写形式
+		"inf":     "info: ",     // 简写形式
+		"dbg":     "debug: ",    // 简写形式
+		"warn":    "warn: ",     // 简写形式
+	}
+)
 
 // ColorLibInterface 是一个接口，定义了一组方法，用于打印和返回带有颜色的文本。
 type ColorLibInterface interface {
@@ -110,168 +166,205 @@ type ColorLibInterface interface {
 	PrintWarnf(format string, a ...any) // 打印警告信息到控制台（带占位符）
 }
 
-// NewColorLib 函数用于创建一个新的 ColorLib 实例。
+// NewColorLib 函数用于创建一个新的 ColorLib 实例
 func NewColorLib() *ColorLib {
 	// 创建一个新的 ColorLib 实例
 	cl := &ColorLib{
-		// LvlMap 是一个映射，用于将日志级别映射到对应的日志级别名称。
-		LvlMap: map[string]string{
-			"ok":   "ok: ",
-			"err":  "err: ",
-			"inf":  "info: ",
-			"dbg":  "debug: ",
-			"warn": "warn: ",
-		},
-		// LevelMap 是一个映射，用于将日志级别映射到对应的前缀。
-		LevelMap: map[string]string{
-			"success": "[Success] ", // 成功信息级别的前缀
-			"error":   "[Error] ",   // 错误信息级别的前缀
-			"warning": "[Warning] ", // 警告信息级别的前缀
-			"info":    "[Info] ",    // 信息信息级别的前缀
-			"debug":   "[Debug] ",   // 调试信息级别的前缀
-		},
-		// colorMap 是一个映射，用于将颜色名称映射到对应的 ANSI 颜色代码。
-		ColorMap: map[string]string{
-			"black":   "30", // 黑色文本的 ANSI 颜色代码
-			"red":     "31", // 红色文本的 ANSI 颜色代码
-			"green":   "32", // 绿色文本的 ANSI 颜色代码
-			"yellow":  "33", // 黄色文本的 ANSI 颜色代码
-			"blue":    "34", // 蓝色文本的 ANSI 颜色代码
-			"purple":  "35", // 紫色文本的 ANSI 颜色代码
-			"cyan":    "36", // 青色文本的 ANSI 颜色代码
-			"white":   "37", // 白色文本的 ANSI 颜色代码
-			"gray":    "90", // 灰色文本的 ANSI 颜色代码
-			"lred":    "91", // 亮红色文本的 ANSI 颜色代码
-			"lgreen":  "92", // 亮绿色文本的 ANSI 颜色代码
-			"lyellow": "93", // 亮黄色文本的 ANSI 颜色代码
-			"lblue":   "94", // 亮蓝色文本的 ANSI 颜色代码
-			"lpurple": "95", // 亮紫色文本的 ANSI 颜色代码
-			"lcyan":   "96", // 亮青色文本的 ANSI 颜色代码
-			"lwhite":  "97", // 亮白色文本的 ANSI 颜色代码
-		},
+		levelMap: make(map[string]string),
+		colorMap: make(map[string]int),
 	}
 
-	// 返回 ColorLib 实例
+	// 初始化颜色映射
+	for k, v := range colorMap {
+		cl.colorMap[k] = v
+	}
+
+	// 初始化日志级别映射
+	for k, v := range levelMap {
+		cl.levelMap[k] = v
+	}
+
 	return cl
 }
 
 // printWithColor 方法用于将传入的参数以指定颜色文本形式打印到控制台。
 func (c *ColorLib) printWithColor(color string, msg ...any) {
+	// 检查是否禁用颜色输出
 	if c.NoColor {
-		fmt.Println(msg...)
+		fmt.Print(msg...)
 		return
 	}
 
 	// 获取颜色代码
-	code, ok := c.ColorMap[color]
+	code, ok := c.colorMap[color]
 	if !ok {
 		fmt.Println("Invalid color:", color)
 		return
 	}
 
-	// 使用 strings.Builder 拼接字符串
-	var builder strings.Builder
-	builder.WriteString(fmt.Sprintf("\033[1;%sm", code)) // 添加颜色代码，并加粗
+	// 清理缓冲区
+	c.formatBuffer.Reset()
 
-	// 检查 msg 是否为空
-	if len(msg) > 0 {
-		builder.WriteString(fmt.Sprint(msg...)) // 拼接消息内容
+	// 检查是否禁用粗体输出
+	if c.NoBold {
+		// 写入前缀
+		c.formatBuffer.WriteString(fmt.Sprintf("\033[%dm", code))
 	} else {
-		builder.WriteString(" ") // 如果没有消息，添加一个空格，避免完全空白的输出
+		// 写入前缀
+		c.formatBuffer.WriteString(fmt.Sprintf("\033[1;%dm", code))
 	}
 
-	builder.WriteString("\033[0m") // 添加颜色重置代码
-	fmt.Println(builder.String())  // 使用 fmt.Println 自动处理换行
+	// 写入消息
+	if len(msg) > 0 {
+		c.formatBuffer.WriteString(fmt.Sprint(msg...)) // 拼接消息内容
+	} else {
+		c.formatBuffer.WriteString(" ") // 如果没有消息，添加一个空格，避免完全空白的输出
+	}
+
+	// 写入颜色重置代码
+	c.formatBuffer.WriteString(fmt.Sprintf("\033[%dm", reset))
+
+	// 使用 fmt.Print 根据外部调用选择性添加换行符
+	fmt.Print(c.formatBuffer.String())
+
+	// 重置缓冲区
+	c.formatBuffer.Reset()
 }
 
 // returnWithColor 方法用于将传入的参数以指定颜色文本形式返回。
 func (c *ColorLib) returnWithColor(color string, msg ...any) string {
+	// 检查是否禁用颜色输出
 	if c.NoColor {
 		return fmt.Sprint(msg...)
 	}
 
 	// 获取颜色代码
-	code, ok := c.ColorMap[color]
+	code, ok := c.colorMap[color]
 	if !ok {
 		return fmt.Sprintf("Invalid color: %s", color)
 	}
 
 	// 检查 msg 是否为空
 	if len(msg) == 0 {
-		return fmt.Sprintf("\033[1;%sm\033[0m", code) // 返回空字符串，但带有颜色代码
+		if c.NoBold {
+			return fmt.Sprintf("\033[%dm\033[%dm", code, reset) // 返回空字符串，但带有颜色代码
+		} else {
+			return fmt.Sprintf("\033[1;%dm\033[%dm", code, reset) // 返回空字符串，但带有颜色代码
+		}
 	}
 
 	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
 	combinedMsg := fmt.Sprint(msg...)
-	return fmt.Sprintf("\033[1;%sm%s\033[0m", code, combinedMsg)
+
+	// 清理缓冲区
+	c.formatBuffer.Reset()
+
+	// 写入前缀
+	if c.NoBold {
+		c.formatBuffer.WriteString(fmt.Sprintf("\033[%dm", code))
+	} else {
+		c.formatBuffer.WriteString(fmt.Sprintf("\033[1;%dm", code)) // 添加颜色代码，并加粗
+	}
+
+	// 写入消息
+	c.formatBuffer.WriteString(combinedMsg) // 拼接消息内容
+
+	// 写入颜色重置代码
+	c.formatBuffer.WriteString(fmt.Sprintf("\033[%dm", reset))
+
+	// 获取最终字符串
+	result := c.formatBuffer.String()
+
+	// 重置缓冲区
+	c.formatBuffer.Reset()
+
+	return result
 }
 
 // PromptMsg 方法用于打印带有颜色和前缀的消息。
 func (c *ColorLib) PromptMsg(level, color, format string, a ...any) {
 	// 获取指定级别对应的前缀
-	prefix, ok := c.LevelMap[level]
+	prefix, ok := c.levelMap[level]
 	if !ok {
 		fmt.Println("Invalid level:", level)
 		return
 	}
 
-	// 创建一个 strings.Builder 来构建消息
-	var message strings.Builder
-	message.WriteString(prefix)
+	// 清理缓冲区
+	c.formatBuffer.Reset()
+
+	// 写入前缀
+	c.formatBuffer.WriteString(prefix)
 
 	// 如果没有参数，直接打印前缀
 	if len(a) == 0 {
 		if c.NoColor {
-			fmt.Println(message.String())
+			fmt.Print(c.formatBuffer.String())
+			c.formatBuffer.Reset()
 		} else {
-			c.printWithColor(color, message.String())
+			c.printWithColor(color, c.formatBuffer.String())
+			c.formatBuffer.Reset()
 		}
 		return
 	}
 
 	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
 	combinedMsg := fmt.Sprintf(format, a...)
-	message.WriteString(combinedMsg)
+
+	// 写入消息
+	c.formatBuffer.WriteString(combinedMsg)
 
 	// 打印最终消息
 	if c.NoColor {
-		fmt.Println(message.String())
+		fmt.Print(c.formatBuffer.String())
 	} else {
-		c.printWithColor(color, message.String())
+		c.printWithColor(color, c.formatBuffer.String())
 	}
+
+	// 重置缓冲区
+	c.formatBuffer.Reset()
 }
 
 // PMsg 方法用于打印带有颜色和前缀的消息。
 func (c *ColorLib) PMsg(level, color, format string, a ...any) {
 	// 获取指定级别对应的前缀
-	prefix, ok := c.LvlMap[level]
+	prefix, ok := c.levelMap[level]
 	if !ok {
 		fmt.Println("Invalid level:", level)
 		return
 	}
 
-	// 创建一个 strings.Builder 来构建消息
-	var message strings.Builder
-	message.WriteString(prefix)
+	// 清理缓冲区
+	c.formatBuffer.Reset()
+
+	// 写入前缀
+	c.formatBuffer.WriteString(prefix)
 
 	// 如果没有参数，直接打印前缀
 	if len(a) == 0 {
 		if c.NoColor {
-			fmt.Println(message.String())
+			fmt.Print(c.formatBuffer.String())
+			c.formatBuffer.Reset()
 		} else {
-			c.printWithColor(color, message.String())
+			c.printWithColor(color, c.formatBuffer.String())
+			c.formatBuffer.Reset()
 		}
 		return
 	}
 
 	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
 	combinedMsg := fmt.Sprintf(format, a...)
-	message.WriteString(combinedMsg)
+
+	// 写入消息
+	c.formatBuffer.WriteString(combinedMsg)
 
 	// 打印最终消息
 	if c.NoColor {
-		fmt.Println(message.String())
+		fmt.Print(c.formatBuffer.String())
 	} else {
-		c.printWithColor(color, message.String())
+		c.printWithColor(color, c.formatBuffer.String())
 	}
+
+	// 重置缓冲区
+	c.formatBuffer.Reset()
 }

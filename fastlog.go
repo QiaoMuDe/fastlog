@@ -14,20 +14,20 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// NewFastLogConfig 创建一个新的FastLogConfig实例，用于配置日志记录器。
+// NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
 // 参数:
-//   - logDirName: 日志目录名称，默认为"applogs"。
-//   - logFileName: 日志文件名称，默认为"app.log"。
+//   - logDirName: 日志目录名称, 默认为"applogs"。
+//   - logFileName: 日志文件名称, 默认为"app.log"。
 //
 // 返回值:
 //   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
-	// 如果日志目录名称为空，则使用默认值"logs"。
+	// 如果日志目录名称为空, 则使用默认值"logs"。
 	if logDirName == "" {
 		logDirName = "logs"
 	}
 
-	// 如果日志文件名称为空，则使用默认值"app.log"。
+	// 如果日志文件名称为空, 则使用默认值"app.log"。
 	if logFileName == "" {
 		logFileName = "app.log"
 	}
@@ -42,23 +42,24 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		ChanIntSize:    1000,            // 通道大小 默认1000
 		FlushInterval:  1 * time.Second, // 刷新间隔 默认1秒
 		LogFormat:      Detailed,        // 日志格式选项
-		MaxBufferSize:  1 * 1024 * 1024, // 最大缓冲区大小 默认1MB，单位为MB
-		MaxLogFileSize: 10,              // 最大日志文件大小，单位为MB, 默认10MB
+		MaxBufferSize:  1 * 1024 * 1024, // 最大缓冲区大小 默认1MB, 单位为MB
+		MaxLogFileSize: 10,              // 最大日志文件大小, 单位为MB, 默认10MB
 		MaxLogAge:      0,               // 最大日志文件保留天数, 默认为0, 表示不做限制
 		MaxLogBackups:  0,               // 最大日志文件保留数量, 默认为0, 表示不做限制
 		IsLocalTime:    false,           // 是否使用本地时间 默认使用UTC时间
 		EnableCompress: false,           // 是否启用日志文件压缩 默认不启用
 		NoColor:        false,           // 是否禁用终端颜色
+		NoBold:         false,           // 是否禁用终端字体加粗
 	}
 }
 
-// NewFastLog 创建一个新的FastLog实例，用于记录日志。
+// NewFastLog 创建一个新的FastLog实例, 用于记录日志。
 // 参数:
-//   - config: 一个指向FastLogConfig实例的指针，用于配置日志记录器。
+//   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
 //   - *FastLog: 一个指向FastLog实例的指针。
-//   - error: 如果创建日志记录器失败，则返回一个错误。
+//   - error: 如果创建日志记录器失败, 则返回一个错误。
 func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 检查配置结构体是否为nil
 	if config == nil {
@@ -71,24 +72,24 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		consoleWriter io.Writer // 控制台写入器
 	)
 
-	// 如果允许将日志输出到控制台，或者仅输出到控制台，则初始化控制台写入器。
+	// 如果允许将日志输出到控制台, 或者仅输出到控制台, 则初始化控制台写入器。
 	if config.ConsoleOnly || config.PrintToConsole {
 		consoleWriter = os.Stdout // 控制台写入器
 	} else {
-		consoleWriter = io.Discard // 不输出到控制台，直接丢弃
+		consoleWriter = io.Discard // 不输出到控制台, 直接丢弃
 	}
 
 	// 拼接日志文件路径
 	var logFilePath string
-	// 如果日志目录名称和日志文件名称都不为空，并且不是仅输出到控制台，则拼接日志文件路径。
+	// 如果日志目录名称和日志文件名称都不为空, 并且不是仅输出到控制台, 则拼接日志文件路径。
 	if config.LogDirName != "" || config.LogFileName != "" && !config.ConsoleOnly {
 		logFilePath = filepath.Join(config.LogDirName, config.LogFileName)
 	}
 
-	// 如果不是仅输出到控制台，则初始化日志文件写入器。
+	// 如果不是仅输出到控制台, 则初始化日志文件写入器。
 	var logger *logrotatex.LogRotateX
 	if !config.ConsoleOnly {
-		// 检查日志目录是否存在，如果不存在则创建。
+		// 检查日志目录是否存在, 如果不存在则创建。
 		if _, checkPathErr := checkPath(config.LogDirName); checkPathErr != nil {
 			if mkdirErr := os.MkdirAll(config.LogDirName, 0644); mkdirErr != nil {
 				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
@@ -98,7 +99,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		// 初始化日志文件切割器
 		logger = &logrotatex.LogRotateX{
 			Filename:   logFilePath,           // 日志文件路径,
-			MaxSize:    config.MaxLogFileSize, // 最大日志文件大小，单位为MB
+			MaxSize:    config.MaxLogFileSize, // 最大日志文件大小, 单位为MB
 			MaxAge:     config.MaxLogAge,      // 最大日志文件保留天数
 			MaxBackups: config.MaxLogBackups,  // 最大日志文件保留数量
 			LocalTime:  config.IsLocalTime,    // 是否使用本地时间
@@ -108,10 +109,10 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		// 初始化文件写入器
 		fileWriter = logger
 	} else {
-		fileWriter = io.Discard // 仅输出到控制台，不输出到文件
+		fileWriter = io.Discard // 仅输出到控制台, 不输出到文件
 	}
 
-	// 创建一个新的FastLog实例，将配置和缓冲区赋值给实例。
+	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
 		logGer:        logger,                 // 日志文件切割器
 		fileWriter:    fileWriter,             // 文件写入器,
@@ -121,9 +122,14 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		config:        config,                 // 配置结构体
 	}
 
-	// 根据noColor的值，设置颜色库的颜色选项
+	// 根据noColor的值, 设置颜色库的颜色选项
 	if f.config.NoColor {
 		f.cl.NoColor = true // 设置颜色库的颜色选项为禁用
+	}
+
+	// 根据noBold的值, 设置颜色库的字体加粗选项
+	if f.config.NoBold {
+		f.cl.NoBold = true // 设置颜色库的字体加粗选项为禁用
 	}
 
 	// 初始化日志通道
@@ -131,11 +137,11 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 初始化文件缓冲区
 	f.fileBuffer = bytes.NewBuffer(make([]byte, f.config.MaxBufferSize))
-	f.fileBuffer.Reset() // 重置缓冲区，清空内容
+	f.fileBuffer.Reset() // 重置缓冲区, 清空内容
 
 	// 初始化控制台缓冲区
 	f.consoleBuffer = bytes.NewBuffer(make([]byte, f.config.MaxBufferSize))
-	f.consoleBuffer.Reset() // 重置缓冲区，清空内容
+	f.consoleBuffer.Reset() // 重置缓冲区, 清空内容
 
 	// 创建 context 用于控制协程退出
 	f.ctx, f.cancel = context.WithCancel(context.Background())
@@ -150,12 +156,12 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
-// processLogs 日志处理器，用于处理日志消息。
-// 读取通道中的日志消息并将其处理为指定的日志格式，然后写入到缓冲区中。
+// processLogs 日志处理器, 用于处理日志消息。
+// 读取通道中的日志消息并将其处理为指定的日志格式, 然后写入到缓冲区中。
 func (f *FastLog) processLogs() {
 	f.logWait.Add(1) // 增加等待组中的计数器
 
-	// 创建一个goroutine，用于处理日志消息
+	// 创建一个goroutine, 用于处理日志消息
 	go func() {
 		defer func() {
 			// 减少等待组中的计数器。
@@ -173,14 +179,14 @@ func (f *FastLog) processLogs() {
 		// 初始化控制台字符串构建器
 		for {
 			select {
-			// 监听通道，如果通道关闭，则退出循环
+			// 监听通道, 如果通道关闭, 则退出循环
 			case <-f.ctx.Done():
 				// 处理通道中剩余的日志消息
 				for rawMsg := range f.logChan {
 					f.handleLog(rawMsg, maxBufferSize)
 				}
 				return
-			// 监听通道，如果通道中有日志消息，则处理日志消息
+			// 监听通道, 如果通道中有日志消息, 则处理日志消息
 			case rawMsg, ok := <-f.logChan:
 				if !ok {
 					return
@@ -194,8 +200,8 @@ func (f *FastLog) processLogs() {
 }
 
 // handleLog 处理单条日志消息的逻辑
-// 格式化日志消息，然后写入到缓冲区中。
-// 如果缓冲区大小达到80%，则立即刷新缓冲区。
+// 格式化日志消息, 然后写入到缓冲区中。
+// 如果缓冲区大小达到80%, 则立即刷新缓冲区。
 // 参数:
 //   - rawMsg: 日志消息
 //   - maxBufferSize: 最大缓冲区大小
@@ -211,7 +217,7 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 	// 格式化日志消息
 	formattedLog := formatLog(f, rawMsg)
 
-	// 如果不是仅输出到控制台，则将日志消息写入到日志文件缓冲区中。
+	// 如果不是仅输出到控制台, 则将日志消息写入到日志文件缓冲区中。
 	if !f.config.ConsoleOnly {
 		// 复制格式化后的日志消息到文件日志变量中
 		fileLog := formattedLog
@@ -232,11 +238,11 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		// 释放文件锁
 		f.fileMu.Unlock()
 
-		// 重置构建器，以便下次使用
+		// 重置构建器, 以便下次使用
 		f.fileBuilder.Reset()
 	}
 
-	// 如果允许将日志输出到控制台，或者仅输出到控制台
+	// 如果允许将日志输出到控制台, 或者仅输出到控制台
 	if f.config.ConsoleOnly || f.config.PrintToConsole {
 		// 调用addColor方法给日志消息添加颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
@@ -257,20 +263,20 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		// 释放控制台锁
 		f.consoleMu.Unlock()
 
-		// 重置构建器，以便下次使用
+		// 重置构建器, 以便下次使用
 		f.consoleBuilder.Reset()
 	}
 }
 
 // flushBuffer 定时刷新缓冲区
 func (f *FastLog) flushBuffer() {
-	// 新增一个等待组，用于等待刷新缓冲区的协程完成
+	// 新增一个等待组, 用于等待刷新缓冲区的协程完成
 	f.logWait.Add(1)
 
-	// 定义一个定时器，用于定时刷新缓冲区
+	// 定义一个定时器, 用于定时刷新缓冲区
 	ticker := time.NewTicker(f.config.FlushInterval)
 
-	// 创建一个goroutine，用于定时刷新缓冲区
+	// 创建一个goroutine, 用于定时刷新缓冲区
 	go func() {
 		defer func() {
 			// 减少等待组中的计数器。
@@ -291,7 +297,7 @@ func (f *FastLog) flushBuffer() {
 		for {
 			select {
 			case <-f.ctx.Done():
-				return // 当 context 被取消时，退出协程
+				return // 当 context 被取消时, 退出协程
 			case <-ticker.C:
 				f.flushBufferNow() // 刷新缓冲区
 			}
@@ -302,7 +308,7 @@ func (f *FastLog) flushBuffer() {
 // flushBufferNow 立即刷新缓冲区
 func (f *FastLog) flushBufferNow() {
 
-	// 如果不是仅输出到控制台，则刷新文件缓冲区
+	// 如果不是仅输出到控制台, 则刷新文件缓冲区
 	if !f.config.ConsoleOnly {
 		// 检查文件缓冲区大小是否大于0
 		if f.fileBuffer.Len() > 0 {
@@ -325,7 +331,7 @@ func (f *FastLog) flushBufferNow() {
 		}
 	}
 
-	// 如果允许将日志输出到控制台，或者仅输出到控制台
+	// 如果允许将日志输出到控制台, 或者仅输出到控制台
 	if f.config.PrintToConsole || f.config.ConsoleOnly {
 		// 检查控制台缓冲区大小是否大于0
 		if f.consoleBuffer.Len() > 0 {
@@ -349,7 +355,7 @@ func (f *FastLog) flushBufferNow() {
 	}
 }
 
-// Close 关闭FastLog实例，并等待所有日志处理完成。
+// Close 关闭FastLog实例, 并等待所有日志处理完成。
 func (f *FastLog) Close() error {
 	// 打印关闭日志记录器的信息
 	f.Info("关闭日志记录器...")
@@ -370,7 +376,7 @@ func (f *FastLog) Close() error {
 		// 刷新剩余的日志
 		f.flushBufferNow()
 
-		// 如果不是仅输出到控制台，同时日志文件句柄不为nil，则关闭日志文件。
+		// 如果不是仅输出到控制台, 同时日志文件句柄不为nil, 则关闭日志文件。
 		if !f.config.ConsoleOnly && f.logGer != nil {
 			if err := f.logGer.Close(); err != nil {
 				closeErr = fmt.Errorf("关闭日志文件失败: %v", err)

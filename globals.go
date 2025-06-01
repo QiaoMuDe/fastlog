@@ -77,7 +77,8 @@ type FastLogConfig struct {
 	LogFormat      LogFormatType // 日志格式选项
 	MaxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
 	NoColor        bool          // 是否禁用终端颜色
-	MaxLogFileSize int           // 最大日志文件大小，单位为MB, 默认10MB
+	NoBold         bool          // 是否禁用终端字体加粗
+	MaxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认10MB
 	MaxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
 	MaxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	IsLocalTime    bool          // 是否使用本地时间 默认使用UTC时间

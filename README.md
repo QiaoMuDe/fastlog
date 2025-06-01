@@ -67,6 +67,7 @@ func main() {
         LogFormat:      fastlog.Detailed,    // 日志格式选项
         MaxBufferSize:  1 * 1024 * 1024,     // 最大缓冲区大小(MB)
         NoColor:        false,               // 是否禁用终端颜色
+        NoBold:        false,                // 是否禁用终端字体加粗
         MaxLogFileSize: 1,                   // 单个日志文件最大大小(MB)
         MaxLogAge:      30,                  // 日志文件保留天数
         MaxLogBackups:  10,                  // 日志文件保留数量
@@ -160,6 +161,7 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 | LogFormat      | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
 | MaxBufferSize  | int           | 最大缓冲区大小(MB)                                     | 1        |
 | NoColor        | bool          | 是否禁用终端颜色输出                                   | false    |
+| NoBold        | bool          | 是否禁用终端字体加粗                                   | false    |
 | MaxLogFileSize | int           | 单个日志文件最大大小(MB)                               | 10       |
 | MaxLogAge      | int           | 日志文件保留天数                                       | 0        |
 | MaxLogBackups  | int           | 日志文件保留数量                                       | 0        |

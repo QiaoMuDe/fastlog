@@ -160,6 +160,35 @@ func TestNoColor(t *testing.T) {
 	log.Success("测试无颜色日志")
 }
 
+// TestNoBold 测试无加粗日志
+func TestNoBold(t *testing.T) {
+	// 创建日志配置
+	cfg := fastlog.NewFastLogConfig("logs", "nobold.log")
+	cfg.LogLevel = fastlog.DEBUG
+	cfg.NoBold = true // 禁用终端字体加粗
+
+	// 检查日志文件是否存在，如果存在则清空
+	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
+		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
+			t.Fatalf("清空日志文件失败: %v", err)
+		}
+	}
+
+	// 创建日志记录器
+	log, err := fastlog.NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
+	defer log.Close()
+
+	// 打印测试日志
+	log.Info("测试无加粗日志")
+	log.Warn("测试无加粗日志")
+	log.Error("测试无加粗日志")
+	log.Debug("测试无加粗日志")
+	log.Success("测试无加粗日志")
+}
+
 func TestRmLogs(t *testing.T) {
 	// 检查当前目录下是否存在logs目录
 	if _, err := os.Stat("logs"); err == nil {
