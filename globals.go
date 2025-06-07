@@ -6,6 +6,7 @@ import (
 	"context"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"gitee.com/MM-Q/colorlib"
@@ -49,8 +50,6 @@ type FastLog struct {
 	consoleMu     sync.Mutex         // 控制台锁 用于保护控制台缓冲区的写入操作
 	consoleWriter io.Writer          // 控制台写入器
 	startOnce     sync.Once          // 用于确保日志处理器只启动一次
-	fileBuffer    *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息
-	consoleBuffer *bytes.Buffer      // 控制台缓冲区 用于存储待写入的日志消息
 	ctx           context.Context    // 控制刷新器的上下文
 	cancel        context.CancelFunc // 控制刷新器的取消函数
 	cl            *colorlib.ColorLib // 提供终端颜色输出的库
@@ -61,8 +60,19 @@ type FastLog struct {
 	/* 嵌入的配置结构体 */
 	config *FastLogConfig // 配置结构体
 
-	// 对象池，用于缓冲区复用
-	bufferPool *sync.Pool
+	// 双缓冲区配置
+	fileBuffers      [2]*bytes.Buffer // 文件双缓冲区
+	fileBufferIdx    atomic.Int32     // 当前使用的文件缓冲区索引
+	consoleBuffers   [2]*bytes.Buffer // 控制台双缓冲区
+	consoleBufferIdx atomic.Int32     // 当前使用的控制台缓冲区索引
+	fileBufferMu     sync.Mutex       // 文件缓冲区锁
+	consoleBufferMu  sync.Mutex       // 控制台缓冲区锁
+
+	// 用于控制缓冲区刷新的锁
+	flushLock sync.Mutex
+
+	// 用于控制关闭过程的锁
+	closeLock sync.Mutex
 }
 
 // 定义一个配置结构体，用于配置日志记录器
@@ -73,12 +83,12 @@ type FastLogConfig struct {
 	ConsoleOnly    bool          // 是否仅输出到控制台
 	FlushInterval  time.Duration // 刷新间隔，单位为秒
 	LogLevel       LogLevel      // 日志级别
-	ChanIntSize    int           // 通道大小 默认1000
+	ChanIntSize    int           // 通道大小 默认10000
 	LogFormat      LogFormatType // 日志格式选项
 	MaxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
 	NoColor        bool          // 是否禁用终端颜色
 	NoBold         bool          // 是否禁用终端字体加粗
-	MaxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认5MB
 	MaxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
 	MaxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	IsLocalTime    bool          // 是否使用本地时间 默认使用UTC时间

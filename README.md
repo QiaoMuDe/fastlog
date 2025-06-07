@@ -157,12 +157,12 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 | ConsoleOnly    | bool          | 是否仅输出到控制台                                     | false    |
 | FlushInterval  | time.Duration | 刷新缓冲区的时间间隔(秒)                               | 1s       |
 | LogLevel       | LogLevel      | 日志级别                                               | DEBUG    |
-| ChanIntSize    | int           | 日志通道缓冲区大小                                     | 1000     |
+| ChanIntSize    | int           | 日志通道缓冲区大小                                     | 10000     |
 | LogFormat      | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
 | MaxBufferSize  | int           | 最大缓冲区大小(MB)                                     | 1        |
 | NoColor        | bool          | 是否禁用终端颜色输出                                   | false    |
 | NoBold        | bool          | 是否禁用终端字体加粗                                   | false    |
-| MaxLogFileSize | int           | 单个日志文件最大大小(MB)                               | 10       |
+| MaxLogFileSize | int           | 单个日志文件最大大小(MB)                               | 5       |
 | MaxLogAge      | int           | 日志文件保留天数                                       | 0        |
 | MaxLogBackups  | int           | 日志文件保留数量                                       | 0        |
 | IsLocalTime    | bool          | 是否使用本地时间                                       | false    |

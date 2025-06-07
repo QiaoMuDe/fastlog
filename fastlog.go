@@ -34,22 +34,22 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:     logDirName,             // 日志目录名称
-		LogFileName:    logFileName,            // 日志文件名称
-		PrintToConsole: true,                   // 是否将日志输出到控制台
-		ConsoleOnly:    false,                  // 是否仅输出到控制台
-		LogLevel:       INFO,                   // 日志级别 默认INFO
-		ChanIntSize:    10000,                  // 通道大小 增加到10000
-		FlushInterval:  500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
-		LogFormat:      Detailed,               // 日志格式选项
-		MaxBufferSize:  1 * 1024 * 1024,        // 最大缓冲区大小 默认1MB, 单位为MB
-		MaxLogFileSize: 10,                     // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxLogAge:      0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:  0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:    false,                  // 是否使用本地时间 默认使用UTC时间
-		EnableCompress: false,                  // 是否启用日志文件压缩 默认不启用
-		NoColor:        false,                  // 是否禁用终端颜色
-		NoBold:         false,                  // 是否禁用终端字体加粗
+		LogDirName:     logDirName,              // 日志目录名称
+		LogFileName:    logFileName,             // 日志文件名称
+		PrintToConsole: true,                    // 是否将日志输出到控制台
+		ConsoleOnly:    false,                   // 是否仅输出到控制台
+		LogLevel:       INFO,                    // 日志级别 默认INFO
+		ChanIntSize:    10000,                   // 通道大小 增加到10000
+		FlushInterval:  1000 * time.Millisecond, // 刷新间隔 缩短到1000毫秒
+		LogFormat:      Detailed,                // 日志格式选项
+		MaxBufferSize:  1 * 1024 * 1024,         // 最大缓冲区大小 默认1MB, 单位为MB
+		MaxLogFileSize: 5,                       // 最大日志文件大小, 单位为MB, 默认5MB
+		MaxLogAge:      0,                       // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:  0,                       // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:    false,                   // 是否使用本地时间 默认使用UTC时间
+		EnableCompress: false,                   // 是否启用日志文件压缩 默认不启用
+		NoColor:        false,                   // 是否禁用终端颜色
+		NoBold:         false,                   // 是否禁用终端字体加粗
 	}
 }
 
@@ -112,22 +112,33 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		fileWriter = io.Discard // 仅输出到控制台, 不输出到文件
 	}
 
-	// 初始化对象池
-	bufferPool := &sync.Pool{
-		New: func() interface{} {
-			return bytes.NewBuffer(make([]byte, config.MaxBufferSize))
-		},
+	// 初始化双缓冲区
+	fileBuffers := [2]*bytes.Buffer{
+		bytes.NewBuffer(make([]byte, config.MaxBufferSize)),
+		bytes.NewBuffer(make([]byte, config.MaxBufferSize)),
 	}
+	consoleBuffers := [2]*bytes.Buffer{
+		bytes.NewBuffer(make([]byte, config.MaxBufferSize)),
+		bytes.NewBuffer(make([]byte, config.MaxBufferSize)),
+	}
+
+	// 清空缓冲区
+	fileBuffers[0].Reset()
+	fileBuffers[1].Reset()
+	consoleBuffers[0].Reset()
+	consoleBuffers[1].Reset()
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logGer:        logger,                 // 日志文件切割器
-		fileWriter:    fileWriter,             // 文件写入器,
-		consoleWriter: consoleWriter,          // 控制台写入器,
-		logFilePath:   logFilePath,            // 日志文件路径
-		cl:            colorlib.NewColorLib(), // 颜色库实例
-		config:        config,                 // 配置结构体
-		bufferPool:    bufferPool,             // 缓冲池实例
+		logGer:         logger,                                     // 日志文件切割器
+		fileWriter:     fileWriter,                                 // 文件写入器,
+		consoleWriter:  consoleWriter,                              // 控制台写入器,
+		logFilePath:    logFilePath,                                // 日志文件路径
+		cl:             colorlib.GetCL(),                           // 颜色库实例
+		config:         config,                                     // 配置结构体
+		logChan:        make(chan *logMessage, config.ChanIntSize), // 日志消息通道
+		fileBuffers:    fileBuffers,                                // 文件缓冲
+		consoleBuffers: consoleBuffers,                             // 控制台缓冲
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
@@ -140,16 +151,9 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		f.cl.NoBold.Store(true) // 设置颜色库的字体加粗选项为禁用
 	}
 
-	// 初始化日志通道
-	f.logChan = make(chan *logMessage, f.config.ChanIntSize)
-
-	// 初始化文件缓冲区
-	f.fileBuffer = bytes.NewBuffer(make([]byte, f.config.MaxBufferSize))
-	f.fileBuffer.Reset() // 重置缓冲区, 清空内容
-
-	// 初始化控制台缓冲区
-	f.consoleBuffer = bytes.NewBuffer(make([]byte, f.config.MaxBufferSize))
-	f.consoleBuffer.Reset() // 重置缓冲区, 清空内容
+	// 设置缓冲区索引为0
+	f.fileBufferIdx.Store(0)
+	f.consoleBufferIdx.Store(0)
 
 	// 创建 context 用于控制协程退出
 	f.ctx, f.cancel = context.WithCancel(context.Background())
@@ -217,60 +221,44 @@ func (f *FastLog) processLogs() {
 // 返回值:
 //   - 无
 func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
+	// 获取文件缓冲区的索引和文件缓冲区的大小
+	f.fileBufferMu.Lock()
+	currentFileBufferIdx := f.fileBufferIdx.Load()
+	currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
+	f.fileBufferMu.Unlock()
+
+	// 获取控制台缓冲区的索引和控制台缓冲区的大小
+	f.consoleBufferMu.Lock()
+	currentConsoleBufferIdx := f.consoleBufferIdx.Load()
+	currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
+	f.consoleBufferMu.Unlock()
+
 	// 检查缓冲区大小是否达到80%
-	if f.fileBuffer.Len() >= maxBufferSize || f.consoleBuffer.Len() >= maxBufferSize {
+	if currentFileBufferSize >= maxBufferSize || currentConsoleBufferSize >= maxBufferSize {
 		f.flushBufferNow()
 	}
-
-	// 从对象池获取缓冲区
-	fileBuffer := f.bufferPool.Get().(*bytes.Buffer)
-	defer func() {
-		fileBuffer.Reset()
-		f.bufferPool.Put(fileBuffer)
-	}()
 
 	// 格式化日志消息
 	formattedLog := formatLog(f, rawMsg)
 
-	// 如果不是仅输出到控制台, 则将日志消息写入到日志文件缓冲区中。
+	// 写入文件缓冲区
 	if !f.config.ConsoleOnly {
-		// 复制格式化后的日志消息到文件日志变量中
-		fileLog := formattedLog
-
-		// 给格式化后的日志消息添加换行符
-		fileBuffer.WriteString(fileLog)
-		fileBuffer.WriteString("\n")
-		fileLog = fileBuffer.String()
-
-		// 原子操作写入文件缓冲区
-		f.fileMu.Lock()
-		defer f.fileMu.Unlock()
-		if _, err := f.fileBuffer.WriteString(fileLog); err != nil {
-			f.Errorf("写入文件缓冲区失败: %v", err)
-		}
+		f.fileBufferMu.Lock()
+		defer f.fileBufferMu.Unlock()
+		// 写入文件
+		f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
 	}
 
-	// 如果允许将日志输出到控制台, 或者仅输出到控制台
-	if f.config.ConsoleOnly || f.config.PrintToConsole {
-		consoleBuffer := f.bufferPool.Get().(*bytes.Buffer)
-		defer func() {
-			consoleBuffer.Reset()
-			f.bufferPool.Put(consoleBuffer)
-		}()
+	// 写入控制台缓冲区
+	if f.config.PrintToConsole || f.config.ConsoleOnly {
+		f.consoleBufferMu.Lock()
+		defer f.consoleBufferMu.Unlock()
 
-		// 调用addColor方法给日志消息添加颜色
+		// 渲染颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
 
-		// 给格式化后的日志消息添加换行符
-		consoleBuffer.WriteString(consoleLog)
-		consoleBuffer.WriteString("\n")
-
-		// 原子操作写入控制台缓冲区
-		f.consoleMu.Lock()
-		defer f.consoleMu.Unlock()
-		if _, err := f.consoleBuffer.Write(consoleBuffer.Bytes()); err != nil {
-			f.Errorf("写入控制台缓冲区失败: %v", err)
-		}
+		// 写入控制台
+		f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
 	}
 }
 
@@ -285,17 +273,17 @@ func (f *FastLog) flushBuffer() {
 	// 创建一个goroutine, 用于定时刷新缓冲区
 	go func() {
 		defer func() {
+			// 捕获panic
+			if r := recover(); r != nil {
+				f.Errorf("刷新缓冲区发生panic: %v", r)
+			}
+
 			// 减少等待组中的计数器。
 			f.logWait.Done()
 
 			// 关闭定时器
 			if ticker != nil {
 				ticker.Stop()
-			}
-
-			// 捕获panic
-			if r := recover(); r != nil {
-				f.Errorf("刷新缓冲区发生panic: %v", r)
 			}
 		}()
 
@@ -313,53 +301,67 @@ func (f *FastLog) flushBuffer() {
 
 // flushBufferNow 立即刷新缓冲区
 func (f *FastLog) flushBufferNow() {
+	f.flushLock.Lock() // 加锁, 防止并发刷新
+	defer f.flushLock.Unlock()
+
 	// 判断是否需要刷新文件缓冲区
 	if !f.config.ConsoleOnly {
-		f.flushFileBuffer()
+		f.fileBufferMu.Lock()
+		defer f.fileBufferMu.Unlock()
+
+		// 获取当前缓冲区索引
+		currentIdx := f.fileBufferIdx.Load()
+
+		// 检查当前缓冲区是否有内容
+		if f.consoleBuffers[currentIdx].Len() > 0 {
+			// 切换到另一个缓冲区
+			newIdx := 1 - currentIdx // 0 -> 1, 1 -> 0
+			f.fileBufferIdx.Store(newIdx)
+
+			// 写入文件
+			f.fileMu.Lock()
+			defer f.fileMu.Unlock()
+			if _, err := f.fileWriter.Write(f.consoleBuffers[currentIdx].Bytes()); err != nil {
+				f.Errorf("写入文件失败: %v", err)
+			}
+
+			// 重置当前缓冲区
+			f.consoleBuffers[currentIdx].Reset()
+		}
 	}
 
 	// 判断是否需要刷新控制台缓冲区
 	if f.config.PrintToConsole || f.config.ConsoleOnly {
-		f.flushConsoleBuffer()
-	}
-}
+		f.consoleBufferMu.Lock()
+		defer f.consoleBufferMu.Unlock()
 
-// flushFileBuffer 刷新文件缓冲区
-func (f *FastLog) flushFileBuffer() {
-	// 检查文件缓冲区大小是否大于0
-	if f.fileBuffer.Len() > 0 {
-		// 原子操作获取并重置文件缓冲区
-		f.fileMu.Lock()
-		defer f.fileMu.Unlock()
-		bufferContent := f.fileBuffer.String()
-		f.fileBuffer.Reset()
+		// 获取当前缓冲区索引
+		currentIdx := f.consoleBufferIdx.Load()
 
-		// 将文件缓冲区的内容写入到文件中
-		if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
-			f.Errorf("写入文件失败: %v", err)
-		}
-	}
-}
+		// 检查当前缓冲区是否有内容
+		if f.consoleBuffers[currentIdx].Len() > 0 {
+			// 切换到另一个缓冲区
+			newIdx := 1 - currentIdx // 0  -> 1, 1 -> 0
+			f.consoleBufferIdx.Store(newIdx)
 
-// flushConsoleBuffer 刷新控制台缓冲区
-func (f *FastLog) flushConsoleBuffer() {
-	// 检查控制台缓冲区大小是否大于0
-	if f.consoleBuffer.Len() > 0 {
-		// 原子操作获取并重置控制台缓冲区
-		f.consoleMu.Lock()
-		defer f.consoleMu.Unlock()
-		bufferContent := f.consoleBuffer.String()
-		f.consoleBuffer.Reset()
+			// 写入控制台
+			f.consoleMu.Lock()
+			defer f.consoleMu.Unlock()
+			if _, err := f.consoleWriter.Write(f.consoleBuffers[currentIdx].Bytes()); err != nil {
+				f.Errorf("写入控制台失败: %v", err)
+			}
 
-		// 将控制台缓冲区的内容写入到控制台
-		if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
-			f.Errorf("写入控制台失败: %v", err)
+			// 重置当前缓冲区
+			f.consoleBuffers[currentIdx].Reset()
 		}
 	}
 }
 
 // Close 关闭FastLog实例, 并等待所有日志处理完成。
 func (f *FastLog) Close() error {
+	f.closeLock.Lock()
+	defer f.closeLock.Unlock()
+
 	// 打印关闭日志记录器的信息
 	f.Info("关闭日志记录器...")
 
@@ -381,6 +383,8 @@ func (f *FastLog) Close() error {
 
 		// 如果不是仅输出到控制台, 同时日志文件句柄不为nil, 则关闭日志文件。
 		if !f.config.ConsoleOnly && f.logGer != nil {
+			f.fileMu.Lock()
+			defer f.fileMu.Unlock()
 			if err := f.logGer.Close(); err != nil {
 				closeErr = fmt.Errorf("关闭日志文件失败: %v", err)
 			}
