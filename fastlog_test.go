@@ -221,8 +221,8 @@ func TestNoBold(t *testing.T) {
 	log.Success("测试无加粗日志")
 }
 
-// cleanupLogs 测试完成后清理日志目录
-func cleanupLogs(t *testing.T) {
+// TestCleanupLogs 测试完成后清理日志目录
+func TestCleanupLogs(t *testing.T) {
 	if _, err := os.Stat("logs"); err == nil {
 		if err := os.RemoveAll("logs"); err != nil {
 			t.Fatalf("删除logs目录失败: %v", err)

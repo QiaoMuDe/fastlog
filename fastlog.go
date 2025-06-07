@@ -34,22 +34,22 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:     logDirName,      // 日志目录名称
-		LogFileName:    logFileName,     // 日志文件名称
-		PrintToConsole: true,            // 是否将日志输出到控制台
-		ConsoleOnly:    false,           // 是否仅输出到控制台
-		LogLevel:       INFO,            // 日志级别 默认INFO
-		ChanIntSize:    10000,           // 通道大小 增加到10000
+		LogDirName:     logDirName,             // 日志目录名称
+		LogFileName:    logFileName,            // 日志文件名称
+		PrintToConsole: true,                   // 是否将日志输出到控制台
+		ConsoleOnly:    false,                  // 是否仅输出到控制台
+		LogLevel:       INFO,                   // 日志级别 默认INFO
+		ChanIntSize:    10000,                  // 通道大小 增加到10000
 		FlushInterval:  500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
-		LogFormat:      Detailed,        // 日志格式选项
-		MaxBufferSize:  1 * 1024 * 1024, // 最大缓冲区大小 默认1MB, 单位为MB
-		MaxLogFileSize: 10,              // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxLogAge:      0,               // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:  0,               // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:    false,           // 是否使用本地时间 默认使用UTC时间
-		EnableCompress: false,           // 是否启用日志文件压缩 默认不启用
-		NoColor:        false,           // 是否禁用终端颜色
-		NoBold:         false,           // 是否禁用终端字体加粗
+		LogFormat:      Detailed,               // 日志格式选项
+		MaxBufferSize:  1 * 1024 * 1024,        // 最大缓冲区大小 默认1MB, 单位为MB
+		MaxLogFileSize: 10,                     // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxLogAge:      0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:  0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:    false,                  // 是否使用本地时间 默认使用UTC时间
+		EnableCompress: false,                  // 是否启用日志文件压缩 默认不启用
+		NoColor:        false,                  // 是否禁用终端颜色
+		NoBold:         false,                  // 是否禁用终端字体加粗
 	}
 }
 
@@ -313,38 +313,47 @@ func (f *FastLog) flushBuffer() {
 
 // flushBufferNow 立即刷新缓冲区
 func (f *FastLog) flushBufferNow() {
-
-	// 如果不是仅输出到控制台, 则刷新文件缓冲区
+	// 判断是否需要刷新文件缓冲区
 	if !f.config.ConsoleOnly {
-		// 检查文件缓冲区大小是否大于0
-		if f.fileBuffer.Len() > 0 {
-			// 原子操作获取并重置文件缓冲区
-			f.fileMu.Lock()
-			defer f.fileMu.Unlock()
-			bufferContent := f.fileBuffer.String()
-			f.fileBuffer.Reset()
-
-			// 将文件缓冲区的内容写入到文件中
-			if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
-				f.Errorf("写入文件失败: %v", err)
-			}
-		}
+		f.flushFileBuffer()
 	}
 
-	// 如果允许将日志输出到控制台, 或者仅输出到控制台
+	// 判断是否需要刷新控制台缓冲区
 	if f.config.PrintToConsole || f.config.ConsoleOnly {
-		// 检查控制台缓冲区大小是否大于0
-		if f.consoleBuffer.Len() > 0 {
-			// 原子操作获取并重置控制台缓冲区
-			f.consoleMu.Lock()
-			defer f.consoleMu.Unlock()
-			bufferContent := f.consoleBuffer.String()
-			f.consoleBuffer.Reset()
+		f.flushConsoleBuffer()
+	}
+}
 
-			// 将控制台缓冲区的内容写入到控制台
-			if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
-				f.Errorf("写入控制台失败: %v", err)
-			}
+// flushFileBuffer 刷新文件缓冲区
+func (f *FastLog) flushFileBuffer() {
+	// 检查文件缓冲区大小是否大于0
+	if f.fileBuffer.Len() > 0 {
+		// 原子操作获取并重置文件缓冲区
+		f.fileMu.Lock()
+		defer f.fileMu.Unlock()
+		bufferContent := f.fileBuffer.String()
+		f.fileBuffer.Reset()
+
+		// 将文件缓冲区的内容写入到文件中
+		if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
+			f.Errorf("写入文件失败: %v", err)
+		}
+	}
+}
+
+// flushConsoleBuffer 刷新控制台缓冲区
+func (f *FastLog) flushConsoleBuffer() {
+	// 检查控制台缓冲区大小是否大于0
+	if f.consoleBuffer.Len() > 0 {
+		// 原子操作获取并重置控制台缓冲区
+		f.consoleMu.Lock()
+		defer f.consoleMu.Unlock()
+		bufferContent := f.consoleBuffer.String()
+		f.consoleBuffer.Reset()
+
+		// 将控制台缓冲区的内容写入到控制台
+		if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {
+			f.Errorf("写入控制台失败: %v", err)
 		}
 	}
 }
