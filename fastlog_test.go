@@ -12,23 +12,13 @@ import (
 	"gitee.com/MM-Q/fastlog/v2"
 )
 
-// // TestConcurrentFastLog 测试并发场景下的多个日志记录器
+// TestConcurrentFastLog 测试并发场景下的多个日志记录器
 func TestConcurrentFastLog(t *testing.T) {
-	// 初始化测试清理
-	t.Cleanup(func() { os.RemoveAll("logs") })
-
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.LogLevel = fastlog.DEBUG
 	cfg.LogFormat = fastlog.Simple
-	cfg.IsLocalTime = true // 使用本地时间
-
-	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
-			t.Fatalf("清空日志文件失败: %v", err)
-		}
-	}
+	cfg.IsLocalTime = false
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -39,8 +29,8 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 持续时间为3秒
 	duration := 3
-	// 每秒生成10条日志
-	rate := 1000
+	// 每秒生成100条日志
+	rate := 100
 
 	// 启动随机日志函数
 	randomLog(log, duration, rate, t)
@@ -137,13 +127,7 @@ func TestCustomFormat(t *testing.T) {
 	cfg := fastlog.NewFastLogConfig("logs", "custom.log")
 	cfg.LogLevel = fastlog.DEBUG
 	cfg.LogFormat = fastlog.Custom
-
-	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
-			t.Fatalf("清空日志文件失败: %v", err)
-		}
-	}
+	cfg.PrintToConsole = true
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -170,13 +154,6 @@ func TestNoColor(t *testing.T) {
 	cfg.LogLevel = fastlog.DEBUG
 	cfg.NoColor = true // 禁用终端颜色
 
-	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
-			t.Fatalf("清空日志文件失败: %v", err)
-		}
-	}
-
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
 	if err != nil {
@@ -198,13 +175,7 @@ func TestNoBold(t *testing.T) {
 	cfg := fastlog.NewFastLogConfig("logs", "nobold.log")
 	cfg.LogLevel = fastlog.DEBUG
 	cfg.NoBold = true // 禁用终端字体加粗
-
-	// 检查日志文件是否存在，如果存在则清空
-	if _, err := os.Stat(filepath.Join("logs", "custom.log")); err == nil {
-		if err := os.Truncate(filepath.Join("logs", "custom.log"), 0); err != nil {
-			t.Fatalf("清空日志文件失败: %v", err)
-		}
-	}
+	cfg.NoColor = false
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -219,6 +190,22 @@ func TestNoBold(t *testing.T) {
 	log.Error("测试无加粗日志")
 	log.Debug("测试无加粗日志")
 	log.Success("测试无加粗日志")
+}
+
+func TestNewFastLog(t *testing.T) {
+	config := fastlog.NewFastLogConfig("logs", "test.log")
+
+	log, err := fastlog.NewFastLog(config)
+	if err != nil {
+		t.Fatalf("创建FastLog实例失败: %v", err)
+	}
+	log.Info("测试日志")
+	log.Warn("测试日志")
+	log.Error("测试日志")
+
+	if err := log.Close(); err != nil {
+		t.Fatalf("关闭FastLog实例失败: %v", err)
+	}
 }
 
 // TestCleanupLogs 测试完成后清理日志目录

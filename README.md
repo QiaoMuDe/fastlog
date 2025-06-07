@@ -155,7 +155,7 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 | LogFileName    | string        | 日志文件名                                             | 必填     |
 | PrintToConsole | bool          | 是否输出到控制台                                       | false    |
 | ConsoleOnly    | bool          | 是否仅输出到控制台                                     | false    |
-| FlushInterval  | time.Duration | 刷新缓冲区的时间间隔(秒)                               | 1s       |
+| FlushInterval  | time.Duration | 刷新缓冲区的时间间隔                                   | 500ms       |
 | LogLevel       | LogLevel      | 日志级别                                               | DEBUG    |
 | ChanIntSize    | int           | 日志通道缓冲区大小                                     | 10000     |
 | LogFormat      | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
