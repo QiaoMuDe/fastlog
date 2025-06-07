@@ -101,7 +101,7 @@ func (c *ColorLib) Slgreenf(format string, a ...any) string {
 	return c.returnWithColor("lgreen", formattedMsg)
 }
 
-// Slbluef 方法用于将传入的参数以亮蓝色文本形式返回（带占位符）。
+// Slyellowf 方法用于将传入的参数以亮黄色文本形式返回（带占位符）。
 func (c *ColorLib) Slyellowf(format string, a ...any) string {
 	// 使用 fmt.Sprintf 格式化参数
 	formattedMsg := fmt.Sprintf(format, a...)

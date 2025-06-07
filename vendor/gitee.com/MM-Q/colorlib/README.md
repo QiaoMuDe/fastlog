@@ -4,10 +4,14 @@
 
 `ColorLib` 是一个用于在 Go 语言中实现彩色终端输出的库。它提供了丰富的接口，用于打印和返回带有颜色的文本，并支持自定义颜色和日志级别。该库的主要特点包括：
 
-- 支持多种颜色输出，包括蓝色、绿色、红色、黄色和紫色。
-- 提供带占位符和不带占位符的打印方法。
-- 支持日志级别前缀，方便打印带有提示信息的消息。
-- 简洁易用的接口，方便开发者快速集成。
+- 支持16种颜色输出，包括标准色和亮色
+- 提供带占位符和不带占位符的打印方法
+- 支持日志级别前缀，方便打印带有提示信息的消息
+- 简洁易用的接口，方便开发者快速集成
+- 支持全局实例和自定义实例
+- 可控制颜色、加粗、下划线、闪烁等文本效果
+- 支持禁用颜色输出（NoColor模式）
+- 内置并发安全测试，可通过 `-race` 参数进行竞态检测
 
 ## 定义的颜色和数字
 
@@ -52,19 +56,26 @@
 | dbg      | debug:    |
 
 ## 内置的函数
-
 ### 创建实例函数
 
-- `NewColorLib()`：创建一个新的 `ColorLib` 实例。
+- `NewColorLib()`：创建一个新的 `ColorLib` 实例
+- `GetCL()`：线程安全地获取全局 `ColorLib` 实例 (CL)
+
+### 全局实例
+
+ColorLib 提供了一个预初始化的全局实例 `CL`，可以直接使用而无需调用 `NewColorLib()`。可以通过 `GetCL()` 函数安全地获取这个实例。
 
 ## ColorLib 结构体
+`ColorLib` 结构体用于管理颜色输出和文本效果。
 
-`ColorLib` 结构体用于管理颜色和日志级别。
+| 字段名称  | 字段类型       | 字段描述                     |
+| :-------- | :------------- | :--------------------------- |
+| NoColor   | atomic.Bool    | 原子操作控制是否禁用颜色输出 |
+| NoBold    | atomic.Bool    | 原子操作控制是否禁用加粗效果 |
+| Underline | atomic.Bool    | 原子操作控制是否启用下划线   |
+| Blink     | atomic.Bool    | 原子操作控制是否启用闪烁效果 |
 
-| 字段名称 | 字段类型          | 字段描述       |
-| :------- | :---------------- | :------------- |
-| NoColor  | bool              | 是否禁用颜色   |
-| NoBold   | bool              | 是否禁用加粗   |
+> 所有字段均采用atomic原子类型，保证并发安全
 
 `ColorLib` 结构体实现了以下方法：
 
@@ -172,29 +183,35 @@
 | `Slcyanf(format string, a ...any)`   | 返回构造后的亮青色字符串（带占位符） |
 | `Slwhitef(format string, a ...any)`  | 返回构造后的亮白色字符串（带占位符） |
 
-## NoColor功能
+## 文本效果控制
+`ColorLib` 提供了多种文本效果控制选项，可以灵活调整输出样式。
 
-`ColorLib`支持通过设置 `NoColor`属性为 `true`来全局禁用颜色输出。当 `NoColor`为 `true`时，所有颜色相关方法将直接输出原始文本，不添加任何颜色代码。
-
-### 使用方法
-
+### NoColor - 禁用颜色输出
 ```go
 cl := NewColorLib()
-cl.NoColor = true // 禁用颜色输出
+cl.NoColor.Store(true)  // 原子操作禁用颜色
+cl.NoBold.Store(false)  // 启用加粗
+cl.Underline.Store(true) // 原子操作启用下划线
 
-// 此时所有打印方法将输出无颜色文本
-cl.Red("这条消息将不会显示红色")
-cl.PrintSuccess("这条成功消息也不会有颜色")
-
-// 重新启用颜色输出
-cl.NoColor = false
+// 输出无颜色但有下划线的文本
+cl.Red("这条消息将显示为无颜色但有下划线")
 ```
+
+### NoBold - 禁用加粗效果
+默认情况下文本会加粗显示，设置 `NoBold` 为 `true` 可以禁用加粗效果。
+
+### Underline - 启用下划线
+设置 `Underline` 为 `true` 可以为输出文本添加下划线效果。
+
+### Blink - 启用闪烁效果
+设置 `Blink` 为 `true` 可以让输出文本闪烁显示（部分终端可能不支持）。
 
 ### 使用场景
 
-- 当终端不支持ANSI颜色代码时
+- 当终端不支持某些效果时
 - 需要将输出重定向到文件时
-- 其他需要禁用颜色的场景
+- 需要特殊强调某些文本时
+- 其他需要调整文本显示效果的场景
 
 ## 下载和使用
 
@@ -206,6 +223,7 @@ cl.NoColor = false
 go get gitee.com/MM-Q/colorlib
 ```
 
+## 下载和使用
 ### 引入和使用
 
 在您的 Go 代码中引入 `ColorLib`：
@@ -218,6 +236,12 @@ import (
 )
 
 func main() {
+	// 使用全局实例CL（无需初始化）
+	colorlib.CL.PrintDebug("这是一条来自全局实例的调试消息")
+	colorlib.CL.PrintError("这是一条来自全局实例的错误消息")
+	colorlib.CL.Blue("这是一条来自全局实例的蓝色消息")
+	
+	// 或者创建新的实例
 	cl := colorlib.NewColorLib()
 
 	// 打印带有颜色的文本
@@ -234,6 +258,21 @@ func main() {
 	cl.PrintWarning("请注意：这是一个警告")
 	cl.PrintInfo("这是一条普通信息")
 }
+```
+
+### 全局实例
+
+ColorLib 提供了一个预初始化的全局实例 `CL`，可以直接使用而无需调用 `NewColorLib()`。
+
+```go
+// 使用全局实例
+colorlib.CL.PrintSuccess("操作成功！")
+colorlib.CL.PrintError("发生错误")
+colorlib.CL.Blue("蓝色文本")
+
+// 返回带颜色的字符串
+msg := colorlib.CL.Sgreen("绿色字符串")
+fmt.Println(msg)
 ```
 
 ## 常用用法

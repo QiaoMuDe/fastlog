@@ -133,7 +133,7 @@ func (c *ColorLib) Slgreen(msg ...any) string {
 	return c.returnWithColor("lgreen", combinedMsg)
 }
 
-// Slblue 方法用于将传入的参数以亮蓝色文本形式返回（不带占位符）。
+// Slyellow 方法用于将传入的参数以亮黄色文本形式返回（不带占位符）。
 func (c *ColorLib) Slyellow(msg ...any) string {
 	if len(msg) == 0 {
 		// 如果没有传入任何参数，直接返回空字符串

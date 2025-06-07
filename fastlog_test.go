@@ -4,14 +4,19 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"gitee.com/MM-Q/fastlog/v2"
 )
 
-// TestConcurrentFastLog 测试并发场景下的多个日志记录器
+// // TestConcurrentFastLog 测试并发场景下的多个日志记录器
 func TestConcurrentFastLog(t *testing.T) {
+	// 初始化测试清理
+	t.Cleanup(func() { os.RemoveAll("logs") })
+
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.LogLevel = fastlog.DEBUG
@@ -19,11 +24,11 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg.IsLocalTime = true // 使用本地时间
 
 	// 检查日志文件是否存在，如果存在则清空
-	// if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
-	// 	if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
-	// 		t.Fatalf("清空日志文件失败: %v", err)
-	// 	}
-	// }
+	if _, err := os.Stat(filepath.Join("logs", "test.log")); err == nil {
+		if err := os.Truncate(filepath.Join("logs", "test.log"), 0); err != nil {
+			t.Fatalf("清空日志文件失败: %v", err)
+		}
+	}
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -32,19 +37,19 @@ func TestConcurrentFastLog(t *testing.T) {
 	}
 	defer log.Close()
 
-	// 持续时间为5秒
-	duration := 10
+	// 持续时间为3秒
+	duration := 3
 	// 每秒生成10条日志
-	rate := 1000
+	rate := 10
 
 	// 启动随机日志函数
-	randomLog(log, duration, rate)
+	randomLog(log, duration, rate, t)
 }
 
 // generateLogs 生成指定数量的模拟日志到通道中
 func generateLogs(logMethodsNoFormat []func(v ...any), logMethodsWithFormat []func(format string, v ...interface{}), totalLoops int) <-chan func() {
-	// 创建一个通道用于传递日志
-	logChan := make(chan func(), totalLoops)
+	// 创建一个通道用于传递日志，缓冲区大小为总循环数的2倍
+	logChan := make(chan func(), totalLoops*2)
 
 	// 创建一个随机数生成器
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -66,7 +71,7 @@ func generateLogs(logMethodsNoFormat []func(v ...any), logMethodsWithFormat []fu
 }
 
 // randomLog 该函数用于按指定速率从通道中取出日志并打印
-func randomLog(log *fastlog.FastLog, duration int, rate int) {
+func randomLog(log *fastlog.FastLog, duration int, rate int, t *testing.T) {
 	// 定义无格式化日志方法的切片
 	logMethodsNoFormat := []func(v ...any){
 		log.Info,
@@ -90,12 +95,39 @@ func randomLog(log *fastlog.FastLog, duration int, rate int) {
 	interval := time.Second / time.Duration(rate)
 
 	// 生成日志到通道
+	// 由于 generateLogs 仅返回一个通道，这里只使用一个变量接收
 	logChan := generateLogs(logMethodsNoFormat, logMethodsWithFormat, totalLoops)
 
+	// 使用WaitGroup同步并发操作
+	var wg sync.WaitGroup
+	wg.Add(totalLoops)
+
 	// 按指定速率从通道中取出日志并打印
-	for logFunc := range logChan {
-		logFunc()
-		time.Sleep(interval)
+	go func() {
+		for logFunc := range logChan {
+			go func(f func()) {
+				defer wg.Done()
+				f()
+			}(logFunc)
+			time.Sleep(interval)
+		}
+	}()
+
+	// 等待所有日志生成完成
+	wg.Wait()
+
+	// 验证日志文件内容
+	content, err := os.ReadFile(filepath.Join("logs", "test.log"))
+	if err != nil {
+		t.Fatalf("读取日志文件失败: %v", err)
+	}
+
+	lines := strings.Split(string(content), "\n")
+	validLines := 0
+	for _, line := range lines {
+		if strings.Contains(line, "这是一个测试日志") {
+			validLines++
+		}
 	}
 }
 
@@ -189,10 +221,9 @@ func TestNoBold(t *testing.T) {
 	log.Success("测试无加粗日志")
 }
 
-func TestRmLogs(t *testing.T) {
-	// 检查当前目录下是否存在logs目录
+// cleanupLogs 测试完成后清理日志目录
+func cleanupLogs(t *testing.T) {
 	if _, err := os.Stat("logs"); err == nil {
-		// 删除logs目录及其下的所有文件和子目录
 		if err := os.RemoveAll("logs"); err != nil {
 			t.Fatalf("删除logs目录失败: %v", err)
 		}

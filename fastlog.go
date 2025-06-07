@@ -39,8 +39,8 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		PrintToConsole: true,            // 是否将日志输出到控制台
 		ConsoleOnly:    false,           // 是否仅输出到控制台
 		LogLevel:       INFO,            // 日志级别 默认INFO
-		ChanIntSize:    1000,            // 通道大小 默认1000
-		FlushInterval:  1 * time.Second, // 刷新间隔 默认1秒
+		ChanIntSize:    10000,           // 通道大小 增加到10000
+		FlushInterval:  500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
 		LogFormat:      Detailed,        // 日志格式选项
 		MaxBufferSize:  1 * 1024 * 1024, // 最大缓冲区大小 默认1MB, 单位为MB
 		MaxLogFileSize: 10,              // 最大日志文件大小, 单位为MB, 默认10MB
@@ -112,6 +112,13 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		fileWriter = io.Discard // 仅输出到控制台, 不输出到文件
 	}
 
+	// 初始化对象池
+	bufferPool := &sync.Pool{
+		New: func() interface{} {
+			return bytes.NewBuffer(make([]byte, config.MaxBufferSize))
+		},
+	}
+
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
 		logGer:        logger,                 // 日志文件切割器
@@ -120,16 +127,17 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		logFilePath:   logFilePath,            // 日志文件路径
 		cl:            colorlib.NewColorLib(), // 颜色库实例
 		config:        config,                 // 配置结构体
+		bufferPool:    bufferPool,             // 缓冲池实例
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
 	if f.config.NoColor {
-		f.cl.NoColor = true // 设置颜色库的颜色选项为禁用
+		f.cl.NoColor.Store(true) // 设置颜色库的颜色选项为禁用
 	}
 
 	// 根据noBold的值, 设置颜色库的字体加粗选项
 	if f.config.NoBold {
-		f.cl.NoBold = true // 设置颜色库的字体加粗选项为禁用
+		f.cl.NoBold.Store(true) // 设置颜色库的字体加粗选项为禁用
 	}
 
 	// 初始化日志通道
@@ -214,6 +222,13 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		f.flushBufferNow()
 	}
 
+	// 从对象池获取缓冲区
+	fileBuffer := f.bufferPool.Get().(*bytes.Buffer)
+	defer func() {
+		fileBuffer.Reset()
+		f.bufferPool.Put(fileBuffer)
+	}()
+
 	// 格式化日志消息
 	formattedLog := formatLog(f, rawMsg)
 
@@ -223,48 +238,39 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 		fileLog := formattedLog
 
 		// 给格式化后的日志消息添加换行符
-		f.fileBuilder.WriteString(fileLog)
-		f.fileBuilder.WriteString("\n")
-		fileLog = f.fileBuilder.String()
+		fileBuffer.WriteString(fileLog)
+		fileBuffer.WriteString("\n")
+		fileLog = fileBuffer.String()
 
-		// 写入文件锁
+		// 原子操作写入文件缓冲区
 		f.fileMu.Lock()
-
-		// 将格式化后的日志消息写入到文件缓冲区中
+		defer f.fileMu.Unlock()
 		if _, err := f.fileBuffer.WriteString(fileLog); err != nil {
 			f.Errorf("写入文件缓冲区失败: %v", err)
 		}
-
-		// 释放文件锁
-		f.fileMu.Unlock()
-
-		// 重置构建器, 以便下次使用
-		f.fileBuilder.Reset()
 	}
 
 	// 如果允许将日志输出到控制台, 或者仅输出到控制台
 	if f.config.ConsoleOnly || f.config.PrintToConsole {
+		consoleBuffer := f.bufferPool.Get().(*bytes.Buffer)
+		defer func() {
+			consoleBuffer.Reset()
+			f.bufferPool.Put(consoleBuffer)
+		}()
+
 		// 调用addColor方法给日志消息添加颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
 
 		// 给格式化后的日志消息添加换行符
-		f.consoleBuilder.WriteString(consoleLog)
-		f.consoleBuilder.WriteString("\n")
-		consoleLog = f.consoleBuilder.String()
+		consoleBuffer.WriteString(consoleLog)
+		consoleBuffer.WriteString("\n")
 
-		// 写入控制台锁
+		// 原子操作写入控制台缓冲区
 		f.consoleMu.Lock()
-
-		// 将格式化后的日志消息写入到控制台缓冲区中
-		if _, err := f.consoleBuffer.WriteString(consoleLog); err != nil {
+		defer f.consoleMu.Unlock()
+		if _, err := f.consoleBuffer.Write(consoleBuffer.Bytes()); err != nil {
 			f.Errorf("写入控制台缓冲区失败: %v", err)
 		}
-
-		// 释放控制台锁
-		f.consoleMu.Unlock()
-
-		// 重置构建器, 以便下次使用
-		f.consoleBuilder.Reset()
 	}
 }
 
@@ -312,17 +318,11 @@ func (f *FastLog) flushBufferNow() {
 	if !f.config.ConsoleOnly {
 		// 检查文件缓冲区大小是否大于0
 		if f.fileBuffer.Len() > 0 {
-			// 获取文件锁
+			// 原子操作获取并重置文件缓冲区
 			f.fileMu.Lock()
-
-			// 获取文件缓冲区的内容
+			defer f.fileMu.Unlock()
 			bufferContent := f.fileBuffer.String()
-
-			// 重置缓冲区
 			f.fileBuffer.Reset()
-
-			// 释放文件锁
-			f.fileMu.Unlock()
 
 			// 将文件缓冲区的内容写入到文件中
 			if _, err := f.fileWriter.Write([]byte(bufferContent)); err != nil {
@@ -335,17 +335,11 @@ func (f *FastLog) flushBufferNow() {
 	if f.config.PrintToConsole || f.config.ConsoleOnly {
 		// 检查控制台缓冲区大小是否大于0
 		if f.consoleBuffer.Len() > 0 {
-			// 获取控制台写入锁
+			// 原子操作获取并重置控制台缓冲区
 			f.consoleMu.Lock()
-
-			// 获取控制台缓冲区的内容
+			defer f.consoleMu.Unlock()
 			bufferContent := f.consoleBuffer.String()
-
-			// 重置缓冲区
 			f.consoleBuffer.Reset()
-
-			// 释放控制台写入锁
-			f.consoleMu.Unlock()
 
 			// 将控制台缓冲区的内容写入到控制台
 			if _, err := f.consoleWriter.Write([]byte(bufferContent)); err != nil {

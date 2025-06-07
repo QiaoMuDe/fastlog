@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"strings"
 	"sync"
 	"time"
 
@@ -42,27 +41,28 @@ const (
 // 日志记录器
 type FastLog struct {
 	/*  私有属性 内部使用无需修改  */
-	logFilePath    string             // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	logChan        chan *logMessage   // 日志通道  用于异步写入日志文件
-	logWait        sync.WaitGroup     // 等待组 用于等待所有goroutine完成
-	fileWriter     io.Writer          // 文件写入器
-	fileMu         sync.Mutex         // 文件锁 用于保护文件缓冲区的写入操作
-	consoleMu      sync.Mutex         // 控制台锁 用于保护控制台缓冲区的写入操作
-	consoleWriter  io.Writer          // 控制台写入器
-	startOnce      sync.Once          // 用于确保日志处理器只启动一次
-	fileBuffer     *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息
-	consoleBuffer  *bytes.Buffer      // 控制台缓冲区 用于存储待写入的日志消息
-	fileBuilder    strings.Builder    // 文件构建器 用于构建待写入的日志消息
-	consoleBuilder strings.Builder    // 控制台构建器 用于构建待写入的日志消息
-	ctx            context.Context    // 控制刷新器的上下文
-	cancel         context.CancelFunc // 控制刷新器的取消函数
-	cl             *colorlib.ColorLib // 提供终端颜色输出的库
+	logFilePath   string             // 日志文件路径  内部拼接的 [logDirName+logFileName]
+	logChan       chan *logMessage   // 日志通道  用于异步写入日志文件
+	logWait       sync.WaitGroup     // 等待组 用于等待所有goroutine完成
+	fileWriter    io.Writer          // 文件写入器
+	fileMu        sync.Mutex         // 文件锁 用于保护文件缓冲区的写入操作
+	consoleMu     sync.Mutex         // 控制台锁 用于保护控制台缓冲区的写入操作
+	consoleWriter io.Writer          // 控制台写入器
+	startOnce     sync.Once          // 用于确保日志处理器只启动一次
+	fileBuffer    *bytes.Buffer      // 文件缓冲区 用于存储待写入的日志消息
+	consoleBuffer *bytes.Buffer      // 控制台缓冲区 用于存储待写入的日志消息
+	ctx           context.Context    // 控制刷新器的上下文
+	cancel        context.CancelFunc // 控制刷新器的取消函数
+	cl            *colorlib.ColorLib // 提供终端颜色输出的库
 
 	/* logrotatex 日志文件切割 */
 	logGer *logrotatex.LogRotateX // 日志文件切割器
 
 	/* 嵌入的配置结构体 */
 	config *FastLogConfig // 配置结构体
+
+	// 对象池，用于缓冲区复用
+	bufferPool *sync.Pool
 }
 
 // 定义一个配置结构体，用于配置日志记录器
