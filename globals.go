@@ -94,7 +94,7 @@ type FastLogConfig struct {
 	maxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	isLocalTime    bool          // 是否使用本地时间 默认使用UTC时间
 	enableCompress bool          // 是否启用日志文件压缩 默认不启用
-	setMu          sync.Mutex    // 用于保护配置的锁
+	setMu          sync.RWMutex  // 用于保护配置的锁 (读写锁优化并发读性能)
 }
 
 // 定义一个接口, 声明对外暴露的方法

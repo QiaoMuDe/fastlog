@@ -118,112 +118,112 @@ func (c *FastLogConfig) SetEnableCompress(compress bool) {
 
 // GetLogDirName 获取日志目录路径
 func (c *FastLogConfig) GetLogDirName() string {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.logDirName
 }
 
 // GetLogFileName 获取日志文件名
 func (c *FastLogConfig) GetLogFileName() string {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.logFileName
 }
 
 // GetPrintToConsole 获取是否将日志输出到控制台的状态
 func (c *FastLogConfig) GetPrintToConsole() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.printToConsole
 }
 
 // GetConsoleOnly 获取是否仅输出到控制台的状态
 func (c *FastLogConfig) GetConsoleOnly() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.consoleOnly
 }
 
 // GetFlushInterval 获取刷新间隔
 func (c *FastLogConfig) GetFlushInterval() time.Duration {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.flushInterval
 }
 
 // GetLogLevel 获取日志级别
 func (c *FastLogConfig) GetLogLevel() LogLevel {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.logLevel
 }
 
 // GetChanIntSize 获取通道大小
 func (c *FastLogConfig) GetChanIntSize() int {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.chanIntSize
 }
 
 // GetLogFormat 获取日志格式选项
 func (c *FastLogConfig) GetLogFormat() LogFormatType {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.logFormat
 }
 
 // GetMaxBufferSize 获取最大缓冲区大小(MB)
 func (c *FastLogConfig) GetMaxBufferSize() int {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.maxBufferSize
 }
 
 // GetNoColor 获取是否禁用终端颜色的状态
 func (c *FastLogConfig) GetNoColor() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.noColor
 }
 
 // GetNoBold 获取是否禁用终端字体加粗的状态
 func (c *FastLogConfig) GetNoBold() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.noBold
 }
 
 // GetMaxLogFileSize 获取最大日志文件大小(MB)
 func (c *FastLogConfig) GetMaxLogFileSize() int {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.maxLogFileSize
 }
 
 // GetMaxLogAge 获取最大日志文件保留天数
 func (c *FastLogConfig) GetMaxLogAge() int {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.maxLogAge
 }
 
 // GetMaxLogBackups 获取最大日志文件保留数量
 func (c *FastLogConfig) GetMaxLogBackups() int {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.maxLogBackups
 }
 
 // GetIsLocalTime 获取是否使用本地时间的状态
 func (c *FastLogConfig) GetIsLocalTime() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.isLocalTime
 }
 
 // GetEnableCompress 获取是否启用日志文件压缩的状态
 func (c *FastLogConfig) GetEnableCompress() bool {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
+	c.setMu.RLock()         // 读取锁定
+	defer c.setMu.RUnlock() // 读取解锁
 	return c.enableCompress
 }
