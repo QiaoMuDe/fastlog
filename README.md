@@ -37,49 +37,7 @@ import "gitee.com/MM-Q/fastlog"
 
 ## 快速开始
 
-### 完整配置示例
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 完整结构体配置
-    config1 := &fastlog.FastLogConfig{
-        LogDirName:     "logs",              // 日志目录名
-        LogFileName:    "app.log",           // 日志文件名
-        PrintToConsole: true,                // 是否将日志输出到控制台
-        ConsoleOnly:    false,               // 是否仅输出到控制台
-        FlushInterval:  1 * time.Second,     // 刷新间隔
-        LogLevel:       fastlog.DEBUG,       // 日志级别
-        ChanIntSize:    1000,                // 通道大小
-        LogFormat:      fastlog.Detailed,    // 日志格式选项
-        MaxBufferSize:  1 * 1024 * 1024,     // 最大缓冲区大小(MB)
-        NoColor:        false,               // 是否禁用终端颜色
-        NoBold:        false,                // 是否禁用终端字体加粗
-        MaxLogFileSize: 1,                   // 单个日志文件最大大小(MB)
-        MaxLogAge:      30,                  // 日志文件保留天数
-        MaxLogBackups:  10,                  // 日志文件保留数量
-        IsLocalTime:    true,                // 是否使用本地时间
-        EnableCompress: false,               // 是否启用压缩
-    }
-
-    // 创建日志实例
-    logger, err := fastlog.NewFastLog(config1)
-    if err != nil {
-        panic(err)
-    }
-    defer logger.Close()
-
-    // 记录日志
-    logger.Info("这是一条信息日志")
-    logger.Debugf("调试信息: %s", "value")
-    logger.Error("发生了一个错误")
-}
-```
-
-### 简化配置示例
+### 使用默认的配置示例
 
 ```go
 package main
@@ -92,31 +50,6 @@ func main() {
 
     // 创建日志实例
     logger, err := fastlog.NewFastLog(config2)
-    if err != nil {
-        panic(err)
-    }
-    defer logger.Close()
-
-    // 记录日志
-    logger.Info("这是一条信息日志")
-    logger.Debugf("调试信息: %s", "value")
-    logger.Error("发生了一个错误")
-}
-```
-
-### 默认配置示例
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 完全使用默认配置
-    config3 := fastlog.NewFastLogConfig("", "")
-
-    // 创建日志实例
-    logger, err := fastlog.NewFastLog(config3)
     if err != nil {
         panic(err)
     }
@@ -146,7 +79,7 @@ FastLog支持通过设置`NoColor`属性为`true`来全局禁用颜色输出。�
 ```go
 // 创建日志配置
 cfg := fastlog.NewFastLogConfig("logs", "nocolor.log")
-cfg.NoColor = true // 禁用终端颜色
+cfg.SetNoColor(true) // 禁用终端颜色
 
 // 创建日志实例
 logger, err := fastlog.NewFastLog(cfg)
@@ -254,14 +187,16 @@ FastLog 支持以下几种日志格式：
 
 | 方法名称 | 参数类型                          | 说明                                             |
 | -------- | --------------------------------- | ------------------------------------------------ |
+| Close    | 无                                | 关闭日志记录器。                                 |
 | Info     | `v ...interface{}`                | 记录信息级别的日志，不支持占位符，需要自己拼接。 |
 | Warn     | `v ...interface{}`                | 记录警告级别的日志，不支持占位符，需要自己拼接。 |
 | Error    | `v ...interface{}`                | 记录错误级别的日志，不支持占位符，需要自己拼接。 |
 | Success  | `v ...interface{}`                | 记录成功级别的日志，不支持占位符，需要自己拼接。 |
 | Debug    | `v ...interface{}`                | 记录调试级别的日志，不支持占位符，需要自己拼接。 |
-| Close    | 无                                | 关闭日志记录器。                                 |
+| Fatal    | `v ...interface{}`                | 记录致命级别的日志，不支持占位符，调用后程序会退出。 |
 | Infof    | `format string, v ...interface{}` | 记录信息级别的日志，支持占位符，格式化。         |
 | Warnf    | `format string, v ...interface{}` | 记录警告级别的日志，支持占位符，格式化。         |
 | Errorf   | `format string, v ...interface{}` | 记录错误级别的日志，支持占位符，格式化。         |
 | Successf | `format string, v ...interface{}` | 记录成功级别的日志，支持占位符，格式化。         |
 | Debugf   | `format string, v ...interface{}` | 记录调试级别的日志，支持占位符，格式化。         |
+| Fatalf   | `format string, v ...interface{}` | 记录致命级别的日志，支持占位符，格式化，调用后程序会退出。 |

@@ -106,14 +106,14 @@ type FastLogInterface interface {
 	Error(v ...any)   // 记录错误级别的日志，不支持占位符
 	Success(v ...any) // 记录成功级别的日志，不支持占位符
 	Debug(v ...any)   // 记录调试级别的日志，不支持占位符
-	Fatal(v ...any)   // 记录致命级别的日志，不支持占位符
+	Fatal(v ...any)   // 记录致命级别的日志，不支持占位符(调用后程序会退出)
 
 	Infof(format string, v ...any)    // 记录信息级别的日志，支持占位符，格式化
 	Warnf(format string, v ...any)    // 记录警告级别的日志，支持占位符，格式化
 	Errorf(format string, v ...any)   // 记录错误级别的日志，支持占位符，格式化
 	Successf(format string, v ...any) // 记录成功级别的日志，支持占位符，格式化
 	Debugf(format string, v ...any)   // 记录调试级别的日志，支持占位符，格式化
-	Fatalf(format string, v ...any)   // 记录致命级别的日志，支持占位符，格式化
+	Fatalf(format string, v ...any)   // 记录致命级别的日志，支持占位符，格式化(调用后程序会退出)
 }
 
 // 定义一个结构体，表示日志消息的元数据

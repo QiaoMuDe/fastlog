@@ -91,7 +91,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	if !config.GetConsoleOnly() {
 		// 检查日志目录是否存在, 如果不存在则创建。
 		if _, checkPathErr := checkPath(config.GetLogDirName()); checkPathErr != nil {
-			if mkdirErr := os.MkdirAll(config.GetLogDirName(), 0644); mkdirErr != nil {
+			if mkdirErr := os.MkdirAll(config.GetLogDirName(), 0755); mkdirErr != nil {
 				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
 			}
 		}
