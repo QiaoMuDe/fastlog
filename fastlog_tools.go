@@ -113,7 +113,9 @@ func logLevelToString(level LogLevel) string {
 		return "WARN"
 	case ERROR:
 		return "ERROR"
-	case None:
+	case FATAL:
+		return "FATAL"
+	case NONE:
 		return "NONE"
 	default:
 		return "UNKNOWN"
@@ -140,6 +142,8 @@ func addColor(f *FastLog, l *logMessage, s string) string {
 		return f.cl.Sgreen(s) // Green
 	case DEBUG:
 		return f.cl.Spurple(s) // Purple
+	case FATAL:
+		return f.cl.Sred(s) // Red
 	default:
 		return s // 如果没有匹配到日志级别，返回原始字符串
 	}
@@ -155,7 +159,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 	var logMsg string
 
 	// 根据日志格式选项，格式化日志消息。
-	switch f.config.LogFormat {
+	switch f.config.GetLogFormat() {
 	// Json格式
 	case Json:
 		logMsg = fmt.Sprintf(
@@ -183,7 +187,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 		logMsg = l.message
 	// 无法识别的日志格式选项
 	default:
-		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.LogFormat)
+		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.GetLogFormat())
 	}
 
 	// 返回格式化后的日志消息。

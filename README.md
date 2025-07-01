@@ -27,21 +27,11 @@
 
 ## 安装与引入
 
-> **注意**: 1.x  版本已不再更新，请使用 2.x 版本，同时 2.x 版本的配置方式略微差异。不可直接使用 1.x 版本的配置方式。
-
 ```bash
 # 确保在自己项目路径下，并且存在go.mog文件，不存在则 go init 项目名 创建
-# 下载2.x.x  版本
-go get gitee.com/MM-Q/fastlog/v2
-
-# 下载1.x.x  版本
 go get gitee.com/MM-Q/fastlog
 
-
-# 引入 v2版本
-import "gitee.com/MM-Q/fastlog/v2"
-
-# 引入 v1版本
+# 引入 
 import "gitee.com/MM-Q/fastlog"
 ```
 
@@ -52,7 +42,7 @@ import "gitee.com/MM-Q/fastlog"
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog/v2"
+import "gitee.com/MM-Q/fastlog"
 
 func main() {
     // 完整结构体配置
@@ -94,7 +84,7 @@ func main() {
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog/v2"
+import "gitee.com/MM-Q/fastlog"
 
 func main() {
     // 仅指定日志目录和文件名的简化配置
@@ -119,7 +109,7 @@ func main() {
 ```go
 package main
 
-import "gitee.com/MM-Q/fastlog/v2"
+import "gitee.com/MM-Q/fastlog"
 
 func main() {
     // 完全使用默认配置
@@ -146,27 +136,6 @@ FastLog 提供了自动日志轮转功能，当满足以下条件时会自动创
 1. 当前日志文件大小超过`MaxLogFileSize`设置的值
 
 轮转后的日志文件会以原文件名加上时间的形式保存，例如：`app-2025-05-01T00-16-27.372.log`
-
-## 配置选项
-
-| 属性名称       | 类型          | 说明                                                   | 默认值   |
-| -------------- | ------------- | ------------------------------------------------------ | -------- |
-| LogDirName     | string        | 日志目录名                                             | 必填     |
-| LogFileName    | string        | 日志文件名                                             | 必填     |
-| PrintToConsole | bool          | 是否输出到控制台                                       | false    |
-| ConsoleOnly    | bool          | 是否仅输出到控制台                                     | false    |
-| FlushInterval  | time.Duration | 刷新缓冲区的时间间隔                                   | 500ms       |
-| LogLevel       | LogLevel      | 日志级别                                               | DEBUG    |
-| ChanIntSize    | int           | 日志通道缓冲区大小                                     | 10000     |
-| LogFormat      | LogFormatType | 日志格式(Json/Bracket/Detailed/Threaded/Simple/Custom) | Detailed |
-| MaxBufferSize  | int           | 最大缓冲区大小(MB)                                     | 1        |
-| NoColor        | bool          | 是否禁用终端颜色输出                                   | false    |
-| NoBold        | bool          | 是否禁用终端字体加粗                                   | false    |
-| MaxLogFileSize | int           | 单个日志文件最大大小(MB)                               | 5       |
-| MaxLogAge      | int           | 日志文件保留天数                                       | 0        |
-| MaxLogBackups  | int           | 日志文件保留数量                                       | 0        |
-| IsLocalTime    | bool          | 是否使用本地时间                                       | false    |
-| EnableCompress | bool          | 是否启用压缩                                           | false    |
 
 ## NoColor功能
 

@@ -3,13 +3,14 @@ package fastlog
 
 import (
 	"fmt"
+	"os"
 	"time"
 )
 
 // Info 记录信息级别的日志，不支持占位符
 func (l *FastLog) Info(v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
-	if INFO < l.config.LogLevel {
+	if INFO < l.config.GetLogLevel() {
 		return
 	}
 
@@ -43,7 +44,7 @@ func (l *FastLog) Info(v ...any) {
 // debug 记录调试级别的日志，不支持占位符
 func (l *FastLog) Debug(v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
-	if DEBUG < l.config.LogLevel {
+	if DEBUG < l.config.GetLogLevel() {
 		return
 	}
 
@@ -77,7 +78,7 @@ func (l *FastLog) Debug(v ...any) {
 // Warn 记录警告级别的日志，不支持占位符
 func (l *FastLog) Warn(v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
-	if WARN < l.config.LogLevel {
+	if WARN < l.config.GetLogLevel() {
 		return
 	}
 
@@ -111,7 +112,7 @@ func (l *FastLog) Warn(v ...any) {
 // Error 记录错误级别的日志，不支持占位符
 func (l *FastLog) Error(v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
-	if ERROR < l.config.LogLevel {
+	if ERROR < l.config.GetLogLevel() {
 		return
 	}
 
@@ -145,7 +146,7 @@ func (l *FastLog) Error(v ...any) {
 // Success 记录成功级别的日志，不支持占位符
 func (l *FastLog) Success(v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
-	if SUCCESS < l.config.LogLevel {
+	if SUCCESS < l.config.GetLogLevel() {
 		return
 	}
 
@@ -179,7 +180,7 @@ func (l *FastLog) Success(v ...any) {
 // Infof 记录信息级别的日志，支持占位符，格式化
 func (l *FastLog) Infof(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Info 级别，则不记录日志。
-	if INFO < l.config.LogLevel {
+	if INFO < l.config.GetLogLevel() {
 		return
 	}
 
@@ -213,7 +214,7 @@ func (l *FastLog) Infof(format string, v ...any) {
 // Debugf 记录调试级别的日志，支持占位符，格式化
 func (l *FastLog) Debugf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Debug 级别，则不记录日志。
-	if DEBUG < l.config.LogLevel {
+	if DEBUG < l.config.GetLogLevel() {
 		return
 	}
 
@@ -246,7 +247,7 @@ func (l *FastLog) Debugf(format string, v ...any) {
 // Warnf 记录警告级别的日志，支持占位符，格式化
 func (l *FastLog) Warnf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Warn 级别，则不记录日志。
-	if WARN < l.config.LogLevel {
+	if WARN < l.config.GetLogLevel() {
 		return
 	}
 
@@ -280,7 +281,7 @@ func (l *FastLog) Warnf(format string, v ...any) {
 // Errorf 记录错误级别的日志，支持占位符，格式化
 func (l *FastLog) Errorf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Error 级别，则不记录日志。
-	if ERROR < l.config.LogLevel {
+	if ERROR < l.config.GetLogLevel() {
 		return
 	}
 
@@ -314,7 +315,7 @@ func (l *FastLog) Errorf(format string, v ...any) {
 // Successf 记录成功级别的日志，支持占位符，格式化
 func (l *FastLog) Successf(format string, v ...any) {
 	// 检查日志级别，如果小于等于 Success 级别，则不记录日志。
-	if SUCCESS < l.config.LogLevel {
+	if SUCCESS < l.config.GetLogLevel() {
 		return
 	}
 
@@ -343,4 +344,82 @@ func (l *FastLog) Successf(format string, v ...any) {
 	// 将日志消息发送到日志通道
 	l.logChan <- logMsg
 
+}
+
+// Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
+func (l *FastLog) Fatal(v ...any) {
+	// 检查日志级别，如果当前级别高于Fatal则不记录
+	if FATAL < l.config.GetLogLevel() {
+		return
+	}
+
+	// 获取调用者的信息
+	filename, funcName, line, ok := getCallerInfo(2)
+	if !ok {
+		filename = "unknown"
+		funcName = "unknown"
+		line = 0
+	}
+
+	// 获取本地时区的当前时间时间戳
+	timestamp := time.Unix(time.Now().Unix(), 0)
+
+	// 设置结构体的属性值
+	logMsg := &logMessage{
+		timestamp:   timestamp,        // 时间戳
+		level:       FATAL,            // 日志级别
+		message:     fmt.Sprint(v...), // 日志消息
+		fileName:    filename,         // 文件名
+		funcName:    funcName,         // 函数名
+		line:        line,             // 行号
+		goroutineID: getGoroutineID(), // 协程ID
+	}
+
+	// 将日志消息发送到日志通道
+	l.logChan <- logMsg
+
+	// 发送完成后关闭日志记录器
+	l.Close()
+
+	// 终止程序（非0退出码表示错误）
+	os.Exit(1)
+}
+
+// Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
+func (l *FastLog) Fatalf(format string, v ...any) {
+	// 检查日志级别，如果当前级别高于Fatal则不记录
+	if FATAL < l.config.GetLogLevel() {
+		return
+	}
+
+	// 获取调用者的信息
+	filename, funcName, line, ok := getCallerInfo(2)
+	if !ok {
+		filename = "unknown"
+		funcName = "unknown"
+		line = 0
+	}
+
+	// 获取本地时区的当前时间时间戳
+	timestamp := time.Unix(time.Now().Unix(), 0)
+
+	// 设置结构体的属性值
+	logMsg := &logMessage{
+		timestamp:   timestamp,                 // 时间戳
+		level:       FATAL,                     // 日志级别
+		message:     fmt.Sprintf(format, v...), // 日志消息
+		fileName:    filename,                  // 文件名
+		funcName:    funcName,                  // 函数名
+		line:        line,                      // 行号
+		goroutineID: getGoroutineID(),          // 协程ID
+	}
+
+	// 将日志消息发送到日志通道
+	l.logChan <- logMsg
+
+	// 发送完成后关闭日志记录器
+	l.Close()
+
+	// 终止程序（非0退出码表示错误）
+	os.Exit(1)
 }

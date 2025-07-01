@@ -36,7 +36,8 @@ const (
 	SUCCESS LogLevel = 30  // 成功级别
 	WARN    LogLevel = 40  // 警告级别
 	ERROR   LogLevel = 50  // 错误级别
-	None    LogLevel = 999 // 无日志级别
+	FATAL   LogLevel = 60  // 致命级别
+	NONE    LogLevel = 999 // 无日志级别
 )
 
 // 日志记录器
@@ -77,22 +78,23 @@ type FastLog struct {
 
 // 定义一个配置结构体，用于配置日志记录器
 type FastLogConfig struct {
-	LogDirName     string        // 日志目录路径
-	LogFileName    string        // 日志文件名
-	PrintToConsole bool          // 是否将日志输出到控制台
-	ConsoleOnly    bool          // 是否仅输出到控制台
-	FlushInterval  time.Duration // 刷新间隔，单位为time.Duration
-	LogLevel       LogLevel      // 日志级别
-	ChanIntSize    int           // 通道大小 默认10000
-	LogFormat      LogFormatType // 日志格式选项
-	MaxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
-	NoColor        bool          // 是否禁用终端颜色
-	NoBold         bool          // 是否禁用终端字体加粗
-	MaxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认5MB
-	MaxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
-	IsLocalTime    bool          // 是否使用本地时间 默认使用UTC时间
-	EnableCompress bool          // 是否启用日志文件压缩 默认不启用
+	logDirName     string        // 日志目录路径
+	logFileName    string        // 日志文件名
+	printToConsole bool          // 是否将日志输出到控制台
+	consoleOnly    bool          // 是否仅输出到控制台
+	flushInterval  time.Duration // 刷新间隔，单位为time.Duration
+	logLevel       LogLevel      // 日志级别
+	chanIntSize    int           // 通道大小 默认10000
+	logFormat      LogFormatType // 日志格式选项
+	maxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
+	noColor        bool          // 是否禁用终端颜色
+	noBold         bool          // 是否禁用终端字体加粗
+	maxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认5MB
+	maxLogAge      int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	maxLogBackups  int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	isLocalTime    bool          // 是否使用本地时间 默认使用UTC时间
+	enableCompress bool          // 是否启用日志文件压缩 默认不启用
+	setMu          sync.Mutex    // 用于保护配置的锁
 }
 
 // 定义一个接口, 声明对外暴露的方法
@@ -128,4 +130,87 @@ var logFormatMap = map[LogFormatType]string{
 	Bracket:  `[%s] %s`,                                                                                          // 方括号格式
 	Threaded: `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
 	Simple:   `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
+}
+
+// FastLogConfigurer 定义日志配置器接口，包含所有配置项的设置和获取方法
+type FastLogConfigurer interface {
+	// SetLogDirName 设置日志目录路径
+	SetLogDirName(dirName string)
+	// GetLogDirName 获取日志目录路径
+	GetLogDirName() string
+
+	// SetLogFileName 设置日志文件名
+	SetLogFileName(fileName string)
+	// GetLogFileName 获取日志文件名
+	GetLogFileName() string
+
+	// SetPrintToConsole 设置是否将日志输出到控制台
+	SetPrintToConsole(print bool)
+	// GetPrintToConsole 获取是否将日志输出到控制台的状态
+	GetPrintToConsole() bool
+
+	// SetConsoleOnly 设置是否仅输出到控制台
+	SetConsoleOnly(only bool)
+	// GetConsoleOnly 获取是否仅输出到控制台的状态
+	GetConsoleOnly() bool
+
+	// SetFlushInterval 设置刷新间隔
+	SetFlushInterval(interval time.Duration)
+	// GetFlushInterval 获取刷新间隔
+	GetFlushInterval() time.Duration
+
+	// SetLogLevel 设置日志级别
+	SetLogLevel(level LogLevel)
+	// GetLogLevel 获取日志级别
+	GetLogLevel() LogLevel
+
+	// SetChanIntSize 设置通道大小
+	SetChanIntSize(size int)
+	// GetChanIntSize 获取通道大小
+	GetChanIntSize() int
+
+	// SetLogFormat 设置日志格式选项
+	SetLogFormat(format LogFormatType)
+	// GetLogFormat 获取日志格式选项
+	GetLogFormat() LogFormatType
+
+	// SetMaxBufferSize 设置最大缓冲区大小(MB)
+	SetMaxBufferSize(size int)
+	// GetMaxBufferSize 获取最大缓冲区大小(MB)
+	GetMaxBufferSize() int
+
+	// SetNoColor 设置是否禁用终端颜色
+	SetNoColor(noColor bool)
+	// GetNoColor 获取是否禁用终端颜色的状态
+	GetNoColor() bool
+
+	// SetNoBold 设置是否禁用终端字体加粗
+	SetNoBold(noBold bool)
+	// GetNoBold 获取是否禁用终端字体加粗的状态
+	GetNoBold() bool
+
+	// SetMaxLogFileSize 设置最大日志文件大小(MB)
+	SetMaxLogFileSize(size int)
+	// GetMaxLogFileSize 获取最大日志文件大小(MB)
+	GetMaxLogFileSize() int
+
+	// SetMaxLogAge 设置最大日志文件保留天数
+	SetMaxLogAge(age int)
+	// GetMaxLogAge 获取最大日志文件保留天数
+	GetMaxLogAge() int
+
+	// SetMaxLogBackups 设置最大日志文件保留数量
+	SetMaxLogBackups(backups int)
+	// GetMaxLogBackups 获取最大日志文件保留数量
+	GetMaxLogBackups() int
+
+	// SetIsLocalTime 设置是否使用本地时间
+	SetIsLocalTime(local bool)
+	// GetIsLocalTime 获取是否使用本地时间的状态
+	GetIsLocalTime() bool
+
+	// SetEnableCompress 设置是否启用日志文件压缩
+	SetEnableCompress(compress bool)
+	// GetEnableCompress 获取是否启用日志文件压缩的状态
+	GetEnableCompress() bool
 }

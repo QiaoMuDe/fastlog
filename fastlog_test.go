@@ -16,9 +16,9 @@ import (
 func TestConcurrentFastLog(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
-	cfg.LogLevel = fastlog.DEBUG
-	cfg.LogFormat = fastlog.Simple
-	cfg.IsLocalTime = false
+	cfg.SetLogLevel(fastlog.DEBUG)
+	cfg.SetLogFormat(fastlog.Simple)
+	cfg.SetIsLocalTime(false)
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -125,9 +125,9 @@ func randomLog(log *fastlog.FastLog, duration int, rate int, t *testing.T) {
 func TestCustomFormat(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "custom.log")
-	cfg.LogLevel = fastlog.DEBUG
-	cfg.LogFormat = fastlog.Custom
-	cfg.PrintToConsole = true
+	cfg.SetLogLevel(fastlog.DEBUG)
+	cfg.SetLogFormat(fastlog.Custom)
+	cfg.SetPrintToConsole(true)
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -151,8 +151,8 @@ func TestCustomFormat(t *testing.T) {
 func TestNoColor(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "nocolor.log")
-	cfg.LogLevel = fastlog.DEBUG
-	cfg.NoColor = true // 禁用终端颜色
+	cfg.SetLogLevel(fastlog.DEBUG)
+	cfg.SetNoColor(true) // 禁用终端颜色
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
@@ -173,9 +173,9 @@ func TestNoColor(t *testing.T) {
 func TestNoBold(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "nobold.log")
-	cfg.LogLevel = fastlog.DEBUG
-	cfg.NoBold = true // 禁用终端字体加粗
-	cfg.NoColor = false
+	cfg.SetLogLevel(fastlog.DEBUG)
+	cfg.SetNoBold(true) // 禁用终端字体加粗
+	cfg.SetNoColor(false)
 
 	// 创建日志记录器
 	log, err := fastlog.NewFastLog(cfg)
