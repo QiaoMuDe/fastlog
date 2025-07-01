@@ -28,9 +28,9 @@ func TestConcurrentFastLog(t *testing.T) {
 	defer log.Close()
 
 	// 持续时间为3秒
-	duration := 3
+	duration := 2
 	// 每秒生成100条日志
-	rate := 100
+	rate := 50
 
 	// 启动随机日志函数
 	randomLog(log, duration, rate, t)

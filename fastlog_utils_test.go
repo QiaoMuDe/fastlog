@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// TestFatal 测试Fatal方法
 func TestFatal(t *testing.T) {
 	// 定义测试用例名称，用于环境变量标识
 	const testName = "TestFatal"
@@ -15,6 +16,9 @@ func TestFatal(t *testing.T) {
 	// 子进程模式：执行实际的Fatal调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("test-logs", "fatal_test.log")
+		if err := os.MkdirAll(config.GetLogDirName(), 0755); err != nil {
+			panic(err)
+		}
 		log, err := NewFastLog(config)
 		if err != nil {
 			panic(err)
@@ -48,7 +52,7 @@ func TestFatal(t *testing.T) {
 	}()
 
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {
-		t.Errorf("日志文件未创建: %s", logPath)
+		t.Errorf("日志文件未创建: %s\n子进程输出: %s", logPath, output)
 		return
 	}
 
@@ -60,6 +64,7 @@ func TestFatal(t *testing.T) {
 	}
 }
 
+// TestFatalf 测试Fatalf方法
 func TestFatalf(t *testing.T) {
 	// 定义测试用例名称，用于环境变量标识
 	const testName = "TestFatalf"
@@ -67,6 +72,9 @@ func TestFatalf(t *testing.T) {
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("test-logs", "fatalf_test.log")
+		if err := os.MkdirAll(config.GetLogDirName(), 0755); err != nil {
+			panic(err)
+		}
 		log, err := NewFastLog(config)
 		if err != nil {
 			panic(err)
@@ -100,7 +108,7 @@ func TestFatalf(t *testing.T) {
 	}()
 
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {
-		t.Errorf("日志文件未创建: %s", logPath)
+		t.Errorf("日志文件未创建: %s\n子进程输出: %s", logPath, output)
 		return
 	}
 

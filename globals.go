@@ -99,17 +99,21 @@ type FastLogConfig struct {
 
 // 定义一个接口, 声明对外暴露的方法
 type FastLogInterface interface {
-	Info(v ...any)                    // 记录信息级别的日志，不支持占位符
-	Warn(v ...any)                    // 记录警告级别的日志，不支持占位符
-	Error(v ...any)                   // 记录错误级别的日志，不支持占位符
-	Success(v ...any)                 // 记录成功级别的日志，不支持占位符
-	Debug(v ...any)                   // 记录调试级别的日志，不支持占位符
-	Close()                           // 关闭日志记录器
+	Close() // 关闭日志记录器
+
+	Info(v ...any)    // 记录信息级别的日志，不支持占位符
+	Warn(v ...any)    // 记录警告级别的日志，不支持占位符
+	Error(v ...any)   // 记录错误级别的日志，不支持占位符
+	Success(v ...any) // 记录成功级别的日志，不支持占位符
+	Debug(v ...any)   // 记录调试级别的日志，不支持占位符
+	Fatal(v ...any)   // 记录致命级别的日志，不支持占位符
+
 	Infof(format string, v ...any)    // 记录信息级别的日志，支持占位符，格式化
 	Warnf(format string, v ...any)    // 记录警告级别的日志，支持占位符，格式化
 	Errorf(format string, v ...any)   // 记录错误级别的日志，支持占位符，格式化
 	Successf(format string, v ...any) // 记录成功级别的日志，支持占位符，格式化
 	Debugf(format string, v ...any)   // 记录调试级别的日志，支持占位符，格式化
+	Fatalf(format string, v ...any)   // 记录致命级别的日志，支持占位符，格式化
 }
 
 // 定义一个结构体，表示日志消息的元数据
