@@ -85,16 +85,6 @@ type FastLog struct {
 // 返回值:
 //   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
-	// 如果日志目录名称为空, 则使用默认值"logs"。
-	if logDirName == "" {
-		logDirName = "logs"
-	}
-
-	// 如果日志文件名称为空, 则使用默认值"app.log"。
-	if logFileName == "" {
-		logFileName = "app.log"
-	}
-
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
 		logDirName:     logDirName,             // 日志目录名称
@@ -128,6 +118,12 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	if config == nil {
 		return nil, fmt.Errorf("FastLogConfig 为 nil")
 	}
+
+	// 最终配置验证 - 只检查，不修改
+	config.validateFinalConfig()
+
+	// 最终配置修正 - 修正所有不合理的值
+	config.fixFinalConfig()
 
 	// 声明一些配置变量
 	var (

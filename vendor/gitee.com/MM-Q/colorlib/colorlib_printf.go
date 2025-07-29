@@ -4,85 +4,95 @@ import (
 	"fmt"
 )
 
-// Bluef 方法用于将传入的参数以蓝色文本形式打印到控制台（带占位符）。
-func (c *ColorLib) Bluef(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
+// PrintColorf 方法根据颜色代码常量打印对应颜色的文本
+func (c *ColorLib) PrintColorf(code int, format string, a ...any) {
+	// 根据颜色代码获取颜色名称
+	var color string
+	switch code {
+	case Black:
+		color = "black"
+	case Red:
+		color = "red"
+	case Green:
+		color = "green"
+	case Yellow:
+		color = "yellow"
+	case Blue:
+		color = "blue"
+	case Purple:
+		color = "purple"
+	case Cyan:
+		color = "cyan"
+	case White:
+		color = "white"
+	case Gray:
+		color = "gray"
+	case Lred:
+		color = "lred"
+	case Lgreen:
+		color = "lgreen"
+	case Lyellow:
+		color = "lyellow"
+	case Lblue:
+		color = "lblue"
+	case Lpurple:
+		color = "lpurple"
+	case Lcyan:
+		color = "lcyan"
+	case Lwhite:
+		color = "lwhite"
+	default:
+		fmt.Println("Invalid color code:", code)
+		return
+	}
 
 	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("blue", formattedMsg)
+	c.printWithColor(color, fmt.Sprintf(format, a...))
+}
+
+// Bluef 方法用于将传入的参数以蓝色文本形式打印到控制台（带占位符）。
+func (c *ColorLib) Bluef(format string, a ...any) {
+	c.PrintColorf(Blue, format, a...)
 }
 
 // Greenf 方法用于将传入的参数以绿色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Greenf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("green", formattedMsg)
+	c.PrintColorf(Green, format, a...)
 }
 
 // Redf 方法用于将传入的参数以红色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Redf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("red", formattedMsg)
+	c.PrintColorf(Red, format, a...)
 }
 
 // Yellowf 方法用于将传入的参数以黄色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Yellowf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("yellow", formattedMsg)
+	c.PrintColorf(Yellow, format, a...)
 }
 
 // Purplef 方法用于将传入的参数以紫色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Purplef(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 returnWithColor 方法，传入格式化后的字符串
-	c.printWithColor("purple", formattedMsg)
+	c.PrintColorf(Purple, format, a...)
 }
 
 // Blackf 方法用于将传入的参数以黑色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Blackf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("black", formattedMsg)
+	c.PrintColorf(Black, format, a...)
 }
 
 // Cyanf 方法用于将传入的参数以青色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Cyanf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("cyan", formattedMsg)
+	c.PrintColorf(Cyan, format, a...)
 }
 
 // Whitef 方法用于将传入的参数以白色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Whitef(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("white", formattedMsg)
+	c.PrintColorf(White, format, a...)
 }
 
 // Grayf 方法用于将传入的参数以灰色文本形式打印到控制台（带占位符）。
 func (c *ColorLib) Grayf(format string, a ...any) {
-	// 使用 fmt.Sprintf 格式化参数
-	formattedMsg := fmt.Sprintf(format, a...)
-
-	// 调用 printWithColor 方法，传入格式化后的字符串
-	c.printWithColor("gray", formattedMsg)
+	c.PrintColorf(Gray, format, a...)
 }
 
 // PrintSuccessf 方法用于将传入的参数以绿色文本形式打印到控制台，并在文本前添加一个表示成功的标志（带占位符）。

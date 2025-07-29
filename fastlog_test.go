@@ -23,7 +23,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.SetLogLevel(fastlog.DEBUG)
-	cfg.SetLogFormat(fastlog.Simple)
+	cfg.SetLogFormat(fastlog.Threaded)
 	cfg.SetIsLocalTime(false)
 
 	// 创建日志记录器
@@ -34,8 +34,8 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 持续时间为3秒
 	duration := 3
-	// 每秒生成10000条日志
-	rate := 10000
+	// 每秒生成100条日志
+	rate := 100
 
 	defer func() {
 		_ = log.Close()

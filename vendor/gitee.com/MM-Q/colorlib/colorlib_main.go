@@ -7,7 +7,7 @@ import (
 	"sync"
 )
 
-// GetCL 是一个线程安全用于获取全局 ColorLib 实例的函数
+// GetCL 是一个线程安全用于获取全局唯一的 ColorLib 实例的函数
 func GetCL() *ColorLib {
 	once.Do(func() {
 		CL = NewColorLib()
@@ -28,11 +28,11 @@ func NewColorLib() *ColorLib {
 		},
 	}
 
-	// 初始化是否加粗
-	cl.NoBold.Store(false)
-
 	// 初始化是否禁用颜色
 	cl.NoColor.Store(false)
+
+	// 初始化是否禁用加粗
+	cl.NoBold.Store(false)
 
 	// 初始化是否下划线
 	cl.Underline.Store(false)
@@ -51,6 +51,30 @@ func NewColorLib() *ColorLib {
 	}
 
 	return cl
+}
+
+// SetNoColor 设置是否禁用颜色输出,并返回ColorLib实例以支持链式调用
+func (c *ColorLib) SetNoColor(enable bool) *ColorLib {
+	c.NoColor.Store(enable)
+	return c
+}
+
+// SetNoBold 设置是否禁用字体加粗,并返回ColorLib实例以支持链式调用
+func (c *ColorLib) SetNoBold(enable bool) *ColorLib {
+	c.NoBold.Store(enable)
+	return c
+}
+
+// SetUnderline 设置是否启用下划线,并返回ColorLib实例以支持链式调用
+func (c *ColorLib) SetUnderline(enable bool) *ColorLib {
+	c.Underline.Store(enable)
+	return c
+}
+
+// SetBlink 设置是否启用闪烁效果,并返回ColorLib实例以支持链式调用
+func (c *ColorLib) SetBlink(enable bool) *ColorLib {
+	c.Blink.Store(enable)
+	return c
 }
 
 // printWithColor 方法用于将传入的参数以指定颜色文本形式打印到控制台。
@@ -77,13 +101,13 @@ func (c *ColorLib) printWithColor(color string, msg ...any) {
 
 	// 构建ANSI控制序列
 	var ansiCodes []string
-	if !c.NoBold.Load() {
+	if !c.NoBold.Load() { // 检查是否加粗
 		ansiCodes = append(ansiCodes, "1")
 	}
-	if c.Underline.Load() {
+	if c.Underline.Load() { // 检查是否下划线
 		ansiCodes = append(ansiCodes, "4")
 	}
-	if c.Blink.Load() {
+	if c.Blink.Load() { // 检查是否闪烁
 		ansiCodes = append(ansiCodes, "5")
 	}
 
@@ -97,7 +121,7 @@ func (c *ColorLib) printWithColor(color string, msg ...any) {
 	if len(msg) > 0 {
 		buffer.WriteString(fmt.Sprint(msg...)) // 拼接消息内容
 	} else {
-		buffer.WriteString(" ") // 如果没有消息，添加一个空格，避免完全空白的输出
+		buffer.WriteString(" ") // 如果没有消息,添加一个空格,避免完全空白的输出
 	}
 
 	// 写入颜色重置代码
@@ -191,7 +215,7 @@ func (c *ColorLib) promptMsg(level, color, format string, a ...any) {
 	}()
 
 	// 写入前缀
-	// 由于 prefix 是 interface{} 类型，需要进行类型断言才能作为字符串传递给 WriteString 方法
+	// 由于 prefix 是 interface{} 类型,需要进行类型断言才能作为字符串传递给 WriteString 方法
 	if prefixStr, ok := prefix.(string); ok {
 		buffer.WriteString(prefixStr)
 	} else {
@@ -199,7 +223,7 @@ func (c *ColorLib) promptMsg(level, color, format string, a ...any) {
 		buffer.WriteString(fmt.Sprintf("%v", prefix))
 	}
 
-	// 如果没有参数，直接打印前缀
+	// 如果没有参数,直接打印前缀
 	if len(a) == 0 {
 		if c.NoColor.Load() {
 			fmt.Print(buffer.String())

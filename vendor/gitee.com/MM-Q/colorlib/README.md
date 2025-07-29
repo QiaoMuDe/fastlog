@@ -13,30 +13,30 @@
 - 支持禁用颜色输出（NoColor模式）
 - 内置并发安全测试，可通过 `-race` 参数进行竞态检测
 
-## 定义的颜色和数字
+## 定义的颜色常量
 
 以下是库中定义的颜色及其对应的 ANSI 颜色代码：
 
 `PS`:带 `l`开头的为亮色!
 
-| 颜色名称 | ANSI 颜色代码 |
-| -------- | ------------- |
-| black    | 30            |
-| red      | 31            |
-| green    | 32            |
-| yellow   | 33            |
-| blue     | 34            |
-| purple   | 35            |
-| cyan     | 36            |
-| white    | 37            |
-| gray     | 90            |
-| lred     | 91            |
-| lgreen   | 92            |
-| lyellow  | 93            |
-| lblue    | 94            |
-| lpurple  | 95            |
-| lcyan    | 96            |
-| lwhite   | 97            |
+| 颜色常量名 | 颜色名称 |
+| ---------- | -------- |
+| Black      | 黑色     |
+| Red        | 红色     |
+| Green      | 绿色     |
+| Yellow     | 黄色     |
+| Blue       | 蓝色     |
+| Purple     | 紫色     |
+| Cyan       | 青色     |
+| White      | 白色     |
+| Gray       | 灰色     |
+| Lred       | 亮红色   |
+| Lgreen     | 亮绿色   |
+| Lyellow    | 亮黄色   |
+| Lblue      | 亮蓝色   |
+| Lpurple    | 亮紫色   |
+| Lcyan      | 亮青色   |
+| Lwhite     | 亮白色   |
 
 ## 提示信息级别和名称
 
@@ -182,6 +182,15 @@ ColorLib 提供了一个预初始化的全局实例 `CL`，可以直接使用而
 | `Slpurplef(format string, a ...any)` | 返回构造后的亮紫色字符串（带占位符） |
 | `Slcyanf(format string, a ...any)`   | 返回构造后的亮青色字符串（带占位符） |
 | `Slwhitef(format string, a ...any)`  | 返回构造后的亮白色字符串（带占位符） |
+
+### 通用颜色方法
+
+| 方法名称                                   | 描述                                   |
+| ------------------------------------------ | -------------------------------------- |
+| `PrintColorf(code int, format string, a ...any)`    | 打印通用颜色信息到控制台（带占位符）   |
+| `PrintColor(code int, msg ...any)`                  | 打印通用颜色信息到控制台（不带占位符） |
+| `Scolorf(code int, format string, a ...any)` string | 返回构造后的通用颜色字符串（带占位符） |
+| `Scolor(code int, msg ...any)` string               | 返回构造后的通用颜色字符串（不带占位符） |
 
 ## 文本效果控制
 `ColorLib` 提供了多种文本效果控制选项，可以灵活调整输出样式。

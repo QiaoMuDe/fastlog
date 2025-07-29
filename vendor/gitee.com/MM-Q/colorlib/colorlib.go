@@ -19,13 +19,16 @@ func init() {
 
 // ColorLib 结构体用于管理颜色输出和日志级别映射。
 type ColorLib struct {
-	levelMap   sync.Map    // LevelMap 是一个映射，用于将日志级别映射到对应的前缀
-	colorMap   sync.Map    // colorMap 是一个映射，用于将颜色名称映射到对应的 ANSI 颜色代码。
-	bufferPool *sync.Pool  // 对象池
-	NoColor    atomic.Bool // NoColor 控制是否禁用颜色输出
-	NoBold     atomic.Bool // NoBold 控制是否禁用字体加粗
-	Underline  atomic.Bool // Underline 控制是否启用下划线
-	Blink      atomic.Bool // Blink 控制是否启用闪烁效果
+	// 内部字段
+	levelMap   sync.Map   // LevelMap 是一个映射，用于将日志级别映射到对应的前缀
+	colorMap   sync.Map   // colorMap 是一个映射，用于将颜色名称映射到对应的 ANSI 颜色代码。
+	bufferPool *sync.Pool // 对象池
+
+	// 对外暴露的原子布尔变量，用于控制颜色输出和字体加粗
+	NoColor   atomic.Bool // NoColor 控制是否禁用颜色输出
+	NoBold    atomic.Bool // NoBold 控制是否禁用字体加粗
+	Underline atomic.Bool // Underline 控制是否启用下划线
+	Blink     atomic.Bool // Blink 控制是否启用闪烁效果
 }
 
 const (
@@ -119,7 +122,7 @@ type ColorLibInterface interface {
 	PrintInfo(msg ...any)      // 打印信息到控制台, 无需占位符
 	PrintDebug(msg ...any)     // 打印调试信息到控制台, 无需占位符
 
-	// 新增扩展颜色的方法
+	// 扩展颜色的方法
 	Black(msg ...any)                         // 打印黑色信息到控制台, 无需占位符
 	Blackf(format string, a ...any)           // 打印黑色信息到控制台（带占位符）
 	Sblack(msg ...any) string                 // 返回构造后的黑色字符串, 无需占位符
@@ -165,17 +168,29 @@ type ColorLibInterface interface {
 	Slwhite(msg ...any) string                // 返回构造后的亮白色字符串, 无需占位符
 	Slwhitef(format string, a ...any) string  // 返回构造后的亮白色字符串（带占位符）
 
-	// 新增简洁版的方法, 无需占位符
+	// 简洁版的方法, 无需占位符
 	PrintOk(msg ...any)   // 打印成功信息到控制台, 无需占位符
 	PrintErr(msg ...any)  // 打印错误信息到控制台, 无需占位符
 	PrintInf(msg ...any)  // 打印信息到控制台, 无需占位符
 	PrintDbg(msg ...any)  // 打印调试信息到控制台, 无需占位符
 	PrintWarn(msg ...any) // 打印警告信息到控制台, 无需占位符
 
-	// 新增简洁版的方法, 带占位符
+	// 简洁版的方法, 带占位符
 	PrintOkf(format string, a ...any)   // 打印成功信息到控制台（带占位符）
 	PrintErrf(format string, a ...any)  // 打印错误信息到控制台（带占位符）
 	PrintInff(format string, a ...any)  // 打印信息到控制台（带占位符）
 	PrintDbgf(format string, a ...any)  // 打印调试信息到控制台（带占位符）
 	PrintWarnf(format string, a ...any) // 打印警告信息到控制台（带占位符）
+
+	// 通用颜色方法
+	PrintColorf(code int, format string, a ...any)    // 打印通用颜色信息到控制台（带占位符）
+	PrintColor(code int, msg ...any)                  // 打印通用颜色信息到控制台, 无需占位符
+	Scolorf(code int, format string, a ...any) string // 返回构造后的通用颜色字符串（带占位符）
+	Scolor(code int, msg ...any) string               // 返回构造后的通用颜色字符串, 无需占位符
+
+	// 控制颜色输出和字体样式方法
+	SetNoColor(enable bool) *ColorLib   // 设置是否禁用颜色输出
+	SetNoBold(enable bool) *ColorLib    // 设置是否禁用字体加粗
+	SetUnderline(enable bool) *ColorLib // 设置是否启用下划线
+	SetBlink(enable bool) *ColorLib     // 设置是否启用闪烁
 }

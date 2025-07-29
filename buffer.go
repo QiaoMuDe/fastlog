@@ -7,11 +7,11 @@ import "time"
 
 // flushBuffer 定时刷新缓冲区
 func (f *FastLog) flushBuffer() {
-	// 新增一个等待组, 用于等待刷新缓冲区的协程完成
-	f.logWait.Add(1)
-
 	// 定义一个定时器, 用于定时刷新缓冲区
 	ticker := time.NewTicker(f.config.GetFlushInterval())
+
+	// 新增一个等待组, 用于等待刷新缓冲区的协程完成
+	f.logWait.Add(1)
 
 	// 创建一个goroutine, 用于定时刷新缓冲区
 	go func() {

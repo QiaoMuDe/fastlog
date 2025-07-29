@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -167,7 +168,7 @@ func addColor(f *FastLog, l *logMessage, s string) string {
 	}
 }
 
-// formatLog 格式化日志消息
+// formatLog 格式化日志消息（优化版本，使用 strings.Builder 提升性能）
 //
 // 参数：
 //   - f: FastLog 实例
@@ -180,41 +181,166 @@ func formatLog(f *FastLog, l *logMessage) string {
 		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
 	}
 
-	// 定义一个变量，用于存储格式化后的日志消息。
-	var logMsg string
+	// 预先格式化公共部分，避免重复计算
+	timeStr := l.timestamp.Format("2006-01-02 15:04:05")
+	levelStr := logLevelToString(l.level)
 
-	// 根据日志格式选项，格式化日志消息。
+	// 根据日志格式选项，格式化日志消息
 	switch f.config.GetLogFormat() {
-	// Json格式
+	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂，解析开销可接受）
 	case Json:
-		logMsg = fmt.Sprintf(
+		return fmt.Sprintf(
 			logFormatMap[Json],
-			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.goroutineID, l.message,
+			timeStr, levelStr, l.fileName, l.funcName, l.line, l.goroutineID, l.message,
 		)
-	// 详细格式
+
+	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
-		// 按照指定格式输出日志，使用%-7s让日志级别左对齐且宽度为7个字符
-		logMsg = fmt.Sprintf(
-			logFormatMap[Detailed],
-			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.message,
-		)
-	// 括号格式
+		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
+		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+
+		var builder strings.Builder
+		builder.Grow(estimatedSize)
+
+		builder.WriteString(timeStr)
+		builder.WriteString(" | ")
+
+		// 格式化日志级别，左对齐7个字符
+		builder.WriteString(levelStr)
+		for i := len(levelStr); i < 7; i++ {
+			builder.WriteByte(' ')
+		}
+
+		builder.WriteString(" | ")
+		builder.WriteString(l.fileName)
+		builder.WriteByte(':')
+		builder.WriteString(l.funcName)
+		builder.WriteByte(':')
+		builder.WriteString(strconv.Itoa(l.line))
+		builder.WriteString(" - ")
+		builder.WriteString(l.message)
+
+		return builder.String()
+
+	// 括号格式 - 使用 strings.Builder 优化
 	case Bracket:
-		logMsg = fmt.Sprintf(logFormatMap[Bracket], logLevelToString(l.level), l.message)
-	// 协程格式
+		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
+		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+
+		var builder strings.Builder
+		builder.Grow(estimatedSize)
+
+		builder.WriteByte('[')
+		builder.WriteString(levelStr)
+		builder.WriteString("] ")
+		builder.WriteString(l.message)
+
+		return builder.String()
+
+	// 协程格式 - 使用 strings.Builder 优化
 	case Threaded:
-		logMsg = fmt.Sprintf(logFormatMap[Threaded], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.goroutineID, l.message)
-	// 简约格式
+		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
+		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+
+		var builder strings.Builder
+		builder.Grow(estimatedSize)
+
+		builder.WriteString(timeStr)
+		builder.WriteString(" | ")
+
+		// 格式化日志级别，左对齐7个字符
+		builder.WriteString(levelStr)
+		for i := len(levelStr); i < 7; i++ {
+			builder.WriteByte(' ')
+		}
+
+		builder.WriteString(" | [thread=\"")
+		builder.WriteString(strconv.FormatInt(l.goroutineID, 10))
+		builder.WriteString("\"] ")
+		builder.WriteString(l.message)
+
+		return builder.String()
+
+	// 简约格式 - 使用 strings.Builder 优化
 	case Simple:
-		logMsg = fmt.Sprintf(logFormatMap[Simple], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.message)
+		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
+		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+
+		var builder strings.Builder
+		builder.Grow(estimatedSize)
+
+		builder.WriteString(timeStr)
+		builder.WriteString(" | ")
+
+		// 格式化日志级别，左对齐7个字符
+		builder.WriteString(levelStr)
+		for i := len(levelStr); i < 7; i++ {
+			builder.WriteByte(' ')
+		}
+
+		builder.WriteString(" | ")
+		builder.WriteString(l.message)
+
+		return builder.String()
+
 	// 自定义格式
 	case Custom:
-		logMsg = l.message
+		return l.message
+
 	// 无法识别的日志格式选项
 	default:
-		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.GetLogFormat())
+		return fmt.Sprintf("无法识别的日志格式选项: %v", f.config.GetLogFormat())
 	}
-
-	// 返回格式化后的日志消息。
-	return logMsg
 }
+
+// // formatLog 格式化日志消息
+// //
+// // 参数：
+// //   - f: FastLog 实例
+// //   - l: 日志消息
+// //
+// // 返回值:
+// //   - string: 格式化后的日志消息
+// func formatLog(f *FastLog, l *logMessage) string {
+// 	if f == nil || l == nil {
+// 		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
+// 	}
+
+// 	// 定义一个变量，用于存储格式化后的日志消息。
+// 	var logMsg string
+
+// 	// 根据日志格式选项，格式化日志消息。
+// 	switch f.config.GetLogFormat() {
+// 	// Json格式
+// 	case Json:
+// 		logMsg = fmt.Sprintf(
+// 			logFormatMap[Json],
+// 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.goroutineID, l.message,
+// 		)
+// 	// 详细格式
+// 	case Detailed:
+// 		// 按照指定格式输出日志，使用%-7s让日志级别左对齐且宽度为7个字符
+// 		logMsg = fmt.Sprintf(
+// 			logFormatMap[Detailed],
+// 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.message,
+// 		)
+// 	// 括号格式
+// 	case Bracket:
+// 		logMsg = fmt.Sprintf(logFormatMap[Bracket], logLevelToString(l.level), l.message)
+// 	// 协程格式
+// 	case Threaded:
+// 		logMsg = fmt.Sprintf(logFormatMap[Threaded], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.goroutineID, l.message)
+// 	// 简约格式
+// 	case Simple:
+// 		logMsg = fmt.Sprintf(logFormatMap[Simple], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.message)
+// 	// 自定义格式
+// 	case Custom:
+// 		logMsg = l.message
+// 	// 无法识别的日志格式选项
+// 	default:
+// 		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.GetLogFormat())
+// 	}
+
+// 	// 返回格式化后的日志消息。
+// 	return logMsg
+// }

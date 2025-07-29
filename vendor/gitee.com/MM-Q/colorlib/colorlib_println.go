@@ -2,120 +2,95 @@ package colorlib
 
 import "fmt"
 
-// Blue 方法用于将传入的参数以蓝色文本形式打印到控制台（不带占位符）。
-func (c *ColorLib) Blue(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
+// PrintColorln 方法根据颜色代码常量打印对应颜色的文本
+func (c *ColorLib) PrintColorln(code int, msg ...any) {
+	// 根据颜色代码获取颜色名称
+	var color string
+	switch code {
+	case Black:
+		color = "black"
+	case Red:
+		color = "red"
+	case Green:
+		color = "green"
+	case Yellow:
+		color = "yellow"
+	case Blue:
+		color = "blue"
+	case Purple:
+		color = "purple"
+	case Cyan:
+		color = "cyan"
+	case White:
+		color = "white"
+	case Gray:
+		color = "gray"
+	case Lred:
+		color = "lred"
+	case Lgreen:
+		color = "lgreen"
+	case Lyellow:
+		color = "lyellow"
+	case Lblue:
+		color = "lblue"
+	case Lpurple:
+		color = "lpurple"
+	case Lcyan:
+		color = "lcyan"
+	case Lwhite:
+		color = "lwhite"
+	default:
+		fmt.Println("Invalid color code:", code)
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("blue", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor(color, fmt.Sprint(msg...)+"\n")
+}
+
+// Blue 方法用于将传入的参数以蓝色文本形式打印到控制台（不带占位符）。
+func (c *ColorLib) Blue(msg ...any) {
+	c.PrintColorln(Blue, msg...)
 }
 
 // Green 方法用于将传入的参数以绿色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Green(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("green", combinedMsg)
+	c.PrintColorln(Green, msg...)
 }
 
 // Red 方法用于将传入的参数以红色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Red(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("red", combinedMsg)
+	c.PrintColorln(Red, msg...)
 }
 
 // Yellow 方法用于将传入的参数以黄色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Yellow(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("yellow", combinedMsg)
+	c.PrintColorln(Yellow, msg...)
 }
 
 // Purple 方法用于将传入的参数以紫色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Purple(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("purple", combinedMsg)
+	c.PrintColorln(Purple, msg...)
 }
 
 // Black 方法用于将传入的参数以黑色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Black(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("black", combinedMsg)
+	c.PrintColorln(Black, msg...)
 }
 
 // Cyan 方法用于将传入的参数以青色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Cyan(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("cyan", combinedMsg)
+	c.PrintColorln(Cyan, msg...)
 }
 
 // White 方法用于将传入的参数以白色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) White(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("white", combinedMsg)
+	c.PrintColorln(White, msg...)
 }
 
 // Gray 方法用于将传入的参数以灰色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Gray(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("gray", combinedMsg)
+	c.PrintColorln(Gray, msg...)
 }
 
 // PrintSuccess 方法用于将传入的参数以绿色文本形式打印到控制台，并在文本前添加一个表示成功的标志（不带占位符）。
@@ -126,10 +101,8 @@ func (c *ColorLib) PrintSuccess(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("success", "green", "%s", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.promptMsg("success", "green", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintError 方法用于将传入的参数以红色文本形式打印到控制台，并在文本前添加一个表示错误的标志（不带占位符）。
@@ -140,10 +113,8 @@ func (c *ColorLib) PrintError(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("error", "red", "%s", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.promptMsg("error", "red", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintWarning 方法用于将传入的参数以黄色文本形式打印到控制台，并在文本前添加一个表示警告的标志（不带占位符）。
@@ -154,10 +125,8 @@ func (c *ColorLib) PrintWarning(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("warning", "yellow", "%s", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.promptMsg("warning", "yellow", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintInfo 方法用于将传入的参数以蓝色文本形式打印到控制台，并在文本前添加一个表示信息的标志（不带占位符）。
@@ -168,10 +137,8 @@ func (c *ColorLib) PrintInfo(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将 msg 中的所有元素拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("info", "blue", "%s", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.promptMsg("info", "blue", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintDebug 方法用于将传入的参数以紫色文本形式打印到控制台，并在文本前添加一个表示调试的标志（不带占位符）。
@@ -182,103 +149,50 @@ func (c *ColorLib) PrintDebug(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将 msg 中的所有元素拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("debug", "purple", "%s", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.promptMsg("debug", "purple", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // Lred 方法用于将传入的参数以亮红色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lred(msg ...any) {
-	// 检查传入的参数数量，如果为0，则直接返回
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	// 调用 ColorLib 类型的 printWithColor 方法，传入颜色 "lred" 和拼接后的字符串
-	c.printWithColor("lred", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("Lred", fmt.Sprint(msg...)+"\n")
 }
 
 // Lgreen 方法用于将传入的参数以亮绿色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lgreen(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lgreen", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lgreen", fmt.Sprint(msg...)+"\n")
 }
 
 // Lyellow 方法用于将传入的参数以亮黄色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lyellow(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lyellow", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lyellow", fmt.Sprint(msg...)+"\n")
 }
 
 // Lblue 方法用于将传入的参数以亮蓝色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lblue(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lblue", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lblue", fmt.Sprint(msg...)+"\n")
 }
 
 // Lgreen 方法用于将传入的参数以亮紫色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lpurple(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lpurple", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lpurple", fmt.Sprint(msg...)+"\n")
 }
 
 // Lcyan 方法用于将传入的参数以亮青色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lcyan(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lcyan", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lcyan", fmt.Sprint(msg...)+"\n")
 }
 
 // Lwhite 方法用于将传入的参数以亮白色文本形式打印到控制台（不带占位符）。
 func (c *ColorLib) Lwhite(msg ...any) {
-	if len(msg) == 0 {
-		// 如果没有传入任何参数，直接返回
-		return
-	}
-
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.printWithColor("lwhite", combinedMsg)
+	// 直接拼接参数并添加换行符
+	c.printWithColor("lwhite", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintOk 方法用于将传入的参数以绿色文本形式打印到控制台，并在文本前添加一个表示成功的标志（不带占位符）。
@@ -289,10 +203,7 @@ func (c *ColorLib) PrintOk(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("ok", "green", "%s", combinedMsg)
+	c.promptMsg("ok", "green", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintErr 方法用于将传入的参数以红色文本形式打印到控制台，并在文本前添加一个表示错误的标志（不带占位符）。
@@ -303,10 +214,7 @@ func (c *ColorLib) PrintErr(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("err", "red", "%s", combinedMsg)
+	c.promptMsg("err", "red", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintWarn 方法用于将传入的参数以黄色文本形式打印到控制台，并在文本前添加一个表示警告的标志（不带占位符）。
@@ -317,10 +225,7 @@ func (c *ColorLib) PrintWarn(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将所有参数拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("warn", "yellow", "%s", combinedMsg)
+	c.promptMsg("warn", "yellow", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintInf 方法用于将传入的参数以蓝色文本形式打印到控制台，并在文本前添加一个表示信息的标志（不带占位符）。
@@ -331,10 +236,7 @@ func (c *ColorLib) PrintInf(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将 msg 中的所有元素拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("inf", "blue", "%s", combinedMsg)
+	c.promptMsg("inf", "blue", "%s", fmt.Sprint(msg...)+"\n")
 }
 
 // PrintDbg 方法用于将传入的参数以紫色文本形式打印到控制台，并在文本前添加一个表示调试的标志（不带占位符）。
@@ -345,8 +247,5 @@ func (c *ColorLib) PrintDbg(msg ...any) {
 		return
 	}
 
-	// 使用 fmt.Sprint 将 msg 中的所有元素拼接成一个字符串
-	combinedMsg := fmt.Sprint(msg...)
-	combinedMsg += "\n"
-	c.promptMsg("dbg", "purple", "%s", combinedMsg)
+	c.promptMsg("dbg", "purple", "%s", fmt.Sprint(msg...)+"\n")
 }
