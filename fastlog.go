@@ -49,7 +49,6 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		chanIntSize:    10000,                  // 通道大小 增加到10000
 		flushInterval:  500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
 		logFormat:      Detailed,               // 日志格式选项
-		maxBufferSize:  1 * 1024 * 1024,        // 最大缓冲区大小 默认1MB, 单位为MB
 		maxLogFileSize: 5,                      // 最大日志文件大小, 单位为MB, 默认5MB
 		maxLogAge:      0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
 		maxLogBackups:  0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
@@ -229,42 +228,90 @@ func (f *FastLog) processLogs() {
 
 // 返回值:
 //   - 无
+// func (f *FastLog) handleLog(rawMsg *logMessage) {
+// 	// 获取文件缓冲区的索引和文件缓冲区的大小
+// 	f.fileBufferMu.Lock()
+// 	currentFileBufferIdx := f.fileBufferIdx.Load()
+// 	currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
+// 	f.fileBufferMu.Unlock()
+
+// 	// 获取控制台缓冲区的索引和控制台缓冲区的大小
+// 	f.consoleBufferMu.Lock()
+// 	currentConsoleBufferIdx := f.consoleBufferIdx.Load()
+// 	currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
+// 	f.consoleBufferMu.Unlock()
+
+// 	// 检查缓冲区大小是否达到90%
+// 	if currentFileBufferSize >= flushThreshold || currentConsoleBufferSize >= flushThreshold {
+// 		f.flushBufferNow()
+// 	}
+
+// 	// 格式化日志消息
+// 	formattedLog := formatLog(f, rawMsg)
+
+// 	// 写入文件缓冲区
+// 	if !f.config.GetConsoleOnly() {
+// 		f.fileBufferMu.Lock() // 锁定文件缓冲区
+
+// 		// 写入文件缓冲区
+// 		if f.fileBuffers[currentFileBufferIdx] != nil {
+// 			f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
+// 		}
+
+// 		f.fileBufferMu.Unlock() // 解锁文件缓冲区
+// 	}
+
+// 	// 写入控制台缓冲区
+// 	if f.config.GetPrintToConsole() || f.config.GetConsoleOnly() {
+// 		f.consoleBufferMu.Lock() // 锁定控制台缓冲区
+
+// 		// 渲染颜色
+// 		consoleLog := addColor(f, rawMsg, formattedLog)
+
+// 		// 写入控制台缓冲区
+// 		if f.consoleBuffers[currentConsoleBufferIdx] != nil {
+// 			f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
+// 		}
+
+//			f.consoleBufferMu.Unlock() // 解锁控制台缓冲区
+//		}
+//	}
 func (f *FastLog) handleLog(rawMsg *logMessage) {
-	// 获取文件缓冲区的索引和文件缓冲区的大小
-	f.fileBufferMu.Lock()
-	currentFileBufferIdx := f.fileBufferIdx.Load()
-	currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
-	f.fileBufferMu.Unlock()
-
-	// 获取控制台缓冲区的索引和控制台缓冲区的大小
-	f.consoleBufferMu.Lock()
-	currentConsoleBufferIdx := f.consoleBufferIdx.Load()
-	currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
-	f.consoleBufferMu.Unlock()
-
-	// 检查缓冲区大小是否达到90%
-	if currentFileBufferSize >= flushThreshold || currentConsoleBufferSize >= flushThreshold {
-		f.flushBufferNow()
-	}
-
 	// 格式化日志消息
 	formattedLog := formatLog(f, rawMsg)
 
-	// 写入文件缓冲区
+	// 局部变量记录是否需要刷新
+	var needFileFlush bool
+	var needConsoleFlush bool
+
+	// 处理文件缓冲区 - 在同一个锁内完成检查和写入
 	if !f.config.GetConsoleOnly() {
-		f.fileBufferMu.Lock() // 锁定文件缓冲区
+		f.fileBufferMu.Lock()
+
+		// 记录当前文件缓冲区的索引和大小
+		currentFileBufferIdx := f.fileBufferIdx.Load()
+		currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
+
+		// 检查是否需要刷新（写入前检查）
+		needFileFlush = currentFileBufferSize >= flushThreshold
 
 		// 写入文件缓冲区
 		if f.fileBuffers[currentFileBufferIdx] != nil {
 			f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
 		}
-
-		f.fileBufferMu.Unlock() // 解锁文件缓冲区
+		f.fileBufferMu.Unlock()
 	}
 
-	// 写入控制台缓冲区
+	// 处理控制台缓冲区 - 同样的逻辑
 	if f.config.GetPrintToConsole() || f.config.GetConsoleOnly() {
-		f.consoleBufferMu.Lock() // 锁定控制台缓冲区
+		f.consoleBufferMu.Lock()
+
+		// 记录当前的控制台缓冲区的索引和大小
+		currentConsoleBufferIdx := f.consoleBufferIdx.Load()
+		currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
+
+		// 检查是否需要刷新（写入前检查）
+		needConsoleFlush = currentConsoleBufferSize >= flushThreshold
 
 		// 渲染颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
@@ -273,8 +320,12 @@ func (f *FastLog) handleLog(rawMsg *logMessage) {
 		if f.consoleBuffers[currentConsoleBufferIdx] != nil {
 			f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
 		}
+		f.consoleBufferMu.Unlock()
+	}
 
-		f.consoleBufferMu.Unlock() // 解锁控制台缓冲区
+	// 统一判断是否需要刷新（在所有写入完成后）
+	if needFileFlush || needConsoleFlush {
+		f.flushBufferNow()
 	}
 }
 
@@ -379,13 +430,35 @@ func (f *FastLog) flushBufferNow() {
 //
 // 返回值:
 //   - 关闭过程中可能发生的错误
-func (f *FastLog) Close() error {
+func (f *FastLog) Close() (closeErr error) {
 	f.closeLock.Lock()
 	defer f.closeLock.Unlock()
 
 	// 确保只关闭一次
-	var closeErr error
 	f.closeOnce.Do(func() {
+		// 等待日志处理完成 - 确保所有日志都被消费
+		done := make(chan struct{})
+
+		// 启动一个goroutine检查日志是否处理完成
+		go func() {
+			// 等待通道为空（所有日志都被处理）
+			for len(f.logChan) > 0 {
+				// 休眠10毫秒
+				time.Sleep(10 * time.Millisecond)
+			}
+			// 再等待一个刷新周期确保写入文件
+			time.Sleep(f.config.GetFlushInterval())
+			close(done)
+		}()
+
+		// 等待完成信号，但设置超时避免无限等待
+		select {
+		case <-done:
+			// 日志处理完成
+		case <-time.After(3 * time.Second):
+			// 超时保护，避免无限等待
+		}
+
 		// 打印关闭日志记录器的信息
 		f.Info("stop logging...")
 
@@ -418,11 +491,10 @@ func (f *FastLog) Close() error {
 
 	}) // 执行一次
 
-	// 检查是否有错误发生
+	// 返回关闭错误
 	if closeErr != nil {
 		return closeErr
 	}
-
 	return nil
 }
 

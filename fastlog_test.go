@@ -1,6 +1,7 @@
 package fastlog_test
 
 import (
+	"fmt"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -14,6 +15,9 @@ import (
 
 // TestConcurrentFastLog 测试并发场景下的多个日志记录器
 func TestConcurrentFastLog(t *testing.T) {
+	// 记录开始时间
+	startTime := time.Now()
+
 	// 创建日志配置
 	cfg := fastlog.NewFastLogConfig("logs", "test.log")
 	cfg.SetLogLevel(fastlog.DEBUG)
@@ -25,12 +29,22 @@ func TestConcurrentFastLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	defer func() { _ = log.Close() }()
 
 	// 持续时间为3秒
-	duration := 5
-	// 每秒生成100条日志
-	rate := 1000
+	duration := 3
+	// 每秒生成10000条日志
+	rate := 10000
+
+	defer func() {
+		_ = log.Close()
+		// 计算总耗时并打印
+		totalDuration := time.Since(startTime)
+		fmt.Printf("=== 并发日志测试结果 ===\n")
+		fmt.Printf("测试配置: 持续时间 %d秒 | 目标速率 %d条/秒\n", duration, rate)
+		fmt.Printf("预期生成: %d条日志\n", duration*rate)
+		fmt.Printf("实际耗时: %.3fs (%.2fms)\n", totalDuration.Seconds(), float64(totalDuration.Nanoseconds())/1e6)
+		fmt.Printf("========================\n")
+	}()
 
 	// 启动随机日志函数
 	randomLog(log, duration, rate, t)

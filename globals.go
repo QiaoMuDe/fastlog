@@ -57,6 +57,7 @@ const (
 
 // 日志记录器
 type FastLog struct {
+	/* 私有属性 */
 	// 日志文件路径  内部拼接的 [logDirName+logFileName]
 	logFilePath string
 	// 日志通道  用于异步写入日志文件
@@ -81,7 +82,12 @@ type FastLog struct {
 	cl *colorlib.ColorLib
 	// 用于确保日志处理器只关闭一次
 	closeOnce sync.Once
+	// 用于控制关闭过程的锁
+	closeLock sync.Mutex
+	// logrotatex 日志文件切割
+	logGer *logrotatex.LogRotateX
 
+	/* 双缓冲区属性 */
 	// 文件双缓冲区
 	fileBuffers [2]*bytes.Buffer
 	// 当前使用的文件缓冲区索引
@@ -97,12 +103,6 @@ type FastLog struct {
 	// 用于控制缓冲区刷新的锁
 	flushLock sync.Mutex
 
-	// 用于控制关闭过程的锁
-	closeLock sync.Mutex
-
-	// logrotatex 日志文件切割
-	logGer *logrotatex.LogRotateX
-
 	// 嵌入的配置结构体
 	config *FastLogConfig
 }
@@ -117,7 +117,6 @@ type FastLogConfig struct {
 	logLevel       LogLevel      // 日志级别
 	chanIntSize    int           // 通道大小 默认10000
 	logFormat      LogFormatType // 日志格式选项
-	maxBufferSize  int           // 最大缓冲区大小, 单位为MB, 默认1MB
 	noColor        bool          // 是否禁用终端颜色
 	noBold         bool          // 是否禁用终端字体加粗
 	maxLogFileSize int           // 最大日志文件大小, 单位为MB, 默认5MB
