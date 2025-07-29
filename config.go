@@ -208,9 +208,8 @@ func (c *FastLogConfig) validateFinalConfig() {
 
 	// 7. 检查日志格式
 	logFormat := c.GetLogFormat()
-	if logFormat < Json || logFormat > Custom {
-		cl.PrintErrf("无效的日志格式: %d (有效范围: %d-%d)\n", logFormat, Json, Custom)
-
+	if logFormat < Detailed || logFormat > Custom {
+		cl.PrintErrf("无效的日志格式: %d (有效范围: %d-%d)\n", logFormat, Detailed, Custom)
 	}
 
 	// 8. 检查文件名和目录名（仅在非控制台模式下）
@@ -362,7 +361,7 @@ func (c *FastLogConfig) fixFinalConfig() {
 
 	// 9. 修正日志格式
 	originalFormat := c.GetLogFormat()
-	if originalFormat < Json || originalFormat > Custom {
+	if originalFormat < Detailed || originalFormat > Custom {
 		c.SetLogFormat(Detailed)
 		cl.PrintOkf("修正日志格式: %d -> %d (Detailed)\n", originalFormat, Detailed)
 
