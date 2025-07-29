@@ -167,10 +167,23 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	f.ctx, f.cancel = context.WithCancel(context.Background())
 
 	// 使用 sync.Once 确保日志处理器只启动一次
+	var startErr error
 	f.startOnce.Do(func() {
+		// 启动日志处理器和刷新器
+		defer func() {
+			if r := recover(); r != nil {
+				startErr = fmt.Errorf("failed to start log processor: %v", r)
+			}
+		}()
+
 		go f.processLogs() // 启动日志处理器
 		go f.flushBuffer() // 启动定时刷新缓冲区
 	})
+
+	// 检查启动是否成功
+	if startErr != nil {
+		return nil, startErr
+	}
 
 	// 返回FastLog实例和nil错误
 	return f, nil
