@@ -208,11 +208,6 @@ type FastLogConfigurer interface {
 	// GetLogFormat 获取日志格式选项
 	GetLogFormat() LogFormatType
 
-	// SetMaxBufferSize 设置最大缓冲区大小(MB)
-	SetMaxBufferSize(size int)
-	// GetMaxBufferSize 获取最大缓冲区大小(MB)
-	GetMaxBufferSize() int
-
 	// SetNoColor 设置是否禁用终端颜色
 	SetNoColor(noColor bool)
 	// GetNoColor 获取是否禁用终端颜色的状态

@@ -3,7 +3,9 @@
 // 实现了双缓冲区机制以提高日志写入性能和并发安全性。
 package fastlog
 
-import "time"
+import (
+	"time"
+)
 
 // flushBuffer 定时刷新缓冲区
 func (f *FastLog) flushBuffer() {
@@ -18,7 +20,7 @@ func (f *FastLog) flushBuffer() {
 		defer func() {
 			// 捕获panic
 			if r := recover(); r != nil {
-				f.Errorf("刷新缓冲区发生panic: %v", r)
+				f.cl.PrintErrf("刷新缓冲区发生panic: %v\n", r)
 			}
 
 			// 减少等待组中的计数器。
@@ -67,7 +69,7 @@ func (f *FastLog) flushBufferNow() {
 			f.fileMu.Lock()
 			defer f.fileMu.Unlock()
 			if _, err := f.fileWriter.Write(f.fileBuffers[currentIdx].Bytes()); err != nil {
-				f.Errorf("写入文件失败: %v", err)
+				f.cl.PrintErrf("写入文件失败: %v\n", err)
 			}
 
 			// 重置当前缓冲区
@@ -93,34 +95,11 @@ func (f *FastLog) flushBufferNow() {
 			f.consoleMu.Lock()
 			defer f.consoleMu.Unlock()
 			if _, err := f.consoleWriter.Write(f.consoleBuffers[currentIdx].Bytes()); err != nil {
-				f.Errorf("写入控制台失败: %v", err)
+				f.cl.PrintErrf("写入控制台失败: %v\n", err)
 			}
 
 			// 重置当前缓冲区
 			f.consoleBuffers[currentIdx].Reset()
 		}
 	}
-}
-
-// cleanupBuffers 清理缓冲区资源，释放内存
-func (f *FastLog) cleanupBuffers() {
-	// 清理文件缓冲区
-	f.fileBufferMu.Lock()
-	for i := range f.fileBuffers {
-		if f.fileBuffers[i] != nil {
-			f.fileBuffers[i].Reset()
-			f.fileBuffers[i] = nil // 帮助GC回收
-		}
-	}
-	f.fileBufferMu.Unlock()
-
-	// 清理控制台缓冲区
-	f.consoleBufferMu.Lock()
-	for i := range f.consoleBuffers {
-		if f.consoleBuffers[i] != nil {
-			f.consoleBuffers[i].Reset()
-			f.consoleBuffers[i] = nil // 帮助GC回收
-		}
-	}
-	f.consoleBufferMu.Unlock()
 }

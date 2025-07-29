@@ -292,9 +292,6 @@ func (f *FastLog) Close() (closeErr error) {
 		// 刷新剩余的日志 缓冲区2
 		f.flushBufferNow()
 
-		// 清理缓冲区资源
-		f.cleanupBuffers()
-
 		// 如果不是仅输出到控制台, 同时日志文件句柄不为nil, 则关闭日志文件。
 		if !f.config.GetConsoleOnly() && f.logGer != nil {
 			f.fileMu.Lock()

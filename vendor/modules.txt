@@ -1,6 +1,0 @@
-# gitee.com/MM-Q/colorlib v1.2.4
-## explicit; go 1.23.4
-gitee.com/MM-Q/colorlib
-# gitee.com/MM-Q/logrotatex v0.0.5
-## explicit; go 1.23.4
-gitee.com/MM-Q/logrotatex

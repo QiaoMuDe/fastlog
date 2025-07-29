@@ -66,17 +66,20 @@ func (f *FastLog) handleLog(rawMsg *logMessage) {
 	if !f.config.GetConsoleOnly() {
 		f.fileBufferMu.Lock()
 
-		// 记录当前文件缓冲区的索引和大小
+		// 记录当前文件缓冲区的索引
 		currentFileBufferIdx := f.fileBufferIdx.Load()
-		currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
-
-		// 检查是否需要刷新（写入前检查）
-		needFileFlush = currentFileBufferSize >= flushThreshold
 
 		// 写入文件缓冲区
 		if f.fileBuffers[currentFileBufferIdx] != nil {
 			f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
 		}
+
+		// 获取文件缓冲区大小
+		currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
+
+		// 检查是否需要刷新（写入后检查）
+		needFileFlush = currentFileBufferSize >= flushThreshold
+
 		f.fileBufferMu.Unlock()
 	}
 
@@ -84,12 +87,8 @@ func (f *FastLog) handleLog(rawMsg *logMessage) {
 	if f.config.GetPrintToConsole() || f.config.GetConsoleOnly() {
 		f.consoleBufferMu.Lock()
 
-		// 记录当前的控制台缓冲区的索引和大小
+		// 记录当前的控制台缓冲区的索引
 		currentConsoleBufferIdx := f.consoleBufferIdx.Load()
-		currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
-
-		// 检查是否需要刷新（写入前检查）
-		needConsoleFlush = currentConsoleBufferSize >= flushThreshold
 
 		// 渲染颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
@@ -98,6 +97,13 @@ func (f *FastLog) handleLog(rawMsg *logMessage) {
 		if f.consoleBuffers[currentConsoleBufferIdx] != nil {
 			f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
 		}
+
+		// 获取控制台缓冲区大小
+		currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
+
+		// 检查是否需要刷新（写入后检查）
+		needConsoleFlush = currentConsoleBufferSize >= flushThreshold
+
 		f.consoleBufferMu.Unlock()
 	}
 

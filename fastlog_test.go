@@ -3,7 +3,9 @@
 package fastlog_test
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -222,6 +224,108 @@ func TestNewFastLog(t *testing.T) {
 	if err := log.Close(); err != nil {
 		t.Fatalf("关闭FastLog实例失败: %v", err)
 	}
+}
+
+// TestNewFastLog_Initialization 测试日志记录器初始化
+func TestNewFastLog_Initialization(t *testing.T) {
+	// 测试nil配置错误
+	_, err := fastlog.NewFastLog(nil)
+	if err == nil {
+		t.Fatal("使用nil配置时应返回错误")
+	}
+
+	// 测试正常初始化
+	cfg := fastlog.NewFastLogConfig("", "")
+	log, err := fastlog.NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("初始化日志失败: %v", err)
+	}
+	defer func() { _ = log.Close() }()
+}
+
+// TestFastLog_LogLevels 测试不同日志级别的过滤功能
+func TestFastLog_LogLevels(t *testing.T) {
+	cfg := fastlog.NewFastLogConfig("", "")
+	cfg.SetLogLevel(fastlog.WARN)
+	cfg.SetConsoleOnly(true)
+	log, _ := fastlog.NewFastLog(cfg)
+	defer func() { _ = log.Close() }()
+
+	// 重定向控制台输出
+	old := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	// 不同级别日志
+	log.Debug("debug message")
+	log.Info("info message")
+	log.Warn("warn message")
+	log.Error("error message")
+
+	// 刷新并恢复输出
+	_ = w.Close()
+	os.Stdout = old
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, r)
+
+	// 验证结果
+	output := buf.String()
+	if strings.Contains(output, "debug message") || strings.Contains(output, "info message") {
+		t.Error("日志级别过滤失败，不应包含低级日志")
+	}
+	if !strings.Contains(output, "warn message") || !strings.Contains(output, "error message") {
+		t.Error("日志级别过滤失败，应包含高级日志")
+	}
+}
+
+// TestFastLog_FileRotation 测试日志文件切割功能
+func TestFastLog_FileRotation(t *testing.T) {
+	cfg := fastlog.NewFastLogConfig("logs", "test.log")
+	cfg.SetMaxLogFileSize(1) // 1MB
+	cfg.SetPrintToConsole(false)
+	log, _ := fastlog.NewFastLog(cfg)
+
+	// 生成300kb日志
+	largeData := generateLargeString(1024 * 100) // 转换写入实际为300kb
+
+	// 写入10条日志
+	for i := 0; i < 10; i++ {
+		log.Info(largeData)
+	}
+
+	// 确保缓冲区刷新
+	time.Sleep(500 * time.Millisecond)
+
+	// 确保所有日志写入完成
+	_ = log.Close()
+
+	// 等待切割完成
+	time.Sleep(2 * time.Second) // 减少等待时间，500ms缓冲区刷新+2秒足够完成切割
+
+	// 验证切割文件生成
+	files, _ := filepath.Glob(filepath.Join(cfg.GetLogDirName(), "test.*"))
+	if len(files) < 1 {
+		t.Error("日志文件切割失败，未生成切割文件")
+	}
+}
+
+// 辅助函数
+//
+// 参数：
+//   - size: 字符串大小(单位：字节)
+//
+// 返回：
+//   - string: 生成的字符串
+func generateLargeString(size int) []byte {
+	buf := make([]byte, size)
+	for i := range buf {
+		buf[i] = 'a'
+	}
+	// 添加长度验证
+	if len(buf) != size {
+		panic(fmt.Sprintf("生成字符串大小不符: 预期=%d, 实际=%d", size, len(buf)))
+	}
+	return buf
 }
 
 // TestCleanupLogs 测试完成后清理日志目录
