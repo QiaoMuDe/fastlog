@@ -25,6 +25,60 @@
 - 🔄 自动日志轮转功能
 - 🔧 可配置的日志切割策略
 
+## 核心架构概述
+
+```mermaid
+flowchart TD
+    subgraph 客户端层
+        A[客户端应用]
+    end
+    
+    subgraph API层
+        B[快速日志接口]
+        C[信息/调试/警告/错误/成功 方法]
+    end
+    
+    subgraph 配置
+        D[快速日志配置]
+    end
+    
+    subgraph 核心处理引擎
+        E[Fastlog 结构体]
+        F[logChan 频道]
+        G[processLogs-Goroutine]
+        H[handelLog 函数]
+    end
+    
+    subgraph 缓冲区管理
+        I[原子, Int32 索引]
+        J[FlushBuffer Goroutine]
+        K[文件缓冲区]
+        L[控制台缓冲区]
+    end
+    
+    subgraph 输出层
+        M[logrotatex 的 LogRotatal]
+        N[colorlib.中, 颜色]
+        O[操作系统]
+    end
+    
+    A --> B
+    B --> C
+    D --> E
+    C --> E
+    E --> F
+    F --> G
+    G --> H
+    H --> I
+    H --> J
+    I --> K
+    J --> K
+    J --> L
+    K --> M
+    L --> N
+    N --> O
+```
+
 ## API 文档
 
 - [API 文档](./APIDOC.md)

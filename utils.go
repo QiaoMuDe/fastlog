@@ -1,0 +1,170 @@
+// 用于存放fastlog的方法
+package fastlog
+
+import (
+	"fmt"
+	"os"
+	"time"
+)
+
+/*====== 内部通用方法 ======*/
+
+// logWithLevel 通用日志记录方法
+//
+// 参数:
+//   - level: 日志级别
+//   - message: 格式化后的消息
+//   - skipFrames: 跳过的调用栈帧数（用于获取正确的调用者信息）
+func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
+	// 检查日志级别，如果当前级别高于指定级别则不记录
+	if level < l.config.GetLogLevel() {
+		return
+	}
+
+	// 获取调用者的信息
+	filename, funcName, line, ok := getCallerInfo(skipFrames)
+	if !ok {
+		filename = "unknown"
+		funcName = "unknown"
+		line = 0
+	}
+
+	// 直接获取当前时间，避免不必要的转换
+	timestamp := time.Now()
+
+	// 创建日志消息结构体
+	logMsg := &logMessage{
+		timestamp:   timestamp,        // 时间戳
+		level:       level,            // 日志级别
+		message:     message,          // 日志消息
+		fileName:    filename,         // 文件名
+		funcName:    funcName,         // 函数名
+		line:        line,             // 行号
+		goroutineID: getGoroutineID(), // 协程ID
+	}
+
+	// 将日志消息发送到日志通道
+	l.logChan <- logMsg
+}
+
+// logFatal Fatal级别的特殊处理方法
+//
+// 参数:
+//   - message: 格式化后的消息
+//   - skipFrames: 跳过的调用栈帧数
+func (l *FastLog) logFatal(message string, skipFrames int) {
+	// 先记录日志
+	l.logWithLevel(FATAL, message, skipFrames)
+
+	// 关闭日志记录器
+	_ = l.Close()
+
+	// 终止程序（非0退出码表示错误）
+	os.Exit(1)
+}
+
+/* ====== 不带占位符方法 ======*/
+
+// Info 记录信息级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Info(v ...any) {
+	l.logWithLevel(INFO, fmt.Sprint(v...), 3)
+}
+
+// Debug 记录调试级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Debug(v ...any) {
+	l.logWithLevel(DEBUG, fmt.Sprint(v...), 3)
+}
+
+// Warn 记录警告级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Warn(v ...any) {
+	l.logWithLevel(WARN, fmt.Sprint(v...), 3)
+}
+
+// Error 记录错误级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Error(v ...any) {
+	l.logWithLevel(ERROR, fmt.Sprint(v...), 3)
+}
+
+// Success 记录成功级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Success(v ...any) {
+	l.logWithLevel(SUCCESS, fmt.Sprint(v...), 3)
+}
+
+// Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Fatal(v ...any) {
+	l.logFatal(fmt.Sprint(v...), 3)
+}
+
+/*====== 占位符方法 ======*/
+
+// Infof 记录信息级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Infof(format string, v ...any) {
+	l.logWithLevel(INFO, fmt.Sprintf(format, v...), 3)
+}
+
+// Debugf 记录调试级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Debugf(format string, v ...any) {
+	l.logWithLevel(DEBUG, fmt.Sprintf(format, v...), 3)
+}
+
+// Warnf 记录警告级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Warnf(format string, v ...any) {
+	l.logWithLevel(WARN, fmt.Sprintf(format, v...), 3)
+}
+
+// Errorf 记录错误级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Errorf(format string, v ...any) {
+	l.logWithLevel(ERROR, fmt.Sprintf(format, v...), 3)
+}
+
+// Successf 记录成功级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Successf(format string, v ...any) {
+	l.logWithLevel(SUCCESS, fmt.Sprintf(format, v...), 3)
+}
+
+// Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Fatalf(format string, v ...any) {
+	l.logFatal(fmt.Sprintf(format, v...), 3)
+}
