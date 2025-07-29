@@ -24,6 +24,13 @@ type PathInfo struct {
 }
 
 // checkPath 检查给定路径的信息
+//
+// 参数：
+//   - path: 要检查的路径
+//
+// 返回值：
+//   - PathInfo: 路径信息
+//   - error: 错误信息
 func checkPath(path string) (PathInfo, error) {
 	// 创建一个 PathInfo 结构体
 	var info PathInfo
@@ -59,13 +66,15 @@ func checkPath(path string) (PathInfo, error) {
 }
 
 // getCallerInfo 获取调用者的信息
+//
 // 参数：
-// skip - 跳过的调用层数（通常设置为1或2，具体取决于调用链的深度）
+//   - skip: 跳过的调用层数（通常设置为1或2，具体取决于调用链的深度）
+//
 // 返回值：
-// fileName - 调用者的文件名（不包含路径）
-// functionName - 调用者的函数名
-// line - 调用者的行号
-// ok - 是否成功获取到调用者信息
+//   - fileName: 调用者的文件名（不包含路径）
+//   - functionName: 调用者的函数名
+//   - line: 调用者的行号
+//   - ok: 是否成功获取到调用者信息
 func getCallerInfo(skip int) (fileName string, functionName string, line int, ok bool) {
 	// 获取调用者信息，跳过指定的调用层数
 	pc, file, line, ok := runtime.Caller(skip)
@@ -88,7 +97,10 @@ func getCallerInfo(skip int) (fileName string, functionName string, line int, ok
 	return
 }
 
-// 获取当前 Goroutine 的 ID
+// getGoroutineID 获取当前 Goroutine 的 ID
+//
+// 返回值：
+//   - int64: 当前 Goroutine 的 ID
 func getGoroutineID() int64 {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
@@ -98,10 +110,12 @@ func getGoroutineID() int64 {
 }
 
 // logLevelToString 将 LogLevel 转换为对应的字符串，并以大写形式返回
+//
 // 参数：
-// level - 要转换的日志级别
+//   - level: 要转换的日志级别
+//
 // 返回值：
-// string - 对应的日志级别字符串，如果 level 无效，则返回 "UNKNOWN"
+//   - string: 对应的日志级别字符串，如果 level 无效，则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
 	// 使用 switch 语句根据日志级别返回对应的字符串
 	switch level {
@@ -125,12 +139,14 @@ func logLevelToString(level LogLevel) string {
 }
 
 // addColor 根据日志级别添加颜色
+//
 // 参数：
-// f - FastLog 实例
-// l - 日志消息
-// s - 原始字符串
-// 返回值：
-// string - 带有颜色的字符串
+//   - f: FastLog 实例
+//   - l: 日志消息
+//   - s: 原始字符串
+//
+// 返回值:
+//   - string: 带有颜色的字符串
 func addColor(f *FastLog, l *logMessage, s string) string {
 	// 根据匹配到的日志级别添加颜色
 	switch l.level {
@@ -151,7 +167,14 @@ func addColor(f *FastLog, l *logMessage, s string) string {
 	}
 }
 
-// formatLog 格式化日志消息。
+// formatLog 格式化日志消息
+//
+// 参数：
+//   - f: FastLog 实例
+//   - l: 日志消息
+//
+// 返回值:
+//   - string: 格式化后的日志消息
 func formatLog(f *FastLog, l *logMessage) string {
 	if f == nil || l == nil {
 		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
