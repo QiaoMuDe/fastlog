@@ -139,6 +139,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		logChan:        make(chan *logMessage, config.GetChanIntSize()), // 日志消息通道
 		fileBuffers:    fileBuffers,                                     // 文件缓冲
 		consoleBuffers: consoleBuffers,                                  // 控制台缓冲
+		closeOnce:      sync.Once{},                                     // 用于在结束时确保只执行一次
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
@@ -365,13 +366,12 @@ func (f *FastLog) Close() error {
 	f.closeLock.Lock()
 	defer f.closeLock.Unlock()
 
-	// 打印关闭日志记录器的信息
-	f.Info("stop logging...")
-
 	// 确保只关闭一次
-	var closeOnce sync.Once
 	var closeErr error
-	closeOnce.Do(func() {
+	f.closeOnce.Do(func() {
+		// 打印关闭日志记录器的信息
+		f.Info("stop logging...")
+
 		// 关闭日志通道
 		close(f.logChan)
 

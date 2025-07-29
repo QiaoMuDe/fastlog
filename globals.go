@@ -54,6 +54,7 @@ type FastLog struct {
 	ctx           context.Context    // 控制刷新器的上下文
 	cancel        context.CancelFunc // 控制刷新器的取消函数
 	cl            *colorlib.ColorLib // 提供终端颜色输出的库
+	closeOnce     sync.Once          // 用于确保日志处理器只关闭一次
 
 	/* logrotatex 日志文件切割 */
 	logGer *logrotatex.LogRotateX // 日志文件切割器

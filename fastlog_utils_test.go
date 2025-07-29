@@ -47,8 +47,8 @@ func TestFatal(t *testing.T) {
 	logPath := filepath.Join("test-logs", "fatal_test.log")
 	defer func() {
 		// 确保测试后清理文件
-		os.Remove(logPath)
-		os.Remove("test-logs")
+		_ = os.Remove(logPath)
+		_ = os.Remove("test-logs")
 	}()
 
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {
@@ -103,8 +103,8 @@ func TestFatalf(t *testing.T) {
 	logPath := filepath.Join("test-logs", "fatalf_test.log")
 	defer func() {
 		// 确保测试后清理文件
-		os.Remove(logPath)
-		os.Remove("test-logs")
+		_ = os.Remove(logPath)
+		_ = os.Remove("test-logs")
 	}()
 
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {

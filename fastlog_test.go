@@ -25,7 +25,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	// 持续时间为3秒
 	duration := 2
@@ -134,7 +134,7 @@ func TestCustomFormat(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	// 定义web应用程序日志格式
 	webAppLogFormat := `%s [%s] %s %s %s %d %d %s %s %dms`
@@ -159,7 +159,7 @@ func TestNoColor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	// 打印测试日志
 	log.Info("测试无颜色日志")
@@ -182,7 +182,7 @@ func TestNoBold(t *testing.T) {
 	if err != nil {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
-	defer log.Close()
+	defer func() { _ = log.Close() }()
 
 	// 打印测试日志
 	log.Info("测试无加粗日志")

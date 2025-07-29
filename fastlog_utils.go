@@ -378,8 +378,32 @@ func (l *FastLog) Fatal(v ...any) {
 	// 将日志消息发送到日志通道
 	l.logChan <- logMsg
 
+	// 等待日志处理完成 - 更精确的同步方式
+	// 创建一个完成信号通道
+	done := make(chan struct{})
+
+	// 启动一个goroutine检查日志是否处理完成
+	go func() {
+		// 等待通道为空（所有日志都被处理）
+		for len(l.logChan) > 0 {
+			// 休眠10毫秒
+			time.Sleep(10 * time.Millisecond)
+		}
+		// 再等待一个刷新周期确保写入文件
+		time.Sleep(l.config.GetFlushInterval())
+		close(done)
+	}()
+
+	// 等待完成信号，但设置超时避免无限等待
+	select {
+	case <-done:
+		// 日志处理完成
+	case <-time.After(3 * time.Second):
+		// 超时保护，避免无限等待
+	}
+
 	// 发送完成后关闭日志记录器
-	l.Close()
+	_ = l.Close()
 
 	// 终止程序（非0退出码表示错误）
 	os.Exit(1)
@@ -417,8 +441,32 @@ func (l *FastLog) Fatalf(format string, v ...any) {
 	// 将日志消息发送到日志通道
 	l.logChan <- logMsg
 
+	// 等待日志处理完成 - 更精确的同步方式
+	// 创建一个完成信号通道
+	done := make(chan struct{})
+
+	// 启动一个goroutine检查日志是否处理完成
+	go func() {
+		// 等待通道为空（所有日志都被处理）
+		for len(l.logChan) > 0 {
+			// 休眠10毫秒
+			time.Sleep(10 * time.Millisecond)
+		}
+		// 再等待一个刷新周期确保写入文件
+		time.Sleep(l.config.GetFlushInterval())
+		close(done)
+	}()
+
+	// 等待完成信号，但设置超时避免无限等待
+	select {
+	case <-done:
+		// 日志处理完成
+	case <-time.After(3 * time.Second):
+		// 超时保护，避免无限等待
+	}
+
 	// 发送完成后关闭日志记录器
-	l.Close()
+	_ = l.Close()
 
 	// 终止程序（非0退出码表示错误）
 	os.Exit(1)
