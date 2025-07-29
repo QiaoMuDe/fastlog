@@ -14,7 +14,14 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
+// 简写实现
+var (
+	NewFlog = NewFastLog
+	NewFcfg = NewFastLogConfig
+)
+
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
+//
 // 参数:
 //   - logDirName: 日志目录名称, 默认为"applogs"。
 //   - logFileName: 日志文件名称, 默认为"app.log"。
@@ -54,6 +61,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
+//
 // 参数:
 //   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
@@ -112,21 +120,21 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		fileWriter = io.Discard // 仅输出到控制台, 不输出到文件
 	}
 
-	// 初始化双缓冲区
+	// 创建双缓冲区
 	fileBuffers := [2]*bytes.Buffer{
-		bytes.NewBuffer(make([]byte, config.GetMaxBufferSize())),
-		bytes.NewBuffer(make([]byte, config.GetMaxBufferSize())),
+		bytes.NewBuffer(nil),
+		bytes.NewBuffer(nil),
 	}
 	consoleBuffers := [2]*bytes.Buffer{
-		bytes.NewBuffer(make([]byte, config.GetMaxBufferSize())),
-		bytes.NewBuffer(make([]byte, config.GetMaxBufferSize())),
+		bytes.NewBuffer(nil),
+		bytes.NewBuffer(nil),
 	}
 
-	// 清空缓冲区
-	fileBuffers[0].Reset()
-	fileBuffers[1].Reset()
-	consoleBuffers[0].Reset()
-	consoleBuffers[1].Reset()
+	// 预留合理的初始容量，避免频繁扩容
+	for i := range fileBuffers {
+		fileBuffers[i].Grow(initialBufferCapacity)
+		consoleBuffers[i].Grow(initialBufferCapacity)
+	}
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
@@ -186,9 +194,6 @@ func (f *FastLog) processLogs() {
 			}
 		}()
 
-		// 计算最大缓冲区大小的80%
-		maxBufferSize := int(float64(f.config.GetMaxBufferSize()) * 0.8)
-
 		// 初始化控制台字符串构建器
 		for {
 			select {
@@ -198,7 +203,7 @@ func (f *FastLog) processLogs() {
 				if len(f.logChan) != 0 {
 					// 处理通道中剩余的日志消息
 					for rawMsg := range f.logChan {
-						f.handleLog(rawMsg, maxBufferSize)
+						f.handleLog(rawMsg)
 					}
 				}
 				return
@@ -209,7 +214,7 @@ func (f *FastLog) processLogs() {
 				}
 
 				// 处理日志消息
-				f.handleLog(rawMsg, maxBufferSize)
+				f.handleLog(rawMsg)
 			}
 		}
 	}()
@@ -217,14 +222,14 @@ func (f *FastLog) processLogs() {
 
 // handleLog 处理单条日志消息的逻辑
 // 格式化日志消息, 然后写入到缓冲区中。
-// 如果缓冲区大小达到80%, 则立即刷新缓冲区。
+// 如果缓冲区大小达到90%, 则立即刷新缓冲区。
+
 // 参数:
 //   - rawMsg: 日志消息
-//   - maxBufferSize: 最大缓冲区大小
-//
+
 // 返回值:
 //   - 无
-func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
+func (f *FastLog) handleLog(rawMsg *logMessage) {
 	// 获取文件缓冲区的索引和文件缓冲区的大小
 	f.fileBufferMu.Lock()
 	currentFileBufferIdx := f.fileBufferIdx.Load()
@@ -237,8 +242,8 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 	currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
 	f.consoleBufferMu.Unlock()
 
-	// 检查缓冲区大小是否达到80%
-	if currentFileBufferSize >= maxBufferSize || currentConsoleBufferSize >= maxBufferSize {
+	// 检查缓冲区大小是否达到90%
+	if currentFileBufferSize >= flushThreshold || currentConsoleBufferSize >= flushThreshold {
 		f.flushBufferNow()
 	}
 
@@ -247,22 +252,29 @@ func (f *FastLog) handleLog(rawMsg *logMessage, maxBufferSize int) {
 
 	// 写入文件缓冲区
 	if !f.config.GetConsoleOnly() {
-		f.fileBufferMu.Lock()
-		defer f.fileBufferMu.Unlock()
+		f.fileBufferMu.Lock() // 锁定文件缓冲区
+
 		// 写入文件缓冲区
-		f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
+		if f.fileBuffers[currentFileBufferIdx] != nil {
+			f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
+		}
+
+		f.fileBufferMu.Unlock() // 解锁文件缓冲区
 	}
 
 	// 写入控制台缓冲区
 	if f.config.GetPrintToConsole() || f.config.GetConsoleOnly() {
-		f.consoleBufferMu.Lock()
-		defer f.consoleBufferMu.Unlock()
+		f.consoleBufferMu.Lock() // 锁定控制台缓冲区
 
 		// 渲染颜色
 		consoleLog := addColor(f, rawMsg, formattedLog)
 
 		// 写入控制台缓冲区
-		f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
+		if f.consoleBuffers[currentConsoleBufferIdx] != nil {
+			f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
+		}
+
+		f.consoleBufferMu.Unlock() // 解锁控制台缓冲区
 	}
 }
 
@@ -304,6 +316,8 @@ func (f *FastLog) flushBuffer() {
 }
 
 // flushBufferNow 立即刷新缓冲区
+// 刷新缓冲区, 并将控制台缓冲区的内容输出到控制台
+// 将控制台缓冲区的内容输出到控制台后, 将控制台缓冲区清空。
 func (f *FastLog) flushBufferNow() {
 	f.flushLock.Lock() // 加锁, 防止并发刷新
 	defer f.flushLock.Unlock()
@@ -362,6 +376,9 @@ func (f *FastLog) flushBufferNow() {
 }
 
 // Close 关闭FastLog实例, 并等待所有日志处理完成。
+//
+// 返回值:
+//   - 关闭过程中可能发生的错误
 func (f *FastLog) Close() error {
 	f.closeLock.Lock()
 	defer f.closeLock.Unlock()
@@ -387,6 +404,9 @@ func (f *FastLog) Close() error {
 		// 刷新剩余的日志 缓冲区2
 		f.flushBufferNow()
 
+		// 清理缓冲区资源
+		f.cleanupBuffers()
+
 		// 如果不是仅输出到控制台, 同时日志文件句柄不为nil, 则关闭日志文件。
 		if !f.config.GetConsoleOnly() && f.logGer != nil {
 			f.fileMu.Lock()
@@ -404,4 +424,27 @@ func (f *FastLog) Close() error {
 	}
 
 	return nil
+}
+
+// cleanupBuffers 清理缓冲区资源，释放内存
+func (f *FastLog) cleanupBuffers() {
+	// 清理文件缓冲区
+	f.fileBufferMu.Lock()
+	for i := range f.fileBuffers {
+		if f.fileBuffers[i] != nil {
+			f.fileBuffers[i].Reset()
+			f.fileBuffers[i] = nil // 帮助GC回收
+		}
+	}
+	f.fileBufferMu.Unlock()
+
+	// 清理控制台缓冲区
+	f.consoleBufferMu.Lock()
+	for i := range f.consoleBuffers {
+		if f.consoleBuffers[i] != nil {
+			f.consoleBuffers[i].Reset()
+			f.consoleBuffers[i] = nil // 帮助GC回收
+		}
+	}
+	f.consoleBufferMu.Unlock()
 }

@@ -60,13 +60,6 @@ func (c *FastLogConfig) SetLogFormat(format LogFormatType) {
 	c.logFormat = format
 }
 
-// SetMaxBufferSize 设置最大缓冲区大小(MB)
-func (c *FastLogConfig) SetMaxBufferSize(size int) {
-	c.setMu.Lock()
-	defer c.setMu.Unlock()
-	c.maxBufferSize = size
-}
-
 // SetNoColor 设置是否禁用终端颜色
 func (c *FastLogConfig) SetNoColor(noColor bool) {
 	c.setMu.Lock()
@@ -170,13 +163,6 @@ func (c *FastLogConfig) GetLogFormat() LogFormatType {
 	c.setMu.RLock()         // 读取锁定
 	defer c.setMu.RUnlock() // 读取解锁
 	return c.logFormat
-}
-
-// GetMaxBufferSize 获取最大缓冲区大小(MB)
-func (c *FastLogConfig) GetMaxBufferSize() int {
-	c.setMu.RLock()         // 读取锁定
-	defer c.setMu.RUnlock() // 读取解锁
-	return c.maxBufferSize
 }
 
 // GetNoColor 获取是否禁用终端颜色的状态

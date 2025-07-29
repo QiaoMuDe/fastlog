@@ -13,6 +13,21 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
+// 定义缓冲区相关常量
+const (
+	// 1 KB
+	kb = 1024
+
+	// 8KB 初始容量
+	initialBufferCapacity = 8 * kb
+
+	// 256KB 最大容量
+	maxBufferCapacity = 256 * kb
+
+	// 缓冲区90%阈值
+	flushThreshold = maxBufferCapacity * 9 / 10
+)
+
 // 日志格式选项
 type LogFormatType int
 
@@ -42,39 +57,54 @@ const (
 
 // 日志记录器
 type FastLog struct {
-	/*  私有属性 内部使用无需修改  */
-	logFilePath   string             // 日志文件路径  内部拼接的 [logDirName+logFileName]
-	logChan       chan *logMessage   // 日志通道  用于异步写入日志文件
-	logWait       sync.WaitGroup     // 等待组 用于等待所有goroutine完成
-	fileWriter    io.Writer          // 文件写入器
-	fileMu        sync.Mutex         // 文件锁 用于保护文件缓冲区的写入操作
-	consoleMu     sync.Mutex         // 控制台锁 用于保护控制台缓冲区的写入操作
-	consoleWriter io.Writer          // 控制台写入器
-	startOnce     sync.Once          // 用于确保日志处理器只启动一次
-	ctx           context.Context    // 控制刷新器的上下文
-	cancel        context.CancelFunc // 控制刷新器的取消函数
-	cl            *colorlib.ColorLib // 提供终端颜色输出的库
-	closeOnce     sync.Once          // 用于确保日志处理器只关闭一次
+	// 日志文件路径  内部拼接的 [logDirName+logFileName]
+	logFilePath string
+	// 日志通道  用于异步写入日志文件
+	logChan chan *logMessage
+	// 等待组 用于等待所有goroutine完成
+	logWait sync.WaitGroup
+	// 文件写入器
+	fileWriter io.Writer
+	// 文件锁 用于保护文件缓冲区的写入操作
+	fileMu sync.Mutex
+	// 控制台锁 用于保护控制台缓冲区的写入操作
+	consoleMu sync.Mutex
+	// 控制台写入器
+	consoleWriter io.Writer
+	// 用于确保日志处理器只启动一次
+	startOnce sync.Once
+	// 控制刷新器的上下文
+	ctx context.Context
+	// 控制刷新器的取消函数
+	cancel context.CancelFunc
+	// 提供终端颜色输出的库
+	cl *colorlib.ColorLib
+	// 用于确保日志处理器只关闭一次
+	closeOnce sync.Once
 
-	/* logrotatex 日志文件切割 */
-	logGer *logrotatex.LogRotateX // 日志文件切割器
-
-	/* 嵌入的配置结构体 */
-	config *FastLogConfig // 配置结构体
-
-	// 双缓冲区配置
-	fileBuffers      [2]*bytes.Buffer // 文件双缓冲区
-	fileBufferIdx    atomic.Int32     // 当前使用的文件缓冲区索引
-	consoleBuffers   [2]*bytes.Buffer // 控制台双缓冲区
-	consoleBufferIdx atomic.Int32     // 当前使用的控制台缓冲区索引
-	fileBufferMu     sync.Mutex       // 文件缓冲区锁
-	consoleBufferMu  sync.Mutex       // 控制台缓冲区锁
-
+	// 文件双缓冲区
+	fileBuffers [2]*bytes.Buffer
+	// 当前使用的文件缓冲区索引
+	fileBufferIdx atomic.Int32
+	// 控制台双缓冲区
+	consoleBuffers [2]*bytes.Buffer
+	// 当前使用的控制台缓冲区索引
+	consoleBufferIdx atomic.Int32
+	// 文件缓冲区锁
+	fileBufferMu sync.Mutex
+	// 控制台缓冲区锁
+	consoleBufferMu sync.Mutex
 	// 用于控制缓冲区刷新的锁
 	flushLock sync.Mutex
 
 	// 用于控制关闭过程的锁
 	closeLock sync.Mutex
+
+	// logrotatex 日志文件切割
+	logGer *logrotatex.LogRotateX
+
+	// 嵌入的配置结构体
+	config *FastLogConfig
 }
 
 // 定义一个配置结构体，用于配置日志记录器
@@ -178,11 +208,6 @@ type FastLogConfigurer interface {
 	SetLogFormat(format LogFormatType)
 	// GetLogFormat 获取日志格式选项
 	GetLogFormat() LogFormatType
-
-	// SetMaxBufferSize 设置最大缓冲区大小(MB)
-	SetMaxBufferSize(size int)
-	// GetMaxBufferSize 获取最大缓冲区大小(MB)
-	GetMaxBufferSize() int
 
 	// SetNoColor 设置是否禁用终端颜色
 	SetNoColor(noColor bool)
