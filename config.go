@@ -1,3 +1,6 @@
+// config.go - 日志配置管理模块
+// 定义日志配置结构体及配置项的设置与获取方法，
+// 负责管理FastLog的所有可配置参数。
 package fastlog
 
 import (

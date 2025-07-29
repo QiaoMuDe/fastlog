@@ -1,3 +1,5 @@
+// processor.go - 日志消息处理模块
+// 负责从通道读取日志消息，格式化日志内容，并根据缓冲区状态决定是否触发刷新。
 package fastlog
 
 // processLogs 日志处理器, 用于处理日志消息。

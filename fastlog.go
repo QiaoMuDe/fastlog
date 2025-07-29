@@ -1,4 +1,6 @@
-// fastlog.go 存放fastlog包的实现
+// fastlog.go - FastLog日志记录器核心实现
+// 提供日志记录器的创建、初始化、日志写入及关闭等核心功能，
+// 集成配置管理、缓冲区管理和日志处理流程。
 package fastlog
 
 import (

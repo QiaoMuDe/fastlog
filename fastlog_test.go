@@ -1,3 +1,5 @@
+// fastlog_test.go - FastLog日志库测试文件
+// 包含对FastLog日志记录器的并发性能、日志格式、特殊功能等方面的测试。
 package fastlog_test
 
 import (

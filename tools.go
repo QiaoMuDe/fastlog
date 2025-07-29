@@ -1,3 +1,5 @@
+// tools.go - 工具函数集合
+// 提供路径检查、调用者信息获取、协程ID获取、日志格式化和颜色添加等辅助功能。
 package fastlog
 
 import (

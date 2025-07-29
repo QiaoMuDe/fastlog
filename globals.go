@@ -1,4 +1,5 @@
-// 定义全局常量变量或结构体
+// globals.go - 全局常量、类型定义与格式映射
+// 定义FastLog日志库使用的全局常量、枚举类型、接口和日志格式映射。
 package fastlog
 
 import (
