@@ -31,7 +31,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	}
 
 	// 持续时间为3秒
-	duration := 1
+	duration := 3
 	// 每秒生成10000条日志
 	rate := 10000
 
