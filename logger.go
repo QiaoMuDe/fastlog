@@ -45,7 +45,12 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 		goroutineID: getGoroutineID(), // 协程ID
 	}
 
-	// 将日志消息发送到日志通道
+	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
+	if shouldDropLogByBackpressure(l.logChan, level) {
+		return
+	}
+
+	// 发送日志
 	l.logChan <- logMsg
 }
 

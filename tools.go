@@ -311,3 +311,32 @@ func formatLog(f *FastLog, l *logMessage) string {
 		return fmt.Sprintf("无法识别的日志格式选项: %v", f.config.LogFormat)
 	}
 }
+
+// shouldDropLogByBackpressure 根据通道背压情况判断是否应该丢弃日志
+//
+// 参数:
+//   - logChan: 日志通道
+//   - level: 日志级别
+//
+// 返回:
+//   - bool: true表示应该丢弃该日志，false表示应该保留
+func shouldDropLogByBackpressure(logChan chan *logMessage, level LogLevel) bool {
+	// 添加空指针检查
+	if logChan == nil {
+		return false // 如果通道为nil，不丢弃日志
+	}
+
+	// 计算通道使用率（百分比）
+	channelUsage := len(logChan) * 10 / cap(logChan)
+
+	switch {
+	case channelUsage >= 9: // 90%+ 只保留ERROR和FATAL
+		return level < ERROR
+	case channelUsage >= 8: // 80%+ 只保留WARN及以上
+		return level < WARN
+	case channelUsage >= 7: // 70%+ 丢弃DEBUG
+		return level < INFO
+	default:
+		return false // 正常情况下不丢弃任何日志
+	}
+}

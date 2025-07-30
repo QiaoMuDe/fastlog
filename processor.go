@@ -40,6 +40,10 @@ func (p *processor) singleThreadProcessor() {
 	if p.consoleBuffer == nil {
 		panic("processor.consoleBuffer is nil")
 	}
+	// 检查通道是否为nil
+	if p.f.logChan == nil {
+		panic("processor.f.logChan is nil")
+	}
 
 	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
 	batch := make([]*logMessage, 0, p.batchSize)
@@ -61,6 +65,16 @@ func (p *processor) singleThreadProcessor() {
 	for {
 		select {
 		case logMsg := <-p.f.logChan: // 从日志通道接收新日志消息
+			// 添加消息空值检查
+			if logMsg == nil {
+				continue // 跳过 nil 消息
+			}
+
+			// 多级背压处理: 根据通道使用率丢弃低级别日志消息
+			if shouldDropLogByBackpressure(p.f.logChan, logMsg.level) {
+				continue
+			}
+
 			// 将日志消息添加到批处理缓冲区
 			batch = append(batch, logMsg)
 
