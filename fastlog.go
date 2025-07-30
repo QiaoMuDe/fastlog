@@ -208,8 +208,8 @@ func (f *FastLog) Close() {
 		// 记录关闭日志（最后一条日志）
 		f.Info("stop logging...")
 
-		// 创建带3秒超时的context用于控制关闭流程
-		closeCtx, closeCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		// 创建带5秒超时的context用于控制关闭流程
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer closeCancel() // 确保最终取消context
 
 		// 创建goroutine监控通道清空状态
@@ -228,8 +228,8 @@ func (f *FastLog) Close() {
 						time.Sleep(f.config.FlushInterval)
 						return
 					}
-					// 避免CPU忙等待，适当休眠
-					time.Sleep(10 * time.Millisecond)
+					// 避免CPU忙等待, 适当休眠
+					time.Sleep(500 * time.Millisecond)
 				}
 			}
 		}()
@@ -244,7 +244,7 @@ func (f *FastLog) Close() {
 		close(f.logChan)
 		f.cancel()
 
-		// 创建带1秒超时的等待组监控
+		// 创建带3秒超时的等待组监控
 		waitDone := make(chan struct{})
 		go func() {
 			f.logWait.Wait() // 等待处理器goroutine退出
@@ -256,7 +256,7 @@ func (f *FastLog) Close() {
 		case <-waitDone: // 正常退出
 		case <-time.After(3 * time.Second):
 			// 超时警告(可能丢失最后部分日志)
-			f.cl.PrintWarnf("日志处理器关闭超时(3秒)，最后%d条日志可能未被处理\n", len(f.logChan))
+			f.cl.PrintWarn("日志处理器关闭超时(3秒)")
 		}
 
 		// 关闭日志文件切割器(如果启用文件输出)

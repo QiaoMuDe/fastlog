@@ -328,17 +328,32 @@ func shouldDropLogByBackpressure(logChan chan *logMessage, level LogLevel) bool 
 		return false // 如果通道为nil，不丢弃日志
 	}
 
-	// 计算通道使用率（百分比）
-	channelUsage := len(logChan) * 10 / cap(logChan)
+	// 提前获取通道长度和容量，供后续复用
+	chanLen := len(logChan)
+	chanCap := cap(logChan)
 
+	// 当通道满了，立即丢弃所有新日志
+	if chanLen >= chanCap {
+		return true
+	}
+
+	// 使用整数计算通道使用率(扩大100倍避免浮点运算)
+	// 例如: chanLen=60, chanCap=100 => channelUsage=60
+	channelUsage := chanLen * 100 / chanCap
+
+	// 根据通道使用率决定是否丢弃日志，按照日志级别重要性递增
 	switch {
-	case channelUsage >= 9: // 90%+ 只保留ERROR和FATAL
+	case channelUsage >= 98: // 98%+ 只保留FATAL
+		return level < FATAL
+	case channelUsage >= 95: // 95%+ 只保留ERROR及以上
 		return level < ERROR
-	case channelUsage >= 8: // 80%+ 只保留WARN及以上
+	case channelUsage >= 90: // 90%+ 只保留WARN及以上
 		return level < WARN
-	case channelUsage >= 7: // 70%+ 丢弃DEBUG
+	case channelUsage >= 80: // 80%+ 只保留SUCCESS及以上
+		return level < SUCCESS
+	case channelUsage >= 70: // 70%+ 只保留INFO及以上(丢弃DEBUG级别)
 		return level < INFO
 	default:
-		return false // 正常情况下不丢弃任何日志
+		return false // 70%以下不丢弃任何日志
 	}
 }
