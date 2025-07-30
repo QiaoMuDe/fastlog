@@ -29,6 +29,35 @@ type FastLogConfig struct {
 	EnableCompress  bool          // 是否启用日志文件压缩 默认不启用
 }
 
+// NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
+//
+// 参数:
+//   - logDirName: 日志目录名称, 默认为"applogs"。
+//   - logFileName: 日志文件名称, 默认为"app.log"。
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
+	// 返回一个新的FastLogConfig实例
+	return &FastLogConfig{
+		LogDirName:      logDirName,             // 日志目录名称
+		LogFileName:     logFileName,            // 日志文件名称
+		OutputToConsole: true,                   // 是否将日志输出到控制台
+		OutputToFile:    true,                   // 是否将日志输出到文件
+		LogLevel:        INFO,                   // 日志级别 默认INFO
+		ChanIntSize:     10000,                  // 通道大小 增加到10000
+		FlushInterval:   500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
+		LogFormat:       Detailed,               // 日志格式选项
+		MaxLogFileSize:  5,                      // 最大日志文件大小, 单位为MB, 默认5MB
+		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:     false,                  // 是否使用本地时间 默认使用UTC时间
+		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
+		NoColor:         false,                  // 是否禁用终端颜色
+		NoBold:          false,                  // 是否禁用终端字体加粗
+	}
+}
+
 // fixFinalConfig 最终配置修正函数 - 在NewFastLog开始时调用
 // 负责修正所有不合理的配置值, 确保系统稳定运行
 func (c *FastLogConfig) fixFinalConfig() {
