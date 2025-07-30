@@ -1,6 +1,7 @@
 package fastlog
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -160,9 +161,6 @@ func TestAddColor(t *testing.T) {
 
 // TestFormatLog 测试日志格式化
 func TestFormatLog(t *testing.T) {
-	cfg := NewFastLogConfig("", "")
-	log, _ := NewFastLog(cfg)
-
 	msg := &logMessage{
 		timestamp:   time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
 		level:       INFO,
@@ -173,17 +171,31 @@ func TestFormatLog(t *testing.T) {
 		goroutineID: 123,
 	}
 
-	// 测试详细格式
-	cfg.LogFormat = Detailed
-	detailed := formatLog(log, msg)
+	// 测试详细格式 - 创建第一个实例
+	cfg1 := NewFastLogConfig("", "")
+	cfg1.LogFormat = Detailed
+	cfg1.OutputToConsole = false // 禁用控制台输出，避免启动处理器
+	cfg1.OutputToFile = false    // 禁用文件输出，避免启动处理器
+	log1, _ := NewFastLog(cfg1)
+	defer log1.Close()
+
+	detailed := formatLog(log1, msg)
 	if !strings.Contains(detailed, "2023-01-01 12:00:00") || !strings.Contains(detailed, "INFO") {
 		t.Error("详细格式日志不完整")
 	}
 
-	// 测试JSON格式
-	cfg.LogFormat = Json
-	jsonLog := formatLog(log, msg)
+	// 测试JSON格式 - 创建第二个实例
+	cfg2 := NewFastLogConfig("", "")
+	cfg2.LogFormat = Json
+	cfg2.OutputToConsole = false // 禁用控制台输出，避免启动处理器
+	cfg2.OutputToFile = false    // 禁用文件输出，避免启动处理器
+	log2, _ := NewFastLog(cfg2)
+	defer log2.Close()
+
+	jsonLog := formatLog(log2, msg)
 	if !strings.Contains(jsonLog, "\"level\":\"INFO\"") || !strings.Contains(jsonLog, "\"message\":\"test format\"") {
 		t.Error("JSON格式日志不完整")
 	}
+
+	fmt.Println(jsonLog)
 }

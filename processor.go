@@ -2,12 +2,14 @@ package fastlog
 
 import (
 	"bytes"
+	"runtime/debug"
 	"time"
 )
 
 // processor 单线程日志处理器
 type processor struct {
-	f *FastLog // 日志记录器
+	// 日志记录器
+	f *FastLog
 
 	// 单一缓冲区（单线程使用，无需锁）
 	fileBuffer    *bytes.Buffer // 文件缓冲区
@@ -22,6 +24,23 @@ type processor struct {
 // singleThreadProcessor 单线程日志处理器
 // 负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理
 func (p *processor) singleThreadProcessor() {
+	// 添加初始化检查
+	if p == nil {
+		panic("processor is nil")
+	}
+	if p.f == nil {
+		panic("processor.f is nil")
+	}
+	if p.f.config == nil {
+		panic("processor.f.config is nil")
+	}
+	if p.fileBuffer == nil {
+		panic("processor.fileBuffer is nil")
+	}
+	if p.consoleBuffer == nil {
+		panic("processor.consoleBuffer is nil")
+	}
+
 	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
 	batch := make([]*logMessage, 0, p.batchSize)
 
@@ -31,7 +50,7 @@ func (p *processor) singleThreadProcessor() {
 	defer func() {
 		// 捕获panic
 		if r := recover(); r != nil {
-			p.f.cl.PrintErrf("日志处理器发生panic: %s\n", r)
+			p.f.cl.PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
 		}
 
 		// 减少等待组中的计数器。
@@ -126,7 +145,7 @@ func (p *processor) flushBuffers() {
 			// 将文件缓冲区内容写入到文件写入器
 			// 使用底层字节数组避免额外内存分配
 			if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
-				p.f.cl.PrintErrf("写入文件失败: %s\n", writeErr)
+				p.f.cl.PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 			}
 		}
 	}
@@ -137,7 +156,7 @@ func (p *processor) flushBuffers() {
 			// 将控制台缓冲区内容写入到控制台写入器
 			// 包含已添加的颜色控制字符
 			if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
-				p.f.cl.PrintErrf("写入控制台失败: %s\n", writeErr)
+				p.f.cl.PrintErrf("写入控制台失败: %s\nstack: %s\n", writeErr, debug.Stack())
 			}
 		}
 	}

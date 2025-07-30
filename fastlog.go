@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sync"
 	"time"
 
@@ -99,7 +100,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 检查配置结构体是否为nil
 	if config == nil {
-		return nil, fmt.Errorf("FastLogConfig 为 nil")
+		panic("FastLogConfig 不能为 nil")
 	}
 
 	// 克隆配置结构体防止原配置被意外修改
@@ -121,11 +122,8 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		NoBold:          config.NoBold,          // 是否禁用终端字体加粗
 	}
 
-	// // 最终配置验证 - 只检查，不修改
-	// config.validateFinalConfig()
-
-	// // 最终配置修正 - 修正所有不合理的值
-	// config.fixFinalConfig()
+	// 最终配置修正 - 修正所有不合理的值
+	cfg.fixFinalConfig()
 
 	// 初始化写入器
 	var fileWriter io.Writer    // 文件写入器
@@ -273,7 +271,7 @@ func (f *FastLog) Close() {
 		if f.config.OutputToFile {
 			if f.logGer != nil {
 				if closeErr := f.logGer.Close(); closeErr != nil {
-					f.cl.PrintErrf("failed to close log rotatex: %v\n", closeErr)
+					f.cl.PrintErrf("关闭日志文件失败: %v\nstack: %s\n", closeErr, debug.Stack())
 				}
 			}
 		}

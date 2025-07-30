@@ -1,28 +1,20 @@
-// globals.go - 全局常量、类型定义与格式映射
-// 定义FastLog日志库使用的全局常量、枚举类型、接口和日志格式映射。
 package fastlog
 
 import (
+	"os"
 	"time"
 )
 
-// // 全局非法字符定义
-// var (
-// 	// invalidFileChars 文件名中的非法字符
-// 	invalidFileChars = []string{
-// 		"<", ">", ":", "\"", "|", "?", "*",
-// 		"\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07",
-// 		"\x08", "\x09", "\x0A", "\x0B", "\x0C", "\x0D", "\x0E", "\x0F",
-// 		"\x10", "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17",
-// 		"\x18", "\x19", "\x1A", "\x1B", "\x1C", "\x1D", "\x1E", "\x1F",
-// 	}
-
-// 	// maxFileNameLength 文件名最大长度
-// 	maxFileNameLength = 255
-
-// 	// maxPathLength 路径最大长度
-// 	maxPathLength = 4096
-// )
+// PathInfo 是一个结构体，用于封装路径的信息
+type PathInfo struct {
+	Path    string      // 路径
+	Exists  bool        // 是否存在
+	IsFile  bool        // 是否为文件
+	IsDir   bool        // 是否为目录
+	Size    int64       // 文件大小（字节）
+	Mode    os.FileMode // 文件权限
+	ModTime time.Time   // 文件修改时间
+}
 
 // 定义缓冲区相关常量
 const (
@@ -69,26 +61,7 @@ const (
 	NONE    LogLevel = 999 // 无日志级别
 )
 
-// 定义一个接口, 声明对外暴露的方法
-type FastLogInterface interface {
-	Close() // 关闭日志记录器
-
-	Info(v ...any)    // 记录信息级别的日志，不支持占位符
-	Warn(v ...any)    // 记录警告级别的日志，不支持占位符
-	Error(v ...any)   // 记录错误级别的日志，不支持占位符
-	Success(v ...any) // 记录成功级别的日志，不支持占位符
-	Debug(v ...any)   // 记录调试级别的日志，不支持占位符
-	Fatal(v ...any)   // 记录致命级别的日志，不支持占位符(调用后程序会退出)
-
-	Infof(format string, v ...any)    // 记录信息级别的日志，支持占位符，格式化
-	Warnf(format string, v ...any)    // 记录警告级别的日志，支持占位符，格式化
-	Errorf(format string, v ...any)   // 记录错误级别的日志，支持占位符，格式化
-	Successf(format string, v ...any) // 记录成功级别的日志，支持占位符，格式化
-	Debugf(format string, v ...any)   // 记录调试级别的日志，支持占位符，格式化
-	Fatalf(format string, v ...any)   // 记录致命级别的日志，支持占位符，格式化(调用后程序会退出)
-}
-
-// 定义一个结构体，表示日志消息的元数据
+// logMessage 定义一个结构体，表示日志消息的元数据
 type logMessage struct {
 	timestamp   time.Time // 日志时间
 	level       LogLevel  // 日志级别
@@ -99,6 +72,17 @@ type logMessage struct {
 	goroutineID int64     // 协程ID
 }
 
+// 专门用于JSON序列化的结构体
+type logMessageJSON struct {
+	Time     string `json:"time"`     // 格式化后的时间字符串
+	Level    string `json:"level"`    // 日志级别字符串
+	File     string `json:"file"`     // 文件名
+	Function string `json:"function"` // 函数名
+	Line     int    `json:"line"`     // 行号
+	Thread   int64  `json:"thread"`   // 协程ID
+	Message  string `json:"message"`  // 日志消息
+}
+
 // 定义日志格式
 var logFormatMap = map[LogFormatType]string{
 	Json:     `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`, // Json格式
@@ -107,3 +91,17 @@ var logFormatMap = map[LogFormatType]string{
 	Threaded: `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
 	Simple:   `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
 }
+
+// 文件名验证相关常量
+var (
+	// Windows和Unix系统中文件名不能包含的字符
+	invalidFileChars = []string{
+		"<", ">", ":", "\"", "|", "?", "*",
+		"\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07",
+		"\x08", "\x09", "\x0a", "\x0b", "\x0c", "\x0d", "\x0e", "\x0f",
+		"\x10", "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17",
+		"\x18", "\x19", "\x1a", "\x1b", "\x1c", "\x1d", "\x1e", "\x1f",
+	}
+	maxFileNameLength = 255  // 大多数文件系统的文件名长度限制
+	maxPathLength     = 4096 // 大多数系统的路径长度限制
+)

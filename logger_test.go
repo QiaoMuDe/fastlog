@@ -73,14 +73,13 @@ func TestFatalf(t *testing.T) {
 
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
-		config := NewFastLogConfig("test-logs", "fatalf_test.log")
-		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
-			panic(err)
-		}
+		config := NewFastLogConfig("logs", "fatalf_test.log")
 		log, err := NewFastLog(config)
 		if err != nil {
 			panic(err)
 		}
+		defer log.Close()
+
 		log.Fatalf("fatalf_test %s message", "formatted")
 		return
 	}
@@ -102,11 +101,11 @@ func TestFatalf(t *testing.T) {
 	}
 
 	// 验证日志文件是否正确创建并包含预期内容
-	logPath := filepath.Join("test-logs", "fatalf_test.log")
+	logPath := filepath.Join("logs", "fatalf_test.log")
 	defer func() {
 		// 确保测试后清理文件
 		_ = os.Remove(logPath)
-		_ = os.Remove("test-logs")
+		_ = os.Remove("logs")
 	}()
 
 	if _, statErr := os.Stat(logPath); os.IsNotExist(statErr) {

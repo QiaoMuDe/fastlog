@@ -4,25 +4,14 @@ package fastlog
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
-	"time"
 )
-
-// PathInfo 是一个结构体，用于封装路径的信息
-type PathInfo struct {
-	Path    string      // 路径
-	Exists  bool        // 是否存在
-	IsFile  bool        // 是否为文件
-	IsDir   bool        // 是否为目录
-	Size    int64       // 文件大小（字节）
-	Mode    os.FileMode // 文件权限
-	ModTime time.Time   // 文件修改时间
-}
 
 // checkPath 检查给定路径的信息
 //
@@ -149,6 +138,11 @@ func logLevelToString(level LogLevel) string {
 // 返回值:
 //   - string: 带有颜色的字符串
 func addColor(f *FastLog, l *logMessage, s string) string {
+	// 添加空指针检查
+	if f == nil || l == nil || f.cl == nil {
+		return s // 如果任何参数为nil，返回原始字符串
+	}
+
 	// 根据匹配到的日志级别添加颜色
 	switch l.level {
 	case INFO:
@@ -189,10 +183,35 @@ func formatLog(f *FastLog, l *logMessage) string {
 	switch f.config.LogFormat {
 	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂，解析开销可接受）
 	case Json:
-		return fmt.Sprintf(
-			logFormatMap[Json],
-			timeStr, levelStr, l.fileName, l.funcName, l.line, l.goroutineID, l.message,
-		)
+		// 构建json数据
+		logData := logMessageJSON{
+			Time:     timeStr,       // 格式化时间
+			Level:    levelStr,      // 格式化日志级别
+			File:     l.fileName,    // 文件名
+			Function: l.funcName,    // 函数名
+			Line:     l.line,        // 行号
+			Thread:   l.goroutineID, // 协程ID
+			Message:  l.message,     // 日志消息
+		}
+
+		// 编码json
+		jsonBytes, err := json.Marshal(logData)
+		if err != nil {
+			// 处理json编码错误
+			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.message)
+
+			// 再次尝试序列化，如果还失败就使用最基本的格式
+			if fallbackBytes, fallbackErr := json.Marshal(logData); fallbackErr == nil {
+				return string(fallbackBytes)
+			} else {
+				// 最后的兜底方案：手动构建JSON字符串
+				return fmt.Sprintf(
+					logFormatMap[Json],
+					timeStr, levelStr, "unknown", "unknown", 0, l.goroutineID, logData.Message,
+				)
+			}
+		}
+		return string(jsonBytes)
 
 	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
@@ -292,55 +311,3 @@ func formatLog(f *FastLog, l *logMessage) string {
 		return fmt.Sprintf("无法识别的日志格式选项: %v", f.config.LogFormat)
 	}
 }
-
-// // formatLog 格式化日志消息
-// //
-// // 参数：
-// //   - f: FastLog 实例
-// //   - l: 日志消息
-// //
-// // 返回值:
-// //   - string: 格式化后的日志消息
-// func formatLog(f *FastLog, l *logMessage) string {
-// 	if f == nil || l == nil {
-// 		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
-// 	}
-
-// 	// 定义一个变量，用于存储格式化后的日志消息。
-// 	var logMsg string
-
-// 	// 根据日志格式选项，格式化日志消息。
-// 	switch f.config.GetLogFormat() {
-// 	// Json格式
-// 	case Json:
-// 		logMsg = fmt.Sprintf(
-// 			logFormatMap[Json],
-// 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.goroutineID, l.message,
-// 		)
-// 	// 详细格式
-// 	case Detailed:
-// 		// 按照指定格式输出日志，使用%-7s让日志级别左对齐且宽度为7个字符
-// 		logMsg = fmt.Sprintf(
-// 			logFormatMap[Detailed],
-// 			l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.fileName, l.funcName, l.line, l.message,
-// 		)
-// 	// 括号格式
-// 	case Bracket:
-// 		logMsg = fmt.Sprintf(logFormatMap[Bracket], logLevelToString(l.level), l.message)
-// 	// 协程格式
-// 	case Threaded:
-// 		logMsg = fmt.Sprintf(logFormatMap[Threaded], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.goroutineID, l.message)
-// 	// 简约格式
-// 	case Simple:
-// 		logMsg = fmt.Sprintf(logFormatMap[Simple], l.timestamp.Format("2006-01-02 15:04:05"), logLevelToString(l.level), l.message)
-// 	// 自定义格式
-// 	case Custom:
-// 		logMsg = l.message
-// 	// 无法识别的日志格式选项
-// 	default:
-// 		logMsg = fmt.Sprintf("无法识别的日志格式选项: %v", f.config.GetLogFormat())
-// 	}
-
-// 	// 返回格式化后的日志消息。
-// 	return logMsg
-// }
