@@ -19,7 +19,7 @@ import (
 //   - skipFrames: 跳过的调用栈帧数（用于获取正确的调用者信息）
 func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	// 检查日志级别，如果当前级别高于指定级别则不记录
-	if level < l.config.GetLogLevel() {
+	if level < l.config.LogLevel {
 		return
 	}
 
@@ -59,7 +59,7 @@ func (l *FastLog) logFatal(message string, skipFrames int) {
 	l.logWithLevel(FATAL, message, skipFrames)
 
 	// 关闭日志记录器
-	_ = l.Close()
+	l.Close()
 
 	// 终止程序（非0退出码表示错误）
 	os.Exit(1)

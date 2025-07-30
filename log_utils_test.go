@@ -18,7 +18,7 @@ func TestFatal(t *testing.T) {
 	// 子进程模式：执行实际的Fatal调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("test-logs", "fatal_test.log")
-		if err := os.MkdirAll(config.GetLogDirName(), 0755); err != nil {
+		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
 			panic(err)
 		}
 		log, err := NewFastLog(config)
@@ -74,7 +74,7 @@ func TestFatalf(t *testing.T) {
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("test-logs", "fatalf_test.log")
-		if err := os.MkdirAll(config.GetLogDirName(), 0755); err != nil {
+		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
 			panic(err)
 		}
 		log, err := NewFastLog(config)

@@ -1,114 +1,164 @@
-// processor.go - 日志消息处理模块
-// 负责从通道读取日志消息，格式化日志内容，并根据缓冲区状态决定是否触发刷新。
 package fastlog
 
-// processLogs 日志处理器, 用于处理日志消息。
-// 读取通道中的日志消息并将其处理为指定的日志格式, 然后写入到缓冲区中。
-func (f *FastLog) processLogs() {
-	f.logWait.Add(1) // 增加等待组中的计数器
+import (
+	"bytes"
+	"time"
+)
 
-	// 创建一个goroutine, 用于处理日志消息
-	go func() {
-		defer func() {
-			// 减少等待组中的计数器。
-			f.logWait.Done()
+// processor 单线程日志处理器
+type processor struct {
+	f *FastLog // 日志记录器
 
-			// 捕获panic
-			if r := recover(); r != nil {
-				f.Errorf("日志处理器发生panic: %v", r)
-			}
-		}()
+	// 单一缓冲区（单线程使用，无需锁）
+	fileBuffer    *bytes.Buffer // 文件缓冲区
+	consoleBuffer *bytes.Buffer // 控制台缓冲区
+	bufferSize    int           // 缓冲区大小
 
-		// 初始化控制台字符串构建器
-		for {
-			select {
-			// 监听通道, 如果通道关闭, 则退出循环
-			case <-f.ctx.Done():
-				// 检查通道是否为空
-				if len(f.logChan) != 0 {
-					// 处理通道中剩余的日志消息
-					for rawMsg := range f.logChan {
-						f.handleLog(rawMsg)
-					}
-				}
-				return
-			// 监听通道, 如果通道中有日志消息, 则处理日志消息
-			case rawMsg, ok := <-f.logChan:
-				if !ok {
-					return
-				}
-
-				// 处理日志消息
-				f.handleLog(rawMsg)
-			}
-		}
-	}()
+	// 批量处理配置
+	batchSize     int           // 批量处理数量
+	flushInterval time.Duration // 批量处理间隔
 }
 
-// handleLog 处理单条日志消息的逻辑
-// 格式化日志消息, 然后写入到缓冲区中。
-// 如果缓冲区大小达到90%, 则立即刷新缓冲区。
+// singleThreadProcessor 单线程日志处理器
+// 负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理
+func (p *processor) singleThreadProcessor() {
+	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
+	batch := make([]*logMessage, 0, p.batchSize)
 
-// 参数:
-//   - rawMsg: 日志消息
+	// 创建定时刷新器，间隔由flushInterval指定
+	ticker := time.NewTicker(p.flushInterval)
 
-// 返回值:
-//   - 无
-func (f *FastLog) handleLog(rawMsg *logMessage) {
-	// 格式化日志消息
-	formattedLog := formatLog(f, rawMsg)
-
-	// 局部变量记录是否需要刷新
-	var needFileFlush bool
-	var needConsoleFlush bool
-
-	// 处理文件缓冲区 - 在同一个锁内完成检查和写入
-	if !f.config.GetConsoleOnly() {
-		f.fileBufferMu.Lock()
-
-		// 记录当前文件缓冲区的索引
-		currentFileBufferIdx := f.fileBufferIdx.Load()
-
-		// 写入文件缓冲区
-		if f.fileBuffers[currentFileBufferIdx] != nil {
-			f.fileBuffers[currentFileBufferIdx].WriteString(formattedLog + "\n")
+	defer func() {
+		// 捕获panic
+		if r := recover(); r != nil {
+			p.f.cl.PrintErrf("日志处理器发生panic: %s\n", r)
 		}
 
-		// 获取文件缓冲区大小
-		currentFileBufferSize := f.fileBuffers[currentFileBufferIdx].Len()
+		// 减少等待组中的计数器。
+		p.f.logWait.Done()
+	}()
 
-		// 检查是否需要刷新（写入后检查）
-		needFileFlush = currentFileBufferSize >= flushThreshold
+	// 主循环：持续处理日志消息和定时事件
+	for {
+		select {
+		case logMsg := <-p.f.logChan: // 从日志通道接收新日志消息
+			// 将日志消息添加到批处理缓冲区
+			batch = append(batch, logMsg)
 
-		f.fileBufferMu.Unlock()
+			// 只在满足条件时才处理: 批处理切片写满或者缓冲区到达90%阈值
+			shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold()
+
+			// 检查是否需要处理(满足条件之一)
+			if shouldFlush {
+				p.processBatch(batch) // 一次性处理整个批次
+				p.flushBuffers()      // 刷新缓冲区到目标输出
+				batch = batch[:0]     // 重置批处理缓冲区，准备接收新消息
+			}
+
+		case <-ticker.C: // 定时刷新事件
+			// 定时刷新：处理剩余消息并刷新缓冲区
+			if len(batch) > 0 {
+				p.processBatch(batch) // 处理剩余的batch到缓冲区
+				p.flushBuffers()      // 刷新缓冲区到输出
+				batch = batch[:0]     // 重置batch
+			} else {
+				// 即使batch为空，也可能缓冲区有内容需要刷新
+				p.flushBuffers()
+			}
+
+		case <-p.f.ctx.Done(): // 上下文取消信号，表示应停止处理
+			// 关闭定时器
+			ticker.Stop()
+
+			// 处理剩余的batch（如果有的话）
+			if len(batch) > 0 {
+				p.processBatch(batch)
+			}
+
+			// 最后刷新所有缓冲区内容
+			p.flushBuffers()
+
+			return
+		}
 	}
+}
 
-	// 处理控制台缓冲区 - 同样的逻辑
-	if f.config.GetPrintToConsole() || f.config.GetConsoleOnly() {
-		f.consoleBufferMu.Lock()
+// processBatch 批量处理日志消息
+// 将一批日志消息格式化后写入对应的缓冲区(文件和控制台)
+//
+// 参数：
+//   - batch: 待处理的日志消息切片
+func (p *processor) processBatch(batch []*logMessage) {
+	// 重置缓冲区（清空原有内容，准备接收新数据）
+	p.fileBuffer.Reset()    // 重置文件缓冲区
+	p.consoleBuffer.Reset() // 重置控制台缓冲区
 
-		// 记录当前的控制台缓冲区的索引
-		currentConsoleBufferIdx := f.consoleBufferIdx.Load()
+	// 遍历批处理中的所有日志消息
+	for _, logMsg := range batch {
+		// 格式化日志消息（根据配置的格式选项）
+		formattedMsg := formatLog(p.f, logMsg)
 
-		// 渲染颜色
-		consoleLog := addColor(f, rawMsg, formattedLog)
-
-		// 写入控制台缓冲区
-		if f.consoleBuffers[currentConsoleBufferIdx] != nil {
-			f.consoleBuffers[currentConsoleBufferIdx].WriteString(consoleLog + "\n")
+		// 文件输出处理
+		if p.f.config.OutputToFile {
+			// 将格式化后的消息写入文件缓冲区（附加换行符）
+			p.fileBuffer.WriteString(formattedMsg + "\n")
 		}
 
-		// 获取控制台缓冲区大小
-		currentConsoleBufferSize := f.consoleBuffers[currentConsoleBufferIdx].Len()
+		// 控制台输出处理
+		if p.f.config.OutputToConsole {
+			// 添加终端颜色样式（根据日志级别）
+			coloredMsg := addColor(p.f, logMsg, formattedMsg)
 
-		// 检查是否需要刷新（写入后检查）
-		needConsoleFlush = currentConsoleBufferSize >= flushThreshold
+			// 将带颜色的消息写入控制台缓冲区（附加换行符）
+			p.consoleBuffer.WriteString(coloredMsg + "\n")
+		}
+	}
+}
 
-		f.consoleBufferMu.Unlock()
+// flushBuffers 将缓冲区内容刷新到输出目标
+// 负责将文件缓冲区和控制台缓冲区的内容批量写入到对应的输出设备
+//
+// 注意：此方法不处理缓冲区重置操作，仅执行写入操作
+func (p *processor) flushBuffers() {
+	// 检查文件缓冲区是否有待写入内容
+	if p.f.config.OutputToFile {
+		if p.fileBuffer.Len() > 0 {
+			// 将文件缓冲区内容写入到文件写入器
+			// 使用底层字节数组避免额外内存分配
+			if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
+				p.f.cl.PrintErrf("写入文件失败: %s\n", writeErr)
+			}
+		}
 	}
 
-	// 统一判断是否需要刷新（在所有写入完成后）
-	if needFileFlush || needConsoleFlush {
-		f.flushBufferNow()
+	// 检查控制台缓冲区是否有待写入内容
+	if p.f.config.OutputToConsole {
+		if p.consoleBuffer.Len() > 0 {
+			// 将控制台缓冲区内容写入到控制台写入器
+			// 包含已添加的颜色控制字符
+			if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
+				p.f.cl.PrintErrf("写入控制台失败: %s\n", writeErr)
+			}
+		}
 	}
+}
+
+// shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
+// 当文件缓冲区或控制台缓冲区任一达到90%阈值时返回true
+func (p *processor) shouldFlushByThreshold() bool {
+	// 检查文件缓冲区是否达到90%阈值
+	if p.f.config.OutputToFile {
+		if p.fileBuffer.Len() >= flushThreshold {
+			return true
+		}
+	}
+
+	// 检查控制台缓冲区是否达到90%阈值
+	if p.f.config.OutputToConsole {
+		if p.consoleBuffer.Len() >= flushThreshold {
+			return true
+		}
+	}
+
+	return false
 }

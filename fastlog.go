@@ -11,7 +11,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"gitee.com/MM-Q/colorlib"
@@ -27,18 +26,12 @@ var (
 // FastLog 日志记录器
 type FastLog struct {
 	/* 私有属性 */
-	// 日志文件路径  内部拼接的 [logDirName+logFileName]
-	logFilePath string
 	// 日志通道  用于异步写入日志文件
 	logChan chan *logMessage
 	// 等待组 用于等待所有goroutine完成
 	logWait sync.WaitGroup
 	// 文件写入器
 	fileWriter io.Writer
-	// 文件锁 用于保护文件缓冲区的写入操作
-	fileMu sync.Mutex
-	// 控制台锁 用于保护控制台缓冲区的写入操作
-	consoleMu sync.Mutex
 	// 控制台写入器
 	consoleWriter io.Writer
 	// 用于确保日志处理器只启动一次
@@ -51,26 +44,8 @@ type FastLog struct {
 	cl *colorlib.ColorLib
 	// 用于确保日志处理器只关闭一次
 	closeOnce sync.Once
-	// 用于控制关闭过程的锁
-	closeLock sync.Mutex
 	// logrotatex 日志文件切割
 	logGer *logrotatex.LogRotateX
-
-	/* 双缓冲区属性 */
-	// 文件双缓冲区
-	fileBuffers [2]*bytes.Buffer
-	// 当前使用的文件缓冲区索引
-	fileBufferIdx atomic.Int32
-	// 控制台双缓冲区
-	consoleBuffers [2]*bytes.Buffer
-	// 当前使用的控制台缓冲区索引
-	consoleBufferIdx atomic.Int32
-	// 文件缓冲区锁
-	fileBufferMu sync.Mutex
-	// 控制台缓冲区锁
-	consoleBufferMu sync.Mutex
-	// 用于控制缓冲区刷新的锁
-	flushLock sync.Mutex
 
 	// 嵌入的配置结构体
 	config *FastLogConfig
@@ -87,21 +62,21 @@ type FastLog struct {
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		logDirName:     logDirName,             // 日志目录名称
-		logFileName:    logFileName,            // 日志文件名称
-		printToConsole: true,                   // 是否将日志输出到控制台
-		consoleOnly:    false,                  // 是否仅输出到控制台
-		logLevel:       INFO,                   // 日志级别 默认INFO
-		chanIntSize:    10000,                  // 通道大小 增加到10000
-		flushInterval:  500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
-		logFormat:      Detailed,               // 日志格式选项
-		maxLogFileSize: 5,                      // 最大日志文件大小, 单位为MB, 默认5MB
-		maxLogAge:      0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
-		maxLogBackups:  0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
-		isLocalTime:    false,                  // 是否使用本地时间 默认使用UTC时间
-		enableCompress: false,                  // 是否启用日志文件压缩 默认不启用
-		noColor:        false,                  // 是否禁用终端颜色
-		noBold:         false,                  // 是否禁用终端字体加粗
+		LogDirName:      logDirName,             // 日志目录名称
+		LogFileName:     logFileName,            // 日志文件名称
+		OutputToConsole: true,                   // 是否将日志输出到控制台
+		OutputToFile:    true,                   // 是否将日志输出到文件
+		LogLevel:        INFO,                   // 日志级别 默认INFO
+		ChanIntSize:     10000,                  // 通道大小 增加到10000
+		FlushInterval:   500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
+		LogFormat:       Detailed,               // 日志格式选项
+		MaxLogFileSize:  5,                      // 最大日志文件大小, 单位为MB, 默认5MB
+		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:     false,                  // 是否使用本地时间 默认使用UTC时间
+		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
+		NoColor:         false,                  // 是否禁用终端颜色
+		NoBold:          false,                  // 是否禁用终端字体加粗
 	}
 }
 
@@ -119,104 +94,95 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		return nil, fmt.Errorf("FastLogConfig 为 nil")
 	}
 
-	// 最终配置验证 - 只检查，不修改
-	config.validateFinalConfig()
+	// 克隆配置结构体防止原配置被意外修改
+	cfg := &FastLogConfig{
+		LogDirName:      config.LogDirName,      // 日志目录名称
+		LogFileName:     config.LogFileName,     // 日志文件名称
+		OutputToConsole: config.OutputToConsole, // 是否将日志输出到控制台
+		OutputToFile:    config.OutputToFile,    // 是否将日志输出到文件
+		LogLevel:        config.LogLevel,        // 日志级别
+		ChanIntSize:     config.ChanIntSize,     // 通道大小
+		FlushInterval:   config.FlushInterval,   // 刷新间隔
+		LogFormat:       config.LogFormat,       // 日志格式
+		MaxLogFileSize:  config.MaxLogFileSize,  // 最大日志文件大小, 单位为MB
+		MaxLogAge:       config.MaxLogAge,       // 最大日志文件保留天数(单位为天)
+		MaxLogBackups:   config.MaxLogBackups,   // 最大日志文件保留数量(默认为0, 表示不清理)
+		IsLocalTime:     config.IsLocalTime,     // 是否使用本地时间
+		EnableCompress:  config.EnableCompress,  // 是否启用日志文件压缩
+		NoColor:         config.NoColor,         // 是否禁用终端颜色
+		NoBold:          config.NoBold,          // 是否禁用终端字体加粗
+	}
 
-	// 最终配置修正 - 修正所有不合理的值
-	config.fixFinalConfig()
+	// // 最终配置验证 - 只检查，不修改
+	// config.validateFinalConfig()
 
-	// 声明一些配置变量
-	var (
-		fileWriter    io.Writer // 文件写入器
-		consoleWriter io.Writer // 控制台写入器
-	)
+	// // 最终配置修正 - 修正所有不合理的值
+	// config.fixFinalConfig()
 
-	// 如果允许将日志输出到控制台, 或者仅输出到控制台, 则初始化控制台写入器。
-	if config.GetConsoleOnly() || config.GetPrintToConsole() {
+	// 初始化写入器
+	var fileWriter io.Writer    // 文件写入器
+	var consoleWriter io.Writer // 控制台写入器
+
+	// 如果允许将日志输出到控制台, 则初始化控制台写入器。
+	if cfg.OutputToConsole {
 		consoleWriter = os.Stdout // 控制台写入器
 	} else {
-		consoleWriter = io.Discard // 不输出到控制台, 直接丢弃
+		consoleWriter = io.Discard // 不允许将日志输出到控制台, 则直接丢弃
 	}
 
-	// 拼接日志文件路径
-	var logFilePath string
-	// 如果日志目录名称和日志文件名称都不为空, 并且不是仅输出到控制台, 则拼接日志文件路径。
-	if config.GetLogDirName() != "" || config.GetLogFileName() != "" && !config.GetConsoleOnly() {
-		logFilePath = filepath.Join(config.GetLogDirName(), config.GetLogFileName())
-	}
-
-	// 如果不是仅输出到控制台, 则初始化日志文件写入器。
+	// 如果允许将日志输出到文件, 则初始化日志文件写入器。
 	var logger *logrotatex.LogRotateX
-	if !config.GetConsoleOnly() {
+	if cfg.OutputToFile {
+		// 拼接日志文件路径
+		logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
+
 		// 检查日志目录是否存在, 如果不存在则创建。
-		if _, checkPathErr := checkPath(config.GetLogDirName()); checkPathErr != nil {
-			if mkdirErr := os.MkdirAll(config.GetLogDirName(), 0755); mkdirErr != nil {
+		if _, checkPathErr := checkPath(cfg.LogDirName); checkPathErr != nil {
+			if mkdirErr := os.MkdirAll(cfg.LogDirName, 0755); mkdirErr != nil {
 				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
 			}
 		}
 
 		// 初始化日志文件切割器
 		logger = &logrotatex.LogRotateX{
-			Filename:   logFilePath,                // 日志文件路径,
-			MaxSize:    config.GetMaxLogFileSize(), // 最大日志文件大小, 单位为MB
-			MaxAge:     config.GetMaxLogAge(),      // 最大日志文件保留天数
-			MaxBackups: config.GetMaxLogBackups(),  // 最大日志文件保留数量
-			LocalTime:  config.GetIsLocalTime(),    // 是否使用本地时间
-			Compress:   config.GetEnableCompress(), // 是否启用日志文件压缩
+			Filename:   logFilePath,        // 日志文件路径,
+			MaxSize:    cfg.MaxLogFileSize, // 最大日志文件大小, 单位为MB
+			MaxAge:     cfg.MaxLogAge,      // 最大日志文件保留天数
+			MaxBackups: cfg.MaxLogBackups,  // 最大日志文件保留数量
+			LocalTime:  cfg.IsLocalTime,    // 是否使用本地时间
+			Compress:   cfg.EnableCompress, // 是否启用日志文件压缩
 		}
 
-		// 初始化文件写入器
-		fileWriter = logger
+		fileWriter = logger // 初始化文件写入器
 	} else {
-		fileWriter = io.Discard // 仅输出到控制台, 不输出到文件
+		fileWriter = io.Discard // 不允许将日志输出到文件, 则直接丢弃
 	}
 
-	// 创建双缓冲区
-	fileBuffers := [2]*bytes.Buffer{
-		bytes.NewBuffer(nil),
-		bytes.NewBuffer(nil),
-	}
-	consoleBuffers := [2]*bytes.Buffer{
-		bytes.NewBuffer(nil),
-		bytes.NewBuffer(nil),
-	}
-
-	// 预留合理的初始容量，避免频繁扩容
-	for i := range fileBuffers {
-		fileBuffers[i].Grow(initialBufferCapacity)
-		consoleBuffers[i].Grow(initialBufferCapacity)
-	}
+	// 创建 context 用于控制协程退出
+	ctx, cancel := context.WithCancel(context.Background())
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logGer:         logger,                                          // 日志文件切割器
-		fileWriter:     fileWriter,                                      // 文件写入器,
-		consoleWriter:  consoleWriter,                                   // 控制台写入器,
-		logFilePath:    logFilePath,                                     // 日志文件路径
-		cl:             colorlib.NewColorLib(),                          // 颜色库实例
-		config:         config,                                          // 配置结构体
-		logChan:        make(chan *logMessage, config.GetChanIntSize()), // 日志消息通道
-		fileBuffers:    fileBuffers,                                     // 文件缓冲
-		consoleBuffers: consoleBuffers,                                  // 控制台缓冲
-		closeOnce:      sync.Once{},                                     // 用于在结束时确保只执行一次
+		logGer:        logger,                                  // 日志文件切割器
+		fileWriter:    fileWriter,                              // 文件写入器, 用于将日志写入文件
+		consoleWriter: consoleWriter,                           // 控制台写入器, 用于将日志写入控制台
+		cl:            colorlib.NewColorLib(),                  // 颜色库实例, 用于在终端中显示颜色
+		config:        cfg,                                     // 配置结构体
+		logChan:       make(chan *logMessage, cfg.ChanIntSize), // 日志消息通道
+		closeOnce:     sync.Once{},                             // 用于在结束时确保只执行一次
+		cancel:        cancel,                                  // 用于取消上下文的函数
+		ctx:           ctx,                                     // 上下文, 用于控制协程退出
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
-	if f.config.GetNoColor() {
+	if f.config.NoColor {
 		f.cl.NoColor.Store(true) // 设置颜色库的颜色选项为禁用
 	}
 
 	// 根据noBold的值, 设置颜色库的字体加粗选项
-	if f.config.GetNoBold() {
+	if f.config.NoBold {
 		f.cl.NoBold.Store(true) // 设置颜色库的字体加粗选项为禁用
 	}
-
-	// 设置缓冲区索引为0
-	f.fileBufferIdx.Store(0)
-	f.consoleBufferIdx.Store(0)
-
-	// 创建 context 用于控制协程退出
-	f.ctx, f.cancel = context.WithCancel(context.Background())
 
 	// 使用 sync.Once 确保日志处理器只启动一次
 	var startErr error
@@ -228,8 +194,23 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 			}
 		}()
 
-		go f.processLogs() // 启动日志处理器
-		go f.flushBuffer() // 启动定时刷新缓冲区
+		// 创建处理器
+		processor := &processor{
+			f:             f,                     // 日志记录器
+			batchSize:     100,                   // 批量处理大小
+			bufferSize:    initialBufferCapacity, // 缓冲区大小
+			flushInterval: cfg.FlushInterval,     // 刷新间隔
+			fileBuffer:    bytes.NewBuffer(nil),  // 文件缓冲区
+			consoleBuffer: bytes.NewBuffer(nil),  // 控制台缓冲区
+		}
+
+		// 预分配缓冲区以减少内存分配
+		processor.fileBuffer.Grow(processor.bufferSize)
+		processor.consoleBuffer.Grow(processor.bufferSize)
+
+		// 启动处理器
+		f.logWait.Add(1)
+		go processor.singleThreadProcessor()
 	})
 
 	// 检查启动是否成功
@@ -241,16 +222,13 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
-// Close 关闭FastLog实例, 并等待所有日志处理完成。
-//
-// 返回值:
-//   - 关闭过程中可能发生的错误
-func (f *FastLog) Close() (closeErr error) {
-	f.closeLock.Lock()
-	defer f.closeLock.Unlock()
-
+// Close 关闭 FastLog 实例
+func (f *FastLog) Close() {
 	// 确保只关闭一次
 	f.closeOnce.Do(func() {
+		// 打印关闭日志记录器的信息
+		f.Info("stop logging...")
+
 		// 等待日志处理完成 - 确保所有日志都被消费
 		done := make(chan struct{})
 
@@ -262,7 +240,7 @@ func (f *FastLog) Close() (closeErr error) {
 				time.Sleep(10 * time.Millisecond)
 			}
 			// 再等待一个刷新周期确保写入文件
-			time.Sleep(f.config.GetFlushInterval())
+			time.Sleep(f.config.FlushInterval)
 			close(done)
 		}()
 
@@ -274,38 +252,22 @@ func (f *FastLog) Close() (closeErr error) {
 			// 超时保护，避免无限等待
 		}
 
-		// 打印关闭日志记录器的信息
-		f.Info("stop logging...")
-
-		// 关闭日志通道
+		// 关闭通道
 		close(f.logChan)
 
-		// 关闭协程
+		// 取消上下文
 		f.cancel()
 
-		// 等待所有日志处理完成
+		// 等待日志处理器退出
 		f.logWait.Wait()
 
-		// 刷新剩余的日志 缓冲区1
-		f.flushBufferNow()
-
-		// 刷新剩余的日志 缓冲区2
-		f.flushBufferNow()
-
-		// 如果不是仅输出到控制台, 同时日志文件句柄不为nil, 则关闭日志文件。
-		if !f.config.GetConsoleOnly() && f.logGer != nil {
-			f.fileMu.Lock()
-			defer f.fileMu.Unlock()
-			if err := f.logGer.Close(); err != nil {
-				closeErr = fmt.Errorf("关闭日志文件失败: %v", err)
+		// 如果启用了文件输出，则关闭文件
+		if f.config.OutputToFile {
+			if f.logGer != nil {
+				if closeErr := f.logGer.Close(); closeErr != nil {
+					f.cl.PrintErrf("failed to close log rotatex: %v\n", closeErr)
+				}
 			}
 		}
-
-	}) // 执行一次
-
-	// 返回关闭错误
-	if closeErr != nil {
-		return closeErr
-	}
-	return nil
+	})
 }

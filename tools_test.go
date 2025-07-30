@@ -149,7 +149,7 @@ func TestAddColor(t *testing.T) {
 	}
 
 	// 测试禁用颜色
-	cfg.SetNoColor(true)
+	cfg.NoColor = true
 	log2, _ := NewFastLog(cfg)
 	uncolored := addColor(log2, msg, "test color")
 	// 禁用颜色后，返回的应该就是原始消息，不包含颜色代码
@@ -174,14 +174,14 @@ func TestFormatLog(t *testing.T) {
 	}
 
 	// 测试详细格式
-	cfg.SetLogFormat(Detailed)
+	cfg.LogFormat = Detailed
 	detailed := formatLog(log, msg)
 	if !strings.Contains(detailed, "2023-01-01 12:00:00") || !strings.Contains(detailed, "INFO") {
 		t.Error("详细格式日志不完整")
 	}
 
 	// 测试JSON格式
-	cfg.SetLogFormat(Json)
+	cfg.LogFormat = Json
 	jsonLog := formatLog(log, msg)
 	if !strings.Contains(jsonLog, "\"level\":\"INFO\"") || !strings.Contains(jsonLog, "\"message\":\"test format\"") {
 		t.Error("JSON格式日志不完整")
