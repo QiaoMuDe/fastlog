@@ -728,7 +728,7 @@ FastLogConfig 结构体包含以下可直接修改的字段：
 | `LogFormat`       | `LogFormatType` | `Detailed` | 日志格式                          |
 | `NoColor`         | `bool`          | `false`    | 是否禁用颜色输出                  |
 | `NoBold`          | `bool`          | `false`    | 是否禁用字体加粗                  |
-| `MaxLogFileSize`  | `int`           | `5`        | 最大日志文件大小(MB)              |
+| `MaxLogFileSize`  | `int`           | `10`        | 最大日志文件大小(MB)              |
 | `MaxLogAge`       | `int`           | `0`        | 日志文件最大保留天数(0表示不限制) |
 | `MaxLogBackups`   | `int`           | `0`        | 最大备份文件数量(0表示不限制)     |
 | `IsLocalTime`     | `bool`          | `false`    | 是否使用本地时间                  |
