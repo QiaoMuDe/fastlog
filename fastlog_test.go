@@ -66,7 +66,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg.OutputToFile = true
 	cfg.MaxLogFileSize = 1
 	cfg.LogFormat = Simple
-	cfg.ChanIntSize = 50000
+	cfg.ChanIntSize = 100000 // 增大通道容量以支持更高并发
 
 	// 创建日志记录器
 	log, err := NewFastLog(cfg)
@@ -76,7 +76,7 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 持续时间为3秒
 	duration := 3
-	// 每秒生成10条日志
+	// 每秒生成10000条日志
 	rate := 10000
 
 	defer func() {
@@ -87,39 +87,17 @@ func TestConcurrentFastLog(t *testing.T) {
 		fmt.Printf("测试配置: 持续时间 %d秒 | 目标速率 %d条/秒\n", duration, rate)
 		fmt.Printf("预期生成: %d条日志\n", duration*rate)
 		fmt.Printf("实际耗时: %.3fs (%.2fms)\n", totalDuration.Seconds(), float64(totalDuration.Nanoseconds())/1e6)
+		fmt.Printf("实际速率: %.0f条/秒\n", float64(duration*rate)/totalDuration.Seconds())
 		fmt.Printf("========================\n")
 	}()
 
-	// 启动随机日志函数
-	randomLog(log, duration, rate, t)
+	// 启动高并发随机日志函数
+	highConcurrencyRandomLog(log, duration, rate, t)
 }
 
-// generateLogs 生成指定数量的模拟日志到通道中
-func generateLogs(logMethodsNoFormat []func(v ...any), logMethodsWithFormat []func(format string, v ...interface{}), totalLoops int) <-chan func() {
-	// 创建一个通道用于传递日志，缓冲区大小为总循环数的2倍
-	logChan := make(chan func(), totalLoops*2)
-
-	// 创建一个随机数生成器
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-
-	go func() {
-		for i := 0; i < totalLoops; i++ {
-			if r.Intn(2) == 0 {
-				method := logMethodsNoFormat[r.Intn(len(logMethodsNoFormat))]
-				logChan <- func() { method("这是一个测试日志") }
-			} else {
-				method := logMethodsWithFormat[r.Intn(len(logMethodsWithFormat))]
-				logChan <- func() { method("这是一个测试日志: %s", "test") }
-			}
-		}
-		close(logChan)
-	}()
-
-	return logChan
-}
-
-// randomLog 该函数用于按指定速率从通道中取出日志并打印
-func randomLog(log *FastLog, duration int, rate int, t *testing.T) {
+// highConcurrencyRandomLog 高并发随机日志生成函数
+// 该函数真正并发地生成日志，而不是通过time.Sleep限制并发度
+func highConcurrencyRandomLog(log *FastLog, duration int, rate int, t *testing.T) {
 	// 定义无格式化日志方法的切片
 	logMethodsNoFormat := []func(v ...any){
 		log.Info,
@@ -139,27 +117,30 @@ func randomLog(log *FastLog, duration int, rate int, t *testing.T) {
 
 	// 计算总循环次数
 	totalLoops := duration * rate
-	// 计算每次输出日志的间隔时间
-	interval := time.Second / time.Duration(rate)
-
-	// 生成日志到通道
-	// 由于 generateLogs 仅返回一个通道，这里只使用一个变量接收
-	logChan := generateLogs(logMethodsNoFormat, logMethodsWithFormat, totalLoops)
 
 	// 使用WaitGroup同步并发操作
 	var wg sync.WaitGroup
 	wg.Add(totalLoops)
 
-	// 按指定速率从通道中取出日志并打印
-	go func() {
-		for logFunc := range logChan {
-			go func(f func()) {
-				defer wg.Done()
-				f()
-			}(logFunc)
-			time.Sleep(interval)
-		}
-	}()
+	// 创建随机数生成器
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// 并发生成所有日志
+	for i := 0; i < totalLoops; i++ {
+		go func() {
+			defer wg.Done()
+			// 随机选择日志方法类型（无格式化或格式化）
+			if r.Intn(2) == 0 {
+				// 随机选择无格式化日志方法
+				method := logMethodsNoFormat[r.Intn(len(logMethodsNoFormat))]
+				method("这是一个高并发测试日志")
+			} else {
+				// 随机选择格式化日志方法
+				method := logMethodsWithFormat[r.Intn(len(logMethodsWithFormat))]
+				method("这是一个高并发测试日志: %s", "test")
+			}
+		}()
+	}
 
 	// 等待所有日志生成完成
 	wg.Wait()
@@ -173,10 +154,40 @@ func randomLog(log *FastLog, duration int, rate int, t *testing.T) {
 	lines := strings.Split(string(content), "\n")
 	validLines := 0
 	for _, line := range lines {
-		if strings.Contains(line, "这是一个测试日志") {
+		if strings.Contains(line, "这是一个高并发测试日志") {
 			validLines++
 		}
 	}
+
+	// 输出验证结果
+	fmt.Printf("写入有效日志行数: %d\n", validLines)
+}
+
+// BenchmarkFastLog 高并发基准测试
+func BenchmarkFastLog(b *testing.B) {
+	// 创建日志配置
+	cfg := NewFastLogConfig("logs", "benchmark.log")
+	cfg.OutputToConsole = false // 基准测试中关闭控制台输出以减少I/O影响
+	cfg.OutputToFile = true
+	cfg.ChanIntSize = 100000
+
+	// 创建日志记录器
+	log, err := NewFastLog(cfg)
+	if err != nil {
+		b.Fatalf("创建日志记录器失败: %v", err)
+	}
+
+	defer log.Close()
+
+	// 重置计时器
+	b.ResetTimer()
+
+	// 并发运行基准测试
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			log.Info("基准测试日志消息")
+		}
+	})
 }
 
 // TestCustomFormat 测试自定义日志格式
