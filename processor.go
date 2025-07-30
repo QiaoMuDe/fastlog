@@ -82,95 +82,75 @@ func (p *processor) singleThreadProcessor() {
 
 			// 检查是否需要处理(满足条件之一)
 			if shouldFlush {
-				p.processBatch(batch) // 一次性处理整个批次
-				p.flushBuffers()      // 刷新缓冲区到目标输出
-				batch = batch[:0]     // 重置批处理缓冲区，准备接收新消息
+				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
+				batch = batch[:0]             // 重置批处理缓冲区，准备接收新消息
 			}
 
 		case <-ticker.C: // 定时刷新事件
 			// 定时刷新：处理剩余消息并刷新缓冲区
 			if len(batch) > 0 {
-				p.processBatch(batch) // 处理剩余的batch到缓冲区
-				p.flushBuffers()      // 刷新缓冲区到输出
-				batch = batch[:0]     // 重置batch
-			} else {
-				// 即使batch为空，也可能缓冲区有内容需要刷新
-				p.flushBuffers()
+				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
+				batch = batch[:0]             // 重置batch
 			}
 
 		case <-p.f.ctx.Done(): // 上下文取消信号，表示应停止处理
 			// 关闭定时器
 			ticker.Stop()
 
-			// 处理剩余的batch（如果有的话）
+			// 处理剩余的batch(如果有的话)
 			if len(batch) > 0 {
-				p.processBatch(batch)
+				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
 			}
-
-			// 最后刷新所有缓冲区内容
-			p.flushBuffers()
 
 			return
 		}
 	}
 }
 
-// processBatch 批量处理日志消息
-// 将一批日志消息格式化后写入对应的缓冲区(文件和控制台)
+// processAndFlushBatch 处理并刷新日志批处理缓冲区,
+// 该函数负责格式化日志消息, 将它们写入相应的缓冲区(文件或控制台),
+// 然后将缓冲区内容刷新到实际的输出目标(文件或控制台)。
 //
-// 参数：
-//   - batch: 待处理的日志消息切片
-func (p *processor) processBatch(batch []*logMessage) {
+// 参数:
+// - batch []*logMessage: 日志批处理缓冲区，包含一批待处理的日志消息。
+func (p *processor) processAndFlushBatch(batch []*logMessage) {
 	// 重置缓冲区（清空原有内容，准备接收新数据）
 	p.fileBuffer.Reset()    // 重置文件缓冲区
 	p.consoleBuffer.Reset() // 重置控制台缓冲区
 
 	// 遍历批处理中的所有日志消息
 	for _, logMsg := range batch {
-		// 格式化日志消息（根据配置的格式选项）
+		// 格式化日志消息，包括时间戳、级别、调用者信息等
 		formattedMsg := formatLog(p.f, logMsg)
 
-		// 文件输出处理
+		// 文件输出处理：如果启用了文件输出，则将格式化后的消息写入文件缓冲区
 		if p.f.config.OutputToFile {
-			// 将格式化后的消息写入文件缓冲区（附加换行符）
 			p.fileBuffer.WriteString(formattedMsg + "\n")
 		}
 
-		// 控制台输出处理
+		// 控制台输出处理：如果启用了控制台输出，则将带颜色的消息写入控制台缓冲区
 		if p.f.config.OutputToConsole {
-			// 添加终端颜色样式（根据日志级别）
+			// 先渲染颜色再写入缓冲区，以确保控制台输出具有颜色效果
 			coloredMsg := addColor(p.f, logMsg, formattedMsg)
-
-			// 将带颜色的消息写入控制台缓冲区（附加换行符）
 			p.consoleBuffer.WriteString(coloredMsg + "\n")
 		}
 	}
-}
 
-// flushBuffers 将缓冲区内容刷新到输出目标
-// 负责将文件缓冲区和控制台缓冲区的内容批量写入到对应的输出设备
-//
-// 注意：此方法不处理缓冲区重置操作，仅执行写入操作
-func (p *processor) flushBuffers() {
-	// 检查文件缓冲区是否有待写入内容
-	if p.f.config.OutputToFile {
-		if p.fileBuffer.Len() > 0 {
-			// 将文件缓冲区内容写入到文件写入器
-			// 使用底层字节数组避免额外内存分配
-			if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
-				p.f.cl.PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
-			}
+	// 如果启用文件输出, 并且文件缓冲区有内容, 则将缓冲区内容写入文件
+	if p.f.config.OutputToFile && p.fileBuffer.Len() > 0 {
+		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
+		if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
+			// 如果写入失败，记录错误信息和堆栈跟踪
+			p.f.cl.PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 		}
 	}
 
-	// 检查控制台缓冲区是否有待写入内容
-	if p.f.config.OutputToConsole {
-		if p.consoleBuffer.Len() > 0 {
-			// 将控制台缓冲区内容写入到控制台写入器
-			// 包含已添加的颜色控制字符
-			if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
-				p.f.cl.PrintErrf("写入控制台失败: %s\nstack: %s\n", writeErr, debug.Stack())
-			}
+	// 如果启用控制台输出, 并且控制台缓冲区有内容, 则将缓冲区内容写入控制台
+	if p.f.config.OutputToConsole && p.consoleBuffer.Len() > 0 {
+		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
+		if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
+			// 如果写入失败，记录错误信息和堆栈跟踪
+			p.f.cl.PrintErrf("写入控制台失败: %s\nstack: %s\n", writeErr, debug.Stack())
 		}
 	}
 }
