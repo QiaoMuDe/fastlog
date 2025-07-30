@@ -1,3 +1,7 @@
+/*
+config_test.go - 配置模块测试文件
+包含对FastLog配置结构体的单元测试，验证配置初始化、边界条件处理和配置修正功能。
+*/
 package fastlog
 
 import (

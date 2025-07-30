@@ -1,3 +1,7 @@
+/*
+types.go - 日志系统核心类型定义
+定义FastLog的核心数据结构、常量和枚举类型，包括日志级别、日志格式、路径信息和日志消息结构体等。
+*/
 package fastlog
 
 import (

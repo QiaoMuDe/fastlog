@@ -1,3 +1,7 @@
+/*
+fastlog_test.go - FastLog核心功能测试文件
+包含对日志记录器初始化、并发日志处理、日志格式、日志级别过滤和文件切割等功能的单元测试。
+*/
 package fastlog
 
 import (

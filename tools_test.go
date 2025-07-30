@@ -1,3 +1,7 @@
+/*
+tools_test.go - 工具函数测试文件
+包含对路径检查、调用者信息获取、协程ID获取、日志格式化和背压处理等工具函数的单元测试。
+*/
 package fastlog
 
 import (

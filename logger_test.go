@@ -1,5 +1,7 @@
-// utils_test.go - 工具函数测试文件
-// 包含对Fatal和Fatalf方法的单元测试，验证程序退出行为和日志记录功能。
+/*
+logger_test.go - 日志记录方法测试文件
+包含对Fatal和Fatalf方法的单元测试，验证程序退出行为和日志记录功能。
+*/
 package fastlog
 
 import (
