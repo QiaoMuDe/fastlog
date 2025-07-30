@@ -85,30 +85,56 @@ func TestProcessLogs_ChannelHandling(t *testing.T) {
 
 // TestHandleLog_ConcurrentProcessing 测试并发日志处理
 func TestHandleLog_ConcurrentProcessing(t *testing.T) {
-	cfg := NewFastLogConfig(t.TempDir(), "concurrent.log")
+	// 创建临时目录
+	tempDir := t.TempDir()
+	cfg := NewFastLogConfig(tempDir, "concurrent.log")
 	cfg.SetConsoleOnly(false)
-	log, _ := NewFastLog(cfg)
-	defer func() { _ = log.Close() }()
+	cfg.SetLogLevel(DEBUG)       // 确保DEBUG级别日志能输出
+	cfg.SetPrintToConsole(false) // 只写入文件
+
+	log, err := NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
 
 	// 并发写入1000条日志
 	var wg sync.WaitGroup
-	for i := 0; i < 1000; i++ {
+	logCount := 1000
+	for i := 0; i < logCount; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			log.Debugf("concurrent log message %d", id)
+			log.Infof("concurrent log message %d", id) // 使用INFO级别确保输出
 		}(i)
 	}
 	wg.Wait()
 
-	// 强制刷新剩余内容
-	log.flushBufferNow()
+	// 等待所有日志写入完成
+	time.Sleep(200 * time.Millisecond)
+
+	_ = log.Close()
+
+	// 再次等待确保文件写入完成
+	time.Sleep(100 * time.Millisecond)
 
 	// 验证日志总数
-	content, _ := os.ReadFile(cfg.logDirName + "/concurrent.log")
-	lines := bytes.Count(content, []byte{'\n'})
-	if lines != 1000 {
-		t.Errorf("并发处理应生成1000条日志，实际: %d条", lines)
+	content, err := os.ReadFile(log.logFilePath)
+	if err != nil {
+		t.Fatalf("读取日志文件失败: %v", err)
+	}
+
+	// 计算包含"concurrent log message"的行数
+	lines := bytes.Split(content, []byte{'\n'})
+	validLines := 0
+	for _, line := range lines {
+		if bytes.Contains(line, []byte("concurrent log message")) {
+			validLines++
+		}
+	}
+
+	if validLines != logCount {
+		t.Errorf("并发处理应生成%d条日志, 实际: %d条", logCount, validLines)
+		t.Logf("文件内容长度: %d bytes", len(content))
 	}
 }
 

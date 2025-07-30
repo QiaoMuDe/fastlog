@@ -3,9 +3,7 @@
 package fastlog_test
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -245,16 +243,18 @@ func TestNewFastLog_Initialization(t *testing.T) {
 
 // TestFastLog_LogLevels 测试不同日志级别的过滤功能
 func TestFastLog_LogLevels(t *testing.T) {
-	cfg := fastlog.NewFastLogConfig("", "")
-	cfg.SetLogLevel(fastlog.WARN)
-	cfg.SetConsoleOnly(true)
-	log, _ := fastlog.NewFastLog(cfg)
-	defer func() { _ = log.Close() }()
+	// 创建临时日志文件来测试级别过滤
+	tempDir := t.TempDir()
+	logFile := filepath.Join(tempDir, "level_test.log")
 
-	// 重定向控制台输出
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	cfg := fastlog.NewFastLogConfig(tempDir, "level_test.log")
+	cfg.SetLogLevel(fastlog.WARN)
+	cfg.SetPrintToConsole(false) // 只写入文件，不输出到控制台
+	log, err := fastlog.NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
+	defer func() { _ = log.Close() }()
 
 	// 不同级别日志
 	log.Debug("debug message")
@@ -262,17 +262,25 @@ func TestFastLog_LogLevels(t *testing.T) {
 	log.Warn("warn message")
 	log.Error("error message")
 
-	// 刷新并恢复输出
-	_ = w.Close()
-	os.Stdout = old
-	var buf bytes.Buffer
-	_, _ = io.Copy(&buf, r)
+	// 确保所有日志都写入完成
+	time.Sleep(200 * time.Millisecond)
+	_ = log.Close()
 
-	// 验证结果
-	output := buf.String()
+	// 读取日志文件内容
+	content, err := os.ReadFile(logFile)
+	if err != nil {
+		t.Fatalf("读取日志文件失败: %v", err)
+	}
+
+	output := string(content)
+	t.Logf("日志文件内容: %q", output)
+
+	// 验证结果：不应包含低级别日志
 	if strings.Contains(output, "debug message") || strings.Contains(output, "info message") {
 		t.Error("日志级别过滤失败，不应包含低级日志")
 	}
+
+	// 验证结果：应包含高级别日志
 	if !strings.Contains(output, "warn message") || !strings.Contains(output, "error message") {
 		t.Error("日志级别过滤失败，应包含高级日志")
 	}

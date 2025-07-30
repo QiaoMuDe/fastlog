@@ -135,7 +135,7 @@ func TestLogLevelToString(t *testing.T) {
 
 // TestAddColor 测试日志颜色添加
 func TestAddColor(t *testing.T) {
-	cfg := NewFastLogConfig("", "")
+	cfg := NewFastLogConfig("logs", "app.log")
 	log, _ := NewFastLog(cfg)
 
 	msg := &logMessage{
@@ -145,15 +145,16 @@ func TestAddColor(t *testing.T) {
 
 	colored := addColor(log, msg, "test color")
 	if !strings.Contains(colored, "test color") {
-		t.Error("INFO级别日志应添加蓝色")
+		t.Error("彩色日志应包含原始消息")
 	}
 
 	// 测试禁用颜色
 	cfg.SetNoColor(true)
 	log2, _ := NewFastLog(cfg)
 	uncolored := addColor(log2, msg, "test color")
-	if strings.Contains(uncolored, "test color") {
-		t.Error("禁用颜色后不应包含颜色代码")
+	// 禁用颜色后，返回的应该就是原始消息，不包含颜色代码
+	if uncolored != "test color" {
+		t.Error("禁用颜色后应返回原始消息")
 	}
 }
 
