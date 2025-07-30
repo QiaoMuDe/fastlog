@@ -25,14 +25,15 @@ const (
 	// 1 KB
 	kb = 1024
 
-	// 8KB 初始容量
-	initialBufferCapacity = 8 * kb
+	// 文件缓冲区配置（更大的缓冲区用于文件写入）
+	fileInitialBufferCapacity = 32 * kb                        // 32KB 文件缓冲区初始容量
+	fileMaxBufferCapacity     = 1024 * kb                      // 1MB 文件缓冲区最大容量
+	fileFlushThreshold        = fileMaxBufferCapacity * 9 / 10 // 文件缓冲区90%阈值
 
-	// 256KB 最大容量
-	maxBufferCapacity = 256 * kb
-
-	// 缓冲区90%阈值
-	flushThreshold = maxBufferCapacity * 9 / 10
+	// 控制台缓冲区配置（较小的缓冲区用于控制台输出）
+	consoleInitialBufferCapacity = 8 * kb                            // 8KB 控制台缓冲区初始容量
+	consoleMaxBufferCapacity     = 64 * kb                           // 64KB 控制台缓冲区最大容量
+	consoleFlushThreshold        = consoleMaxBufferCapacity * 9 / 10 // 控制台缓冲区90%阈值
 
 	// 默认批量处理大小
 	defaultBatchSize = 1000

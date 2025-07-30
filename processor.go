@@ -19,7 +19,6 @@ type processor struct {
 	// 单一缓冲区（单线程使用，无需锁）
 	fileBuffer    *bytes.Buffer // 文件缓冲区
 	consoleBuffer *bytes.Buffer // 控制台缓冲区
-	bufferSize    int           // 缓冲区大小
 
 	// 批量处理配置
 	batchSize     int           // 批量处理数量
@@ -181,14 +180,14 @@ func (p *processor) flushBuffers() {
 func (p *processor) shouldFlushByThreshold() bool {
 	// 检查文件缓冲区是否达到90%阈值
 	if p.f.config.OutputToFile {
-		if p.fileBuffer.Len() >= flushThreshold {
+		if p.fileBuffer.Len() >= fileFlushThreshold {
 			return true
 		}
 	}
 
 	// 检查控制台缓冲区是否达到90%阈值
 	if p.f.config.OutputToConsole {
-		if p.consoleBuffer.Len() >= flushThreshold {
+		if p.consoleBuffer.Len() >= consoleFlushThreshold {
 			return true
 		}
 	}

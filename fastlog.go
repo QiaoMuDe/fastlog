@@ -174,17 +174,16 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 		// 创建处理器
 		processor := &processor{
-			f:             f,                     // 日志记录器
-			batchSize:     defaultBatchSize,      // 批量处理大小
-			bufferSize:    initialBufferCapacity, // 缓冲区大小
-			flushInterval: cfg.FlushInterval,     // 刷新间隔
-			fileBuffer:    bytes.NewBuffer(nil),  // 文件缓冲区
-			consoleBuffer: bytes.NewBuffer(nil),  // 控制台缓冲区
+			f:             f,                    // 日志记录器
+			batchSize:     defaultBatchSize,     // 批量处理大小
+			flushInterval: cfg.FlushInterval,    // 刷新间隔
+			fileBuffer:    bytes.NewBuffer(nil), // 文件缓冲区
+			consoleBuffer: bytes.NewBuffer(nil), // 控制台缓冲区
 		}
 
 		// 预分配缓冲区以减少内存分配
-		processor.fileBuffer.Grow(processor.bufferSize)
-		processor.consoleBuffer.Grow(processor.bufferSize)
+		processor.fileBuffer.Grow(fileInitialBufferCapacity)
+		processor.consoleBuffer.Grow(consoleInitialBufferCapacity)
 
 		// 启动处理器
 		f.logWait.Add(1)
