@@ -37,6 +37,9 @@ const (
 
 	// 缓冲区90%阈值
 	flushThreshold = maxBufferCapacity * 9 / 10
+
+	// 默认批量处理大小
+	defaultBatchSize = 1000
 )
 
 // 日志格式选项

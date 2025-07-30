@@ -25,25 +25,33 @@ var (
 
 // FastLog 日志记录器
 type FastLog struct {
-	/* 私有属性 */
 	// 日志通道  用于异步写入日志文件
 	logChan chan *logMessage
+
 	// 等待组 用于等待所有goroutine完成
 	logWait sync.WaitGroup
+
 	// 文件写入器
 	fileWriter io.Writer
+
 	// 控制台写入器
 	consoleWriter io.Writer
+
 	// 用于确保日志处理器只启动一次
 	startOnce sync.Once
+
 	// 控制刷新器的上下文
 	ctx context.Context
+
 	// 控制刷新器的取消函数
 	cancel context.CancelFunc
+
 	// 提供终端颜色输出的库
 	cl *colorlib.ColorLib
+
 	// 用于确保日志处理器只关闭一次
 	closeOnce sync.Once
+
 	// logrotatex 日志文件切割
 	logGer *logrotatex.LogRotateX
 
@@ -197,7 +205,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		// 创建处理器
 		processor := &processor{
 			f:             f,                     // 日志记录器
-			batchSize:     100,                   // 批量处理大小
+			batchSize:     defaultBatchSize,      // 批量处理大小
 			bufferSize:    initialBufferCapacity, // 缓冲区大小
 			flushInterval: cfg.FlushInterval,     // 刷新间隔
 			fileBuffer:    bytes.NewBuffer(nil),  // 文件缓冲区

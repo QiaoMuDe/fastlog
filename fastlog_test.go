@@ -51,6 +51,9 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 创建日志配置
 	cfg := NewFastLogConfig("logs", "test.log")
+	cfg.OutputToConsole = true
+	cfg.OutputToFile = true
+	cfg.MaxLogFileSize = 1
 
 	// 创建日志记录器
 	log, err := NewFastLog(cfg)
@@ -61,7 +64,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	// 持续时间为3秒
 	duration := 3
 	// 每秒生成100条日志
-	rate := 10
+	rate := 10000
 
 	defer func() {
 		log.Close()
