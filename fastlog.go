@@ -12,7 +12,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"runtime/debug"
 	"sync"
 	"time"
 
@@ -201,51 +200,70 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
-// Close 关闭 FastLog 实例
+// Close 安全关闭日志记录器
+// 实现优雅关闭流程，确保所有待处理日志被处理完毕
+// 包含超时机制防止无限等待，自动回收所有资源
 func (f *FastLog) Close() {
-	// 确保只关闭一次
+	// 使用 sync.Once 确保关闭操作只执行一次
 	f.closeOnce.Do(func() {
-		// 打印关闭日志记录器的信息
+		// 记录关闭日志（最后一条日志）
 		f.Info("stop logging...")
 
-		// 等待日志处理完成 - 确保所有日志都被消费
-		done := make(chan struct{})
+		// 创建带3秒超时的context用于控制关闭流程
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer closeCancel() // 确保最终取消context
 
-		// 启动一个goroutine检查日志是否处理完成
+		// 创建goroutine监控通道清空状态
+		done := make(chan struct{})
 		go func() {
-			// 等待通道为空（所有日志都被处理）
-			for len(f.logChan) > 0 {
-				// 休眠10毫秒
-				time.Sleep(10 * time.Millisecond)
+			defer close(done) // 确保通道最终关闭
+
+			// 轮询检查日志通道是否已清空
+			for {
+				select {
+				case <-closeCtx.Done(): // 超时或取消时立即返回
+					return
+				default:
+					// 当通道为空时，等待一个刷新间隔后确认关闭
+					if len(f.logChan) == 0 {
+						time.Sleep(f.config.FlushInterval)
+						return
+					}
+					// 避免CPU忙等待，适当休眠
+					time.Sleep(10 * time.Millisecond)
+				}
 			}
-			// 再等待一个刷新周期确保写入文件
-			time.Sleep(f.config.FlushInterval)
-			close(done)
 		}()
 
-		// 等待完成信号，但设置超时避免无限等待
+		// 等待清空完成或超时
 		select {
-		case <-done:
-			// 日志处理完成
-		case <-time.After(3 * time.Second):
-			// 超时保护，避免无限等待
+		case <-done: // 正常完成通道清空
+		case <-closeCtx.Done(): // 超时强制继续关闭流程
 		}
 
-		// 关闭通道
+		// 正式关闭日志通道并取消处理器上下文
 		close(f.logChan)
-
-		// 取消上下文
 		f.cancel()
 
-		// 等待日志处理器退出
-		f.logWait.Wait()
+		// 创建带1秒超时的等待组监控
+		waitDone := make(chan struct{})
+		go func() {
+			f.logWait.Wait() // 等待处理器goroutine退出
+			close(waitDone)
+		}()
 
-		// 如果启用了文件输出，则关闭文件
-		if f.config.OutputToFile {
-			if f.logGer != nil {
-				if closeErr := f.logGer.Close(); closeErr != nil {
-					f.cl.PrintErrf("关闭日志文件失败: %v\nstack: %s\n", closeErr, debug.Stack())
-				}
+		// 等待处理器退出或超时
+		select {
+		case <-waitDone: // 正常退出
+		case <-time.After(3 * time.Second):
+			// 超时警告(可能丢失最后部分日志)
+			f.cl.PrintWarnf("日志处理器关闭超时(3秒)，最后%d条日志可能未被处理\n", len(f.logChan))
+		}
+
+		// 关闭日志文件切割器(如果启用文件输出)
+		if f.config.OutputToFile && f.logGer != nil {
+			if closeErr := f.logGer.Close(); closeErr != nil {
+				f.cl.PrintErrf("关闭日志文件失败: %v\n", closeErr)
 			}
 		}
 	})

@@ -75,11 +75,6 @@ func (p *processor) singleThreadProcessor() {
 				continue // 跳过 nil 消息
 			}
 
-			// 多级背压处理: 根据通道使用率丢弃低级别日志消息
-			if shouldDropLogByBackpressure(p.f.logChan, logMsg.level) {
-				continue
-			}
-
 			// 将日志消息添加到批处理缓冲区
 			batch = append(batch, logMsg)
 
