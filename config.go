@@ -22,7 +22,7 @@ type FastLogConfig struct {
 	LogFormat       LogFormatType // 日志格式选项
 	NoColor         bool          // 是否禁用终端颜色
 	NoBold          bool          // 是否禁用终端字体加粗
-	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认5MB
+	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认10MB
 	MaxLogAge       int           // 最大日志文件保留天数, 默认为0, 表示不做限制
 	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	IsLocalTime     bool          // 是否使用本地时间 默认使用UTC时间
@@ -107,7 +107,7 @@ func (c *FastLogConfig) fixFinalConfig() {
 
 	// 5. 修正最大文件大小
 	if c.MaxLogFileSize <= 0 {
-		c.MaxLogFileSize = 5
+		c.MaxLogFileSize = 10
 	} else if c.MaxLogFileSize > 1000 {
 		c.MaxLogFileSize = 1000
 	}
