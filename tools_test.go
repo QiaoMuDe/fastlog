@@ -83,7 +83,7 @@ func TestGetGoroutineID(t *testing.T) {
 
 	// 测试不同协程ID
 	var wg sync.WaitGroup
-	ids := make([]int64, 5)
+	ids := make([]uint32, 5) // 改为 uint32
 
 	for i := 0; i < 5; i++ {
 		wg.Add(1)
@@ -98,7 +98,7 @@ func TestGetGoroutineID(t *testing.T) {
 	wg.Wait()
 
 	// 检查所有ID是否唯一
-	idSet := make(map[int64]bool)
+	idSet := make(map[uint32]bool)
 	for _, id := range ids {
 		if idSet[id] {
 			t.Errorf("发现重复的协程ID: %d", id)
@@ -144,8 +144,8 @@ func TestAddColor(t *testing.T) {
 	log, _ := NewFastLog(cfg)
 
 	msg := &logMessage{
-		level:   INFO,
-		message: "test color",
+		Level:   INFO,
+		Message: "test color",
 	}
 
 	colored := addColor(log, msg, "test color")
@@ -166,13 +166,13 @@ func TestAddColor(t *testing.T) {
 // TestFormatLog 测试日志格式化
 func TestFormatLog(t *testing.T) {
 	msg := &logMessage{
-		timestamp:   time.Date(2023, 1, 1, 12, 0, 0, 0, time.UTC),
-		level:       INFO,
-		message:     "test format",
-		fileName:    "test.go",
-		funcName:    "TestFunc",
-		line:        42,
-		goroutineID: 123,
+		Timestamp:   "2023-01-01 12:00:00",
+		Level:       INFO,
+		Message:     "test format",
+		FileName:    "test.go",
+		FuncName:    "TestFunc",
+		Line:        42,
+		GoroutineID: 123,
 	}
 
 	// 测试详细格式 - 创建第一个实例
@@ -254,7 +254,7 @@ func TestBackpressure(t *testing.T) {
 
 			// 填充通道到指定数量
 			for i := 0; i < tc.channelFill; i++ {
-				testChan <- &logMessage{level: INFO, message: "填充消息"}
+				testChan <- &logMessage{Level: INFO, Message: "填充消息"}
 			}
 
 			// 测试背压函数
@@ -318,7 +318,7 @@ func BenchmarkBackpressureFunction(b *testing.B) {
 
 	// 填充通道到80%
 	for i := 0; i < 800; i++ {
-		testChan <- &logMessage{level: INFO}
+		testChan <- &logMessage{Level: INFO}
 	}
 
 	b.ResetTimer()

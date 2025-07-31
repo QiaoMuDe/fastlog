@@ -67,12 +67,19 @@ func checkPath(path string) (PathInfo, error) {
 //   - functionName: 调用者的函数名
 //   - line: 调用者的行号
 //   - ok: 是否成功获取到调用者信息
-func getCallerInfo(skip int) (fileName string, functionName string, line int, ok bool) {
+func getCallerInfo(skip int) (fileName string, functionName string, line uint16, ok bool) {
 	// 获取调用者信息，跳过指定的调用层数
-	pc, file, line, ok := runtime.Caller(skip)
+	pc, file, lineInt, ok := runtime.Caller(skip)
 	if !ok {
 		line = 0
 		return
+	}
+
+	// 在这里做一次转换和边界检查
+	if lineInt >= 0 && lineInt <= 65535 {
+		line = uint16(lineInt)
+	} else {
+		line = 0 // 超出范围使用默认值
 	}
 
 	// 获取文件名（只保留文件名，不包含路径）
@@ -92,13 +99,18 @@ func getCallerInfo(skip int) (fileName string, functionName string, line int, ok
 // getGoroutineID 获取当前 Goroutine 的 ID
 //
 // 返回值：
-//   - int64: 当前 Goroutine 的 ID
-func getGoroutineID() int64 {
+//   - uint32: 当前 Goroutine 的 ID
+func getGoroutineID() uint32 {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
 	idField := bytes.Fields(buf[:n])[1]
 	id, _ := strconv.ParseInt(string(idField), 10, 64)
-	return id
+
+	// 安全转换
+	if id >= 0 && id <= 0xFFFFFFFF {
+		return uint32(id)
+	}
+	return 0
 }
 
 // logLevelToString 将 LogLevel 转换为对应的字符串，并以大写形式返回
@@ -146,7 +158,7 @@ func addColor(f *FastLog, l *logMessage, s string) string {
 	}
 
 	// 根据匹配到的日志级别添加颜色
-	switch l.level {
+	switch l.Level {
 	case INFO:
 		return f.cl.Sblue(s) // Blue
 	case WARN:
@@ -178,29 +190,28 @@ func formatLog(f *FastLog, l *logMessage) string {
 	}
 
 	// 预先格式化公共部分，避免重复计算
-	timeStr := l.timestamp.Format("2006-01-02 15:04:05")
-	levelStr := logLevelToString(l.level)
+	levelStr := logLevelToString(l.Level)
 
 	// 根据日志格式选项，格式化日志消息
 	switch f.config.LogFormat {
 	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂，解析开销可接受）
 	case Json:
 		// 构建json数据
-		logData := logMessageJSON{
-			Time:     timeStr,       // 格式化时间
-			Level:    levelStr,      // 格式化日志级别
-			File:     l.fileName,    // 文件名
-			Function: l.funcName,    // 函数名
-			Line:     l.line,        // 行号
-			Thread:   l.goroutineID, // 协程ID
-			Message:  l.message,     // 日志消息
+		logData := logMessage{
+			Timestamp:   l.Timestamp,   // 格式化时间
+			Level:       l.Level,       // 格式化日志级别
+			FileName:    l.FileName,    // 文件名
+			FuncName:    l.FuncName,    // 函数名
+			Line:        l.Line,        // 行号
+			GoroutineID: l.GoroutineID, // 协程ID
+			Message:     l.Message,     // 日志消息
 		}
 
 		// 编码json
 		jsonBytes, err := json.Marshal(logData)
 		if err != nil {
 			// 处理json编码错误
-			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.message)
+			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.Message)
 
 			// 再次尝试序列化，如果还失败就使用最基本的格式
 			if fallbackBytes, fallbackErr := json.Marshal(logData); fallbackErr == nil {
@@ -209,7 +220,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 				// 最后的兜底方案：手动构建JSON字符串
 				return fmt.Sprintf(
 					logFormatMap[Json],
-					timeStr, levelStr, "unknown", "unknown", 0, l.goroutineID, logData.Message,
+					l.Timestamp, levelStr, "unknown", "unknown", 0, l.GoroutineID, logData.Message,
 				)
 			}
 		}
@@ -218,12 +229,12 @@ func formatLog(f *FastLog, l *logMessage) string {
 	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(timeStr)
+		builder.WriteString(l.Timestamp)
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -233,20 +244,20 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.fileName)
+		builder.WriteString(l.FileName)
 		builder.WriteByte(':')
-		builder.WriteString(l.funcName)
+		builder.WriteString(l.FuncName)
 		builder.WriteByte(':')
-		builder.WriteString(strconv.Itoa(l.line))
+		builder.WriteString(strconv.Itoa(int(l.Line)))
 		builder.WriteString(" - ")
-		builder.WriteString(l.message)
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 括号格式 - 使用 strings.Builder 优化
 	case Bracket:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
@@ -254,19 +265,19 @@ func formatLog(f *FastLog, l *logMessage) string {
 		builder.WriteByte('[')
 		builder.WriteString(levelStr)
 		builder.WriteString("] ")
-		builder.WriteString(l.message)
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 协程格式 - 使用 strings.Builder 优化
 	case Threaded:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(timeStr)
+		builder.WriteString(l.Timestamp)
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -276,21 +287,21 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | [thread=\"")
-		builder.WriteString(strconv.FormatInt(l.goroutineID, 10))
+		builder.WriteString(strconv.FormatUint(uint64(l.GoroutineID), 10))
 		builder.WriteString("\"] ")
-		builder.WriteString(l.message)
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 简约格式 - 使用 strings.Builder 优化
 	case Simple:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.message) + len(l.fileName) + len(l.funcName)
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(timeStr)
+		builder.WriteString(l.Timestamp)
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -300,13 +311,13 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.message)
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 自定义格式
 	case Custom:
-		return l.message
+		return l.Message
 
 	// 无法识别的日志格式选项
 	default:

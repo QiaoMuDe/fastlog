@@ -53,7 +53,12 @@ const (
 )
 
 // 日志级别枚举
-type LogLevel int
+type LogLevel uint8
+
+// 将日志级别转换为字符串
+func (l LogLevel) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + logLevelToString(l) + `"`), nil
+}
 
 // 定义日志级别
 const (
@@ -63,29 +68,18 @@ const (
 	WARN    LogLevel = 40  // 警告级别
 	ERROR   LogLevel = 50  // 错误级别
 	FATAL   LogLevel = 60  // 致命级别
-	NONE    LogLevel = 999 // 无日志级别
+	NONE    LogLevel = 255 // 无日志级别
 )
 
-// logMessage 定义一个结构体，表示日志消息的元数据
+// logMessage 结构体用于封装日志消息
 type logMessage struct {
-	timestamp   time.Time // 日志时间
-	level       LogLevel  // 日志级别
-	message     string    // 日志消息
-	funcName    string    // 调用函数名
-	fileName    string    // 文件名
-	line        int       // 行号
-	goroutineID int64     // 协程ID
-}
-
-// 专门用于JSON序列化的结构体
-type logMessageJSON struct {
-	Time     string `json:"time"`     // 格式化后的时间字符串
-	Level    string `json:"level"`    // 日志级别字符串
-	File     string `json:"file"`     // 文件名
-	Function string `json:"function"` // 函数名
-	Line     int    `json:"line"`     // 行号
-	Thread   int64  `json:"thread"`   // 协程ID
-	Message  string `json:"message"`  // 日志消息
+	Timestamp   string   `json:"time"`     // 预格式化的时间字符串
+	Level       LogLevel `json:"level"`    // 日志级别
+	Message     string   `json:"message"`  // 日志消息
+	FuncName    string   `json:"function"` // 调用函数名
+	FileName    string   `json:"file"`     // 文件名
+	Line        uint16   `json:"line"`     // 行号
+	GoroutineID uint32   `json:"thread"`   // 协程ID
 }
 
 // 定义日志格式
