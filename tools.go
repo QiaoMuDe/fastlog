@@ -103,10 +103,27 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 func getGoroutineID() uint32 {
 	var buf [64]byte
 	n := runtime.Stack(buf[:], false)
-	idField := bytes.Fields(buf[:n])[1]
-	id, _ := strconv.ParseInt(string(idField), 10, 64)
 
-	// 安全转换
+	// 安全检查：确保有足够的数据
+	if n < 10 { // "goroutine " 至少需要10个字符
+		return 0
+	}
+
+	fields := bytes.Fields(buf[:n])
+
+	// 安全检查：确保有足够的字段
+	if len(fields) < 2 {
+		return 0
+	}
+
+	// 尝试解析协程ID
+	idField := fields[1]
+	id, err := strconv.ParseInt(string(idField), 10, 64)
+	if err != nil {
+		return 0
+	}
+
+	// 安全转换到uint32范围
 	if id >= 0 && id <= 0xFFFFFFFF {
 		return uint32(id)
 	}
