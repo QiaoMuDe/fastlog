@@ -1,58 +1,83 @@
+// stringpool.go - 完整替换
 package fastlog
 
 import (
+	"container/list"
 	"sync"
-	"sync/atomic"
 )
 
-// StringPool 字符串池
 type StringPool struct {
-	mu    sync.RWMutex       // 读写锁
-	pool  map[string]*string // 字符串池
-	stats StringPoolStats    // 统计信息
+	pool    map[string]*poolEntry
+	lruList *list.List
+	maxSize int
+	mu      sync.RWMutex
 }
 
-// StringPoolStats 字符串池统计信息
-type StringPoolStats struct {
-	Hits   int64 // 命中次数
-	Misses int64 // 未命中次数
-	Size   int64 // 池大小
+type poolEntry struct {
+	value   *string
+	element *list.Element
 }
 
-// 获取或创建字符串
-func (sp *StringPool) Intern(s string) *string {
-	// 先尝试读锁
-	sp.mu.RLock()
-	if interned, exists := sp.pool[s]; exists {
-		atomic.AddInt64(&sp.stats.Hits, 1)
-		sp.mu.RUnlock()
-		return interned
+func NewStringPool(maxSize int) *StringPool {
+	if maxSize <= 0 {
+		maxSize = 10000 // 默认最大容量
 	}
-	sp.mu.RUnlock()
+	return &StringPool{
+		pool:    make(map[string]*poolEntry),
+		lruList: list.New(),
+		maxSize: maxSize,
+	}
+}
 
-	// 写锁创建新字符串
+func (sp *StringPool) Intern(s string) *string {
 	sp.mu.Lock()
 	defer sp.mu.Unlock()
 
-	// 双重检查
-	if interned, exists := sp.pool[s]; exists {
-		atomic.AddInt64(&sp.stats.Hits, 1)
-		return interned
+	// 如果已存在，移到前面
+	if entry, exists := sp.pool[s]; exists {
+		sp.lruList.MoveToFront(entry.element)
+		return entry.value
 	}
 
-	// 创建新的字符串指针
+	// 如果达到最大容量，删除最久未使用的
+	if len(sp.pool) >= sp.maxSize {
+		sp.evictLRU()
+	}
+
+	// 添加新字符串
 	interned := &s
-	sp.pool[s] = interned
-	atomic.AddInt64(&sp.stats.Misses, 1)
-	atomic.AddInt64(&sp.stats.Size, 1)
+	element := sp.lruList.PushFront(s)
+	sp.pool[s] = &poolEntry{
+		value:   interned,
+		element: element,
+	}
 
 	return interned
 }
 
-// NewStringPool 创建一个新的字符串池
-func NewStringPool(initialCapacity int) *StringPool {
-	return &StringPool{
-		pool:  make(map[string]*string, initialCapacity),
-		stats: StringPoolStats{},
+func (sp *StringPool) evictLRU() {
+	if sp.lruList.Len() == 0 {
+		return
 	}
+
+	// 删除最后一个元素
+	element := sp.lruList.Back()
+	if element != nil {
+		key := element.Value.(string)
+		delete(sp.pool, key)
+		sp.lruList.Remove(element)
+	}
+}
+
+func (sp *StringPool) Size() int {
+	sp.mu.RLock()
+	defer sp.mu.RUnlock()
+	return len(sp.pool)
+}
+
+func (sp *StringPool) Clear() {
+	sp.mu.Lock()
+	defer sp.mu.Unlock()
+	sp.pool = make(map[string]*poolEntry)
+	sp.lruList.Init()
 }

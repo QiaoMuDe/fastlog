@@ -80,22 +80,22 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 克隆配置结构体防止原配置被意外修改
 	cfg := &FastLogConfig{
-		LogDirName:         config.LogDirName,         // 日志目录名称
-		LogFileName:        config.LogFileName,        // 日志文件名称
-		OutputToConsole:    config.OutputToConsole,    // 是否将日志输出到控制台
-		OutputToFile:       config.OutputToFile,       // 是否将日志输出到文件
-		LogLevel:           config.LogLevel,           // 日志级别
-		ChanIntSize:        config.ChanIntSize,        // 通道大小
-		FlushInterval:      config.FlushInterval,      // 刷新间隔
-		LogFormat:          config.LogFormat,          // 日志格式
-		MaxLogFileSize:     config.MaxLogFileSize,     // 最大日志文件大小, 单位为MB
-		MaxLogAge:          config.MaxLogAge,          // 最大日志文件保留天数(单位为天)
-		MaxLogBackups:      config.MaxLogBackups,      // 最大日志文件保留数量(默认为0, 表示不清理)
-		IsLocalTime:        config.IsLocalTime,        // 是否使用本地时间
-		EnableCompress:     config.EnableCompress,     // 是否启用日志文件压缩
-		NoColor:            config.NoColor,            // 是否禁用终端颜色
-		NoBold:             config.NoBold,             // 是否禁用终端字体加粗
-		StringPoolCapacity: config.StringPoolCapacity, // 字符串池容量
+		LogDirName:            config.LogDirName,            // 日志目录名称
+		LogFileName:           config.LogFileName,           // 日志文件名称
+		OutputToConsole:       config.OutputToConsole,       // 是否将日志输出到控制台
+		OutputToFile:          config.OutputToFile,          // 是否将日志输出到文件
+		LogLevel:              config.LogLevel,              // 日志级别
+		ChanIntSize:           config.ChanIntSize,           // 通道大小
+		FlushInterval:         config.FlushInterval,         // 刷新间隔
+		LogFormat:             config.LogFormat,             // 日志格式
+		MaxLogFileSize:        config.MaxLogFileSize,        // 最大日志文件大小, 单位为MB
+		MaxLogAge:             config.MaxLogAge,             // 最大日志文件保留天数(单位为天)
+		MaxLogBackups:         config.MaxLogBackups,         // 最大日志文件保留数量(默认为0, 表示不清理)
+		IsLocalTime:           config.IsLocalTime,           // 是否使用本地时间
+		EnableCompress:        config.EnableCompress,        // 是否启用日志文件压缩
+		NoColor:               config.NoColor,               // 是否禁用终端颜色
+		NoBold:                config.NoBold,                // 是否禁用终端字体加粗
+		StringPoolMaxCapacity: config.StringPoolMaxCapacity, // 字符串池最大容量
 	}
 
 	// 最终配置修正 - 修正所有不合理的值
@@ -145,16 +145,16 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logGer:        logger,                                // 日志文件切割器
-		fileWriter:    fileWriter,                            // 文件写入器, 用于将日志写入文件
-		consoleWriter: consoleWriter,                         // 控制台写入器, 用于将日志写入控制台
-		cl:            colorlib.NewColorLib(),                // 颜色库实例, 用于在终端中显示颜色
-		config:        cfg,                                   // 配置结构体
-		logChan:       make(chan *logMsg, cfg.ChanIntSize),   // 日志消息通道
-		closeOnce:     sync.Once{},                           // 用于在结束时确保只执行一次
-		cancel:        cancel,                                // 用于取消上下文的函数
-		ctx:           ctx,                                   // 上下文, 用于控制协程退出
-		stringPool:    NewStringPool(cfg.StringPoolCapacity), // 初始化字符串池，容量1000
+		logGer:        logger,                                   // 日志文件切割器
+		fileWriter:    fileWriter,                               // 文件写入器, 用于将日志写入文件
+		consoleWriter: consoleWriter,                            // 控制台写入器, 用于将日志写入控制台
+		cl:            colorlib.NewColorLib(),                   // 颜色库实例, 用于在终端中显示颜色
+		config:        cfg,                                      // 配置结构体
+		logChan:       make(chan *logMsg, cfg.ChanIntSize),      // 日志消息通道
+		closeOnce:     sync.Once{},                              // 用于在结束时确保只执行一次
+		cancel:        cancel,                                   // 用于取消上下文的函数
+		ctx:           ctx,                                      // 上下文, 用于控制协程退出
+		stringPool:    NewStringPool(cfg.StringPoolMaxCapacity), // 初始化字符串池
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
@@ -204,71 +204,166 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
+// GetStringPoolSize 获取字符串池当前大小
+func (f *FastLog) GetStringPoolSize() int {
+	return f.stringPool.Size()
+}
+
+// ClearStringPool 清空字符串池
+func (f *FastLog) ClearStringPool() {
+	f.stringPool.Clear()
+}
+
+// // Close 安全关闭日志记录器
+// // 实现优雅关闭流程，确保所有待处理日志被处理完毕
+// // 包含超时机制防止无限等待，自动回收所有资源
+// func (f *FastLog) Close() {
+// 	// 使用 sync.Once 确保关闭操作只执行一次
+// 	f.closeOnce.Do(func() {
+// 		// 记录关闭日志（最后一条日志）
+// 		f.Info("stop logging...")
+
+// 		// 创建带5秒超时的context用于控制关闭流程
+// 		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
+// 		defer closeCancel() // 确保最终取消context
+
+// 		// 创建goroutine监控通道清空状态
+// 		done := make(chan struct{})
+// 		go func() {
+// 			defer close(done) // 确保通道最终关闭
+
+// 			// 轮询检查日志通道是否已清空
+// 			for {
+// 				select {
+// 				case <-closeCtx.Done(): // 超时或取消时立即返回
+// 					return
+// 				default:
+// 					// 当通道为空时，等待一个刷新间隔后确认关闭
+// 					if len(f.logChan) == 0 {
+// 						time.Sleep(f.config.FlushInterval)
+// 						return
+// 					}
+// 					// 避免CPU忙等待, 适当休眠
+// 					time.Sleep(500 * time.Millisecond)
+// 				}
+// 			}
+// 		}()
+
+// 		// 等待清空完成或超时
+// 		select {
+// 		case <-done: // 正常完成通道清空
+// 		case <-closeCtx.Done(): // 超时强制继续关闭流程
+// 		}
+
+// 		// 正式关闭日志通道并取消处理器上下文
+// 		close(f.logChan)
+// 		f.cancel()
+
+// 		// 创建带3秒超时的等待组监控
+// 		waitDone := make(chan struct{})
+// 		go func() {
+// 			f.logWait.Wait() // 等待处理器goroutine退出
+// 			close(waitDone)
+// 		}()
+
+// 		// 等待处理器退出或超时
+// 		select {
+// 		case <-waitDone: // 正常退出
+// 		case <-time.After(3 * time.Second):
+// 			// 超时警告(可能丢失最后部分日志)
+// 			f.cl.PrintWarn("日志处理器关闭超时(3秒)")
+// 		}
+
+// 		// 关闭日志文件切割器(如果启用文件输出)
+// 		if f.config.OutputToFile && f.logGer != nil {
+// 			if closeErr := f.logGer.Close(); closeErr != nil {
+// 				f.cl.PrintErrf("关闭日志文件失败: %v\n", closeErr)
+// 			}
+// 		}
+
+// 		// 最后清理字符串池
+// 		f.stringPool.Clear()
+// 	})
+// }
+
 // Close 安全关闭日志记录器
-// 实现优雅关闭流程，确保所有待处理日志被处理完毕
-// 包含超时机制防止无限等待，自动回收所有资源
 func (f *FastLog) Close() {
 	// 使用 sync.Once 确保关闭操作只执行一次
 	f.closeOnce.Do(func() {
-		// 记录关闭日志（最后一条日志）
+		// 记录关闭日志
 		f.Info("stop logging...")
 
-		// 创建带5秒超时的context用于控制关闭流程
-		closeCtx, closeCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer closeCancel() // 确保最终取消context
+		// 统一的关闭超时时间
+		closeTimeout := f.getCloseTimeout()
 
-		// 创建goroutine监控通道清空状态
-		done := make(chan struct{})
-		go func() {
-			defer close(done) // 确保通道最终关闭
+		// 创建关闭上下文
+		closeCtx, closeCancel := context.WithTimeout(context.Background(), closeTimeout)
+		defer closeCancel()
 
-			// 轮询检查日志通道是否已清空
-			for {
-				select {
-				case <-closeCtx.Done(): // 超时或取消时立即返回
-					return
-				default:
-					// 当通道为空时，等待一个刷新间隔后确认关闭
-					if len(f.logChan) == 0 {
-						time.Sleep(f.config.FlushInterval)
-						return
-					}
-					// 避免CPU忙等待, 适当休眠
-					time.Sleep(500 * time.Millisecond)
-				}
-			}
-		}()
+		// 优雅关闭：先停止接收新日志，再等待处理完成
+		f.gracefulShutdown(closeCtx)
 
-		// 等待清空完成或超时
-		select {
-		case <-done: // 正常完成通道清空
-		case <-closeCtx.Done(): // 超时强制继续关闭流程
-		}
-
-		// 正式关闭日志通道并取消处理器上下文
-		close(f.logChan)
-		f.cancel()
-
-		// 创建带3秒超时的等待组监控
-		waitDone := make(chan struct{})
-		go func() {
-			f.logWait.Wait() // 等待处理器goroutine退出
-			close(waitDone)
-		}()
-
-		// 等待处理器退出或超时
-		select {
-		case <-waitDone: // 正常退出
-		case <-time.After(3 * time.Second):
-			// 超时警告(可能丢失最后部分日志)
-			f.cl.PrintWarn("日志处理器关闭超时(3秒)")
-		}
-
-		// 关闭日志文件切割器(如果启用文件输出)
-		if f.config.OutputToFile && f.logGer != nil {
-			if closeErr := f.logGer.Close(); closeErr != nil {
-				f.cl.PrintErrf("关闭日志文件失败: %v\n", closeErr)
-			}
-		}
+		// 强制关闭资源
+		f.forceCleanup()
 	})
+}
+
+// getCloseTimeout 计算并返回日志记录器关闭时的合理超时时间
+//
+// 返回值:
+//   - time.Duration: 计算后的关闭超时时间，范围在3-10秒之间
+//
+// 实现逻辑:
+//  1. 基于配置的刷新间隔(FlushInterval)乘以10作为基础超时时间
+//  2. 确保最小超时为3秒，避免过短的超时导致日志丢失
+//  3. 确保最大超时为10秒，避免过长的等待影响程序退出
+func (f *FastLog) getCloseTimeout() time.Duration {
+	// 基于刷新间隔计算合理的超时时间
+	baseTimeout := time.Duration(f.config.FlushInterval) * time.Millisecond * 10
+	if baseTimeout < 3*time.Second {
+		baseTimeout = 3 * time.Second
+	}
+	if baseTimeout > 10*time.Second {
+		baseTimeout = 10 * time.Second
+	}
+	return baseTimeout
+}
+
+// gracefulShutdown 优雅关闭日志记录器
+func (f *FastLog) gracefulShutdown(ctx context.Context) {
+	// 1. 关闭日志通道，停止接收新日志
+	close(f.logChan)
+
+	// 2. 取消处理器上下文，通知处理器准备退出
+	f.cancel()
+
+	// 3. 等待处理器完成剩余工作
+	shutdownComplete := make(chan struct{})
+	go func() {
+		defer close(shutdownComplete)
+		f.logWait.Wait()
+	}()
+
+	// 4. 等待完成或超时
+	select {
+	case <-shutdownComplete:
+		// 正常关闭完成
+		return
+	case <-ctx.Done():
+		// 超时，但不打印警告（因为会强制清理）
+		return
+	}
+}
+
+// forceCleanup 强制清理资源
+func (f *FastLog) forceCleanup() {
+	// 关闭文件写入器
+	if f.config.OutputToFile && f.logGer != nil {
+		if err := f.logGer.Close(); err != nil {
+			f.cl.PrintErrf("关闭日志文件失败: %v\n", err)
+		}
+	}
+
+	// 清理字符串池
+	f.stringPool.Clear()
 }
