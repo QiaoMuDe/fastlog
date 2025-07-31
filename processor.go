@@ -50,7 +50,7 @@ func (p *processor) singleThreadProcessor() {
 	}
 
 	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
-	batch := make([]*logMessage, 0, p.batchSize)
+	batch := make([]*logMsg, 0, p.batchSize)
 
 	// 创建定时刷新器，间隔由flushInterval指定
 	ticker := time.NewTicker(p.flushInterval)
@@ -112,8 +112,8 @@ func (p *processor) singleThreadProcessor() {
 // 然后将缓冲区内容刷新到实际的输出目标(文件或控制台)。
 //
 // 参数:
-// - batch []*logMessage: 日志批处理缓冲区，包含一批待处理的日志消息。
-func (p *processor) processAndFlushBatch(batch []*logMessage) {
+// - batch []*logMsg: 日志批处理缓冲区，包含一批待处理的日志消息。
+func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	// 重置缓冲区（清空原有内容，准备接收新数据）
 	p.fileBuffer.Reset()    // 重置文件缓冲区
 	p.consoleBuffer.Reset() // 重置控制台缓冲区
@@ -156,7 +156,7 @@ func (p *processor) processAndFlushBatch(batch []*logMessage) {
 
 	// 在这里批量回收所有对象
 	for _, logMsg := range batch {
-		putLogMessage(logMsg)
+		putLogMsg(logMsg)
 	}
 }
 

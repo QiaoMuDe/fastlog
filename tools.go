@@ -151,7 +151,7 @@ func logLevelToString(level LogLevel) string {
 //
 // 返回值:
 //   - string: 带有颜色的字符串
-func addColor(f *FastLog, l *logMessage, s string) string {
+func addColor(f *FastLog, l *logMsg, s string) string {
 	// 添加空指针检查
 	if f == nil || l == nil || f.cl == nil {
 		return s // 如果任何参数为nil，返回原始字符串
@@ -184,7 +184,7 @@ func addColor(f *FastLog, l *logMessage, s string) string {
 //
 // 返回值:
 //   - string: 格式化后的日志消息
-func formatLog(f *FastLog, l *logMessage) string {
+func formatLog(f *FastLog, l *logMsg) string {
 	if f == nil || l == nil {
 		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
 	}
@@ -197,7 +197,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂，解析开销可接受）
 	case Json:
 		// 构建json数据
-		logData := logMessage{
+		logData := logMsg{
 			Timestamp:   l.Timestamp,   // 格式化时间
 			Level:       l.Level,       // 格式化日志级别
 			FileName:    l.FileName,    // 文件名
@@ -349,7 +349,7 @@ func formatLog(f *FastLog, l *logMessage) string {
 //
 // 返回:
 //   - bool: true表示应该丢弃该日志，false表示应该保留
-func shouldDropLogByBackpressure(logChan chan *logMessage, level LogLevel) bool {
+func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	// 添加空指针检查
 	if logChan == nil {
 		return false // 如果通道为nil，不丢弃日志

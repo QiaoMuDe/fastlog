@@ -145,7 +145,7 @@ func TestAddColor(t *testing.T) {
 
 	tempMsg := "test color"
 
-	msg := &logMessage{
+	msg := &logMsg{
 		Level:   INFO,
 		Message: &tempMsg,
 	}
@@ -173,7 +173,7 @@ func TestFormatLog(t *testing.T) {
 	fileName := "test.go"
 	funcName := "TestFunc"
 
-	msg := &logMessage{
+	msg := &logMsg{
 		Timestamp:   &timestamp,
 		Level:       INFO,
 		Message:     &message,
@@ -215,7 +215,7 @@ func TestFormatLog(t *testing.T) {
 // TestBackpressure 测试背压功能
 func TestBackpressure(t *testing.T) {
 	// 创建一个小容量的通道来模拟背压情况
-	testChan := make(chan *logMessage, 10) // 容量为10的通道
+	testChan := make(chan *logMsg, 10) // 容量为10的通道
 
 	// 测试用例数据
 	testCases := []struct {
@@ -264,7 +264,7 @@ func TestBackpressure(t *testing.T) {
 
 			// 填充通道到指定数量
 			for i := 0; i < tc.channelFill; i++ {
-				testChan <- &logMessage{Level: INFO, Message: &msg}
+				testChan <- &logMsg{Level: INFO, Message: &msg}
 			}
 
 			// 测试背压函数
@@ -324,11 +324,11 @@ func TestBackpressureIntegration(t *testing.T) {
 
 // BenchmarkBackpressureFunction 性能测试：测试背压函数的性能
 func BenchmarkBackpressureFunction(b *testing.B) {
-	testChan := make(chan *logMessage, 1000)
+	testChan := make(chan *logMsg, 1000)
 
 	// 填充通道到80%
 	for i := 0; i < 800; i++ {
-		testChan <- &logMessage{Level: INFO}
+		testChan <- &logMsg{Level: INFO}
 	}
 
 	b.ResetTimer()

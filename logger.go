@@ -37,26 +37,26 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 
 	// 从对象池获取日志消息对象
-	logMsg := getLogMessage()
+	logMessage := getLogMsg()
 
 	// 使用字符串池
-	logMsg.Timestamp = l.stringPool.Intern(timestamp) // 时间戳
-	logMsg.Level = level                              // 日志级别
-	logMsg.Message = l.stringPool.Intern(message)     // 日志消息
-	logMsg.FileName = l.stringPool.Intern(filename)   // 文件名
-	logMsg.FuncName = l.stringPool.Intern(funcName)   // 函数名
-	logMsg.Line = line                                // 行号
-	logMsg.GoroutineID = getGoroutineID()             // 协程ID
+	logMessage.Timestamp = l.stringPool.Intern(timestamp) // 时间戳
+	logMessage.Level = level                              // 日志级别
+	logMessage.Message = l.stringPool.Intern(message)     // 日志消息
+	logMessage.FileName = l.stringPool.Intern(filename)   // 文件名
+	logMessage.FuncName = l.stringPool.Intern(funcName)   // 函数名
+	logMessage.Line = line                                // 行号
+	logMessage.GoroutineID = getGoroutineID()             // 协程ID
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
 	if shouldDropLogByBackpressure(l.logChan, level) {
 		// 重要：如果丢弃日志，需要回收对象
-		putLogMessage(logMsg)
+		putLogMsg(logMessage)
 		return
 	}
 
 	// 发送日志
-	l.logChan <- logMsg
+	l.logChan <- logMessage
 }
 
 // logFatal Fatal级别的特殊处理方法

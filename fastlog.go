@@ -28,7 +28,7 @@ var (
 // FastLog 日志记录器
 type FastLog struct {
 	// 日志通道  用于异步写入日志文件
-	logChan chan *logMessage
+	logChan chan *logMsg
 
 	// 等待组 用于等待所有goroutine完成
 	logWait sync.WaitGroup
@@ -145,16 +145,16 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logGer:        logger,                                  // 日志文件切割器
-		fileWriter:    fileWriter,                              // 文件写入器, 用于将日志写入文件
-		consoleWriter: consoleWriter,                           // 控制台写入器, 用于将日志写入控制台
-		cl:            colorlib.NewColorLib(),                  // 颜色库实例, 用于在终端中显示颜色
-		config:        cfg,                                     // 配置结构体
-		logChan:       make(chan *logMessage, cfg.ChanIntSize), // 日志消息通道
-		closeOnce:     sync.Once{},                             // 用于在结束时确保只执行一次
-		cancel:        cancel,                                  // 用于取消上下文的函数
-		ctx:           ctx,                                     // 上下文, 用于控制协程退出
-		stringPool:    NewStringPool(cfg.StringPoolCapacity),   // 初始化字符串池，容量1000
+		logGer:        logger,                                // 日志文件切割器
+		fileWriter:    fileWriter,                            // 文件写入器, 用于将日志写入文件
+		consoleWriter: consoleWriter,                         // 控制台写入器, 用于将日志写入控制台
+		cl:            colorlib.NewColorLib(),                // 颜色库实例, 用于在终端中显示颜色
+		config:        cfg,                                   // 配置结构体
+		logChan:       make(chan *logMsg, cfg.ChanIntSize),   // 日志消息通道
+		closeOnce:     sync.Once{},                           // 用于在结束时确保只执行一次
+		cancel:        cancel,                                // 用于取消上下文的函数
+		ctx:           ctx,                                   // 上下文, 用于控制协程退出
+		stringPool:    NewStringPool(cfg.StringPoolCapacity), // 初始化字符串池，容量1000
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项

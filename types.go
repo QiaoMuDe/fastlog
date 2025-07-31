@@ -59,8 +59,8 @@ const (
 	NONE    LogLevel = 255 // 无日志级别
 )
 
-// logMessage 结构体用于封装日志消息
-type logMessage struct {
+// logMsg 结构体用于封装日志消息
+type logMsg struct {
 	Timestamp   *string  `json:"time"`     // 预格式化的时间字符串 (使用字符串池)
 	Level       LogLevel `json:"level"`    // 日志级别
 	Message     *string  `json:"message"`  // 日志消息 (使用字符串池)
@@ -70,31 +70,37 @@ type logMessage struct {
 	GoroutineID uint32   `json:"thread"`   // 协程ID
 }
 
-// logMessagePool 是一个日志消息对象池
-var logMessagePool = sync.Pool{
+// logMsgPool 是一个日志消息对象池
+var logMsgPool = sync.Pool{
 	New: func() interface{} {
-		return &logMessage{}
+		return &logMsg{}
 	},
 }
 
-// 获取日志消息对象
-func getLogMessage() *logMessage {
-	return logMessagePool.Get().(*logMessage)
+// getLogMsg 获取日志消息对象
+//
+// 返回：
+//   - *logMsg: 日志消息对象指针
+func getLogMsg() *logMsg {
+	return logMsgPool.Get().(*logMsg)
 }
 
-// 归还日志消息对象
-func putLogMessage(msg *logMessage) {
+// putLogMsg 归还日志消息对象
+//
+// 参数：
+//   - msg: 日志消息对象指针
+func putLogMsg(msg *logMsg) {
 	// 清理对象状态
-	msg.Timestamp = nil
-	msg.Level = 0
-	msg.Message = nil
-	msg.FuncName = nil
-	msg.FileName = nil
-	msg.Line = 0
-	msg.GoroutineID = 0
+	msg.Timestamp = nil // 清理时间戳
+	msg.Level = 0       // 重置日志级别
+	msg.Message = nil   // 清理消息
+	msg.FuncName = nil  // 清理函数名
+	msg.FileName = nil  // 清理文件名
+	msg.Line = 0        // 重置行号
+	msg.GoroutineID = 0 // 重置协程ID
 
 	// 归还对象
-	logMessagePool.Put(msg)
+	logMsgPool.Put(msg)
 }
 
 // 日志格式选项
@@ -102,23 +108,23 @@ type LogFormatType int
 
 // 日志格式选项
 const (
-	Detailed           LogFormatType = iota // 详细格式
-	Json                                    // json格式
-	Threaded                                // 协程格式
-	Simple                                  // 简约格式
-	Structured                              // 结构化格式
-	ExtendedStructured                      // 可扩展结构化格式
-	Custom                                  // 自定义格式
+	Detailed   LogFormatType = iota // 详细格式
+	Json                            // json格式
+	Threaded                        // 协程格式
+	Simple                          // 简约格式
+	Structured                      // 结构化格式
+	Custom                          // 自定义格式
+	//ExtendedStructured                      // 可扩展结构化格式
 )
 
 // 定义日志格式
 var logFormatMap = map[LogFormatType]string{
-	Json:               `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`, // Json格式
-	Detailed:           `%s | %-7s | %s:%s:%d - %s`,                                                                        // 详细格式
-	Threaded:           `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
-	Simple:             `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
-	Structured:         `T:%s|L:%-7s|G:%d|F:%s:%s:%d|M:%s`,                                                                 // 结构化格式
-	ExtendedStructured: `T:%s|L:%-7s|G:%d|M:%s`,                                                                            // 可扩展结构化格式
+	Json:       `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`, // Json格式
+	Detailed:   `%s | %-7s | %s:%s:%d - %s`,                                                                        // 详细格式
+	Threaded:   `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
+	Simple:     `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
+	Structured: `T:%s|L:%-7s|G:%d|F:%s:%s:%d|M:%s`,                                                                 // 结构化格式
+	// ExtendedStructured: `T:%s|L:%-7s|G:%d|%s|M:%s`,                                                                         // 可扩展结构化格式
 }
 
 // 文件名验证相关常量
