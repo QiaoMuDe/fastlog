@@ -60,7 +60,8 @@ type FastLog struct {
 	// 嵌入的配置结构体
 	config *FastLogConfig
 
-	stringPool *StringPool // 字符串池
+	// 字符串池
+	stringPool *StringPool
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
@@ -79,21 +80,22 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 克隆配置结构体防止原配置被意外修改
 	cfg := &FastLogConfig{
-		LogDirName:      config.LogDirName,      // 日志目录名称
-		LogFileName:     config.LogFileName,     // 日志文件名称
-		OutputToConsole: config.OutputToConsole, // 是否将日志输出到控制台
-		OutputToFile:    config.OutputToFile,    // 是否将日志输出到文件
-		LogLevel:        config.LogLevel,        // 日志级别
-		ChanIntSize:     config.ChanIntSize,     // 通道大小
-		FlushInterval:   config.FlushInterval,   // 刷新间隔
-		LogFormat:       config.LogFormat,       // 日志格式
-		MaxLogFileSize:  config.MaxLogFileSize,  // 最大日志文件大小, 单位为MB
-		MaxLogAge:       config.MaxLogAge,       // 最大日志文件保留天数(单位为天)
-		MaxLogBackups:   config.MaxLogBackups,   // 最大日志文件保留数量(默认为0, 表示不清理)
-		IsLocalTime:     config.IsLocalTime,     // 是否使用本地时间
-		EnableCompress:  config.EnableCompress,  // 是否启用日志文件压缩
-		NoColor:         config.NoColor,         // 是否禁用终端颜色
-		NoBold:          config.NoBold,          // 是否禁用终端字体加粗
+		LogDirName:         config.LogDirName,         // 日志目录名称
+		LogFileName:        config.LogFileName,        // 日志文件名称
+		OutputToConsole:    config.OutputToConsole,    // 是否将日志输出到控制台
+		OutputToFile:       config.OutputToFile,       // 是否将日志输出到文件
+		LogLevel:           config.LogLevel,           // 日志级别
+		ChanIntSize:        config.ChanIntSize,        // 通道大小
+		FlushInterval:      config.FlushInterval,      // 刷新间隔
+		LogFormat:          config.LogFormat,          // 日志格式
+		MaxLogFileSize:     config.MaxLogFileSize,     // 最大日志文件大小, 单位为MB
+		MaxLogAge:          config.MaxLogAge,          // 最大日志文件保留天数(单位为天)
+		MaxLogBackups:      config.MaxLogBackups,      // 最大日志文件保留数量(默认为0, 表示不清理)
+		IsLocalTime:        config.IsLocalTime,        // 是否使用本地时间
+		EnableCompress:     config.EnableCompress,     // 是否启用日志文件压缩
+		NoColor:            config.NoColor,            // 是否禁用终端颜色
+		NoBold:             config.NoBold,             // 是否禁用终端字体加粗
+		StringPoolCapacity: config.StringPoolCapacity, // 字符串池容量
 	}
 
 	// 最终配置修正 - 修正所有不合理的值
