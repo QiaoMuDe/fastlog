@@ -44,10 +44,13 @@ func (sp *StringPool) Intern(s string) *string {
 		sp.evictLRU()
 	}
 
-	// 添加新字符串
-	interned := &s
-	element := sp.lruList.PushFront(s)
-	sp.pool[s] = &poolEntry{
+	// 创建内部字符串的指针
+	interned := new(string)
+	*interned = s
+
+	// 添加到新的字符串到LRU列表
+	element := sp.lruList.PushFront(*interned) // 使用解引用的值
+	sp.pool[*interned] = &poolEntry{           // 使用解引用的值作为key
 		value:   interned,
 		element: element,
 	}

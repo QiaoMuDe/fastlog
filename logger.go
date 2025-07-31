@@ -20,6 +20,11 @@ import (
 //   - message: 格式化后的消息
 //   - skipFrames: 跳过的调用栈帧数（用于获取正确的调用者信息）
 func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
+	// 检查日志通道是否已关闭
+	if l.isLogChanClosed.Load() {
+		return
+	}
+
 	// 检查日志级别，如果当前级别高于指定级别则不记录
 	if level < l.config.LogLevel {
 		return
