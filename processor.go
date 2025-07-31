@@ -153,6 +153,11 @@ func (p *processor) processAndFlushBatch(batch []*logMessage) {
 			p.f.cl.PrintErrf("写入控制台失败: %s\nstack: %s\n", writeErr, debug.Stack())
 		}
 	}
+
+	// 在这里批量回收所有对象
+	for _, logMsg := range batch {
+		putLogMessage(logMsg)
+	}
 }
 
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新

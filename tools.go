@@ -210,8 +210,9 @@ func formatLog(f *FastLog, l *logMessage) string {
 		// 编码json
 		jsonBytes, err := json.Marshal(logData)
 		if err != nil {
-			// 处理json编码错误
-			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.Message)
+			// 使用字符串池处理json编码失败的情况
+			errorMsg := fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, safeDeref(l.Message))
+			logData.Message = f.stringPool.Intern(errorMsg)
 
 			// 再次尝试序列化，如果还失败就使用最基本的格式
 			if fallbackBytes, fallbackErr := json.Marshal(logData); fallbackErr == nil {
@@ -229,12 +230,12 @@ func formatLog(f *FastLog, l *logMessage) string {
 	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(safeDeref(l.Timestamp))
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -244,20 +245,20 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.FileName)
+		builder.WriteString(safeDeref(l.FileName))
 		builder.WriteByte(':')
-		builder.WriteString(l.FuncName)
+		builder.WriteString(safeDeref(l.FuncName))
 		builder.WriteByte(':')
 		builder.WriteString(strconv.Itoa(int(l.Line)))
 		builder.WriteString(" - ")
-		builder.WriteString(l.Message)
+		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()
 
 	// 括号格式 - 使用 strings.Builder 优化
 	case Bracket:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
@@ -265,19 +266,19 @@ func formatLog(f *FastLog, l *logMessage) string {
 		builder.WriteByte('[')
 		builder.WriteString(levelStr)
 		builder.WriteString("] ")
-		builder.WriteString(l.Message)
+		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()
 
 	// 协程格式 - 使用 strings.Builder 优化
 	case Threaded:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(safeDeref(l.Timestamp))
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -289,19 +290,19 @@ func formatLog(f *FastLog, l *logMessage) string {
 		builder.WriteString(" | [thread=\"")
 		builder.WriteString(strconv.FormatUint(uint64(l.GoroutineID), 10))
 		builder.WriteString("\"] ")
-		builder.WriteString(l.Message)
+		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()
 
 	// 简约格式 - 使用 strings.Builder 优化
 	case Simple:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(safeDeref(l.Timestamp))
 		builder.WriteString(" | ")
 
 		// 格式化日志级别，左对齐7个字符
@@ -311,13 +312,13 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.Message)
+		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()
 
 	// 自定义格式
 	case Custom:
-		return l.Message
+		return safeDeref(l.Message)
 
 	// 无法识别的日志格式选项
 	default:
@@ -367,4 +368,18 @@ func shouldDropLogByBackpressure(logChan chan *logMessage, level LogLevel) bool 
 	default:
 		return false // 70%以下不丢弃任何日志
 	}
+}
+
+// safeDeref 安全地解引用字符串指针，如果指针为nil则返回空字符串
+//
+// 参数:
+//   - s: 字符串指针
+//
+// 返回:
+//   - 解引用后的字符串，如果指针为nil则返回空字符串
+func safeDeref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

@@ -6,6 +6,7 @@ package fastlog
 
 import (
 	"os"
+	"sync"
 	"time"
 )
 
@@ -73,13 +74,40 @@ const (
 
 // logMessage 结构体用于封装日志消息
 type logMessage struct {
-	Timestamp   string   `json:"time"`     // 预格式化的时间字符串
+	Timestamp   *string  `json:"time"`     // 预格式化的时间字符串 (使用字符串池)
 	Level       LogLevel `json:"level"`    // 日志级别
-	Message     string   `json:"message"`  // 日志消息
-	FuncName    string   `json:"function"` // 调用函数名
-	FileName    string   `json:"file"`     // 文件名
+	Message     *string  `json:"message"`  // 日志消息 (使用字符串池)
+	FuncName    *string  `json:"function"` // 调用函数名 (使用字符串池)
+	FileName    *string  `json:"file"`     // 文件名 (使用字符串池)
 	Line        uint16   `json:"line"`     // 行号
 	GoroutineID uint32   `json:"thread"`   // 协程ID
+}
+
+// logMessagePool 是一个日志消息对象池
+var logMessagePool = sync.Pool{
+	New: func() interface{} {
+		return &logMessage{}
+	},
+}
+
+// 获取日志消息对象
+func getLogMessage() *logMessage {
+	return logMessagePool.Get().(*logMessage)
+}
+
+// 归还日志消息对象
+func putLogMessage(msg *logMessage) {
+	// 清理对象状态
+	msg.Timestamp = nil
+	msg.Level = 0
+	msg.Message = nil
+	msg.FuncName = nil
+	msg.FileName = nil
+	msg.Line = 0
+	msg.GoroutineID = 0
+
+	// 归还对象
+	logMessagePool.Put(msg)
 }
 
 // 定义日志格式

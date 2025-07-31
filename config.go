@@ -12,21 +12,22 @@ import (
 
 // FastLogConfig 定义一个配置结构体, 用于配置日志记录器
 type FastLogConfig struct {
-	LogDirName      string        // 日志目录路径
-	LogFileName     string        // 日志文件名
-	OutputToConsole bool          // 是否将日志输出到控制台
-	OutputToFile    bool          // 是否将日志输出到文件
-	FlushInterval   time.Duration // 刷新间隔, 单位为time.Duration
-	LogLevel        LogLevel      // 日志级别
-	ChanIntSize     int           // 通道大小 默认10000
-	LogFormat       LogFormatType // 日志格式选项
-	NoColor         bool          // 是否禁用终端颜色
-	NoBold          bool          // 是否禁用终端字体加粗
-	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认10MB
-	MaxLogAge       int           // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
-	IsLocalTime     bool          // 是否使用本地时间 默认使用UTC时间
-	EnableCompress  bool          // 是否启用日志文件压缩 默认不启用
+	LogDirName         string        // 日志目录路径
+	LogFileName        string        // 日志文件名
+	OutputToConsole    bool          // 是否将日志输出到控制台
+	OutputToFile       bool          // 是否将日志输出到文件
+	FlushInterval      time.Duration // 刷新间隔, 单位为time.Duration
+	LogLevel           LogLevel      // 日志级别
+	ChanIntSize        int           // 通道大小 默认10000
+	LogFormat          LogFormatType // 日志格式选项
+	NoColor            bool          // 是否禁用终端颜色
+	NoBold             bool          // 是否禁用终端字体加粗
+	MaxLogFileSize     int           // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxLogAge          int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxLogBackups      int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	IsLocalTime        bool          // 是否使用本地时间 默认使用UTC时间
+	EnableCompress     bool          // 是否启用日志文件压缩 默认不启用
+	StringPoolCapacity int           // 字符串池初始容量，默认 512
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -40,21 +41,22 @@ type FastLogConfig struct {
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:      logDirName,             // 日志目录名称
-		LogFileName:     logFileName,            // 日志文件名称
-		OutputToConsole: true,                   // 是否将日志输出到控制台
-		OutputToFile:    true,                   // 是否将日志输出到文件
-		LogLevel:        INFO,                   // 日志级别 默认INFO
-		ChanIntSize:     10000,                  // 通道大小 增加到10000
-		FlushInterval:   500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
-		LogFormat:       Detailed,               // 日志格式选项
-		MaxLogFileSize:  10,                     // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:     false,                  // 是否使用本地时间 默认使用UTC时间
-		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
-		NoColor:         false,                  // 是否禁用终端颜色
-		NoBold:          false,                  // 是否禁用终端字体加粗
+		LogDirName:         logDirName,             // 日志目录名称
+		LogFileName:        logFileName,            // 日志文件名称
+		OutputToConsole:    true,                   // 是否将日志输出到控制台
+		OutputToFile:       true,                   // 是否将日志输出到文件
+		LogLevel:           INFO,                   // 日志级别 默认INFO
+		ChanIntSize:        10000,                  // 通道大小 增加到10000
+		FlushInterval:      500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
+		LogFormat:          Detailed,               // 日志格式选项
+		MaxLogFileSize:     10,                     // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxLogAge:          0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:      0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:        false,                  // 是否使用本地时间 默认使用UTC时间
+		EnableCompress:     false,                  // 是否启用日志文件压缩 默认不启用
+		NoColor:            false,                  // 是否禁用终端颜色
+		NoBold:             false,                  // 是否禁用终端字体加粗
+		StringPoolCapacity: 512,                    // 字符串池初始容量，默认 512
 	}
 }
 

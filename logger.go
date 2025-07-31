@@ -36,19 +36,22 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	// 直接获取当前时间，避免不必要的转换
 	timestamp := time.Now().Format("2006-01-02 15:04:05")
 
-	// 创建日志消息结构体
-	logMsg := &logMessage{
-		Timestamp:   timestamp,        // 时间戳
-		Level:       level,            // 日志级别
-		Message:     message,          // 日志消息
-		FileName:    filename,         // 文件名
-		FuncName:    funcName,         // 函数名
-		Line:        line,             // 行号
-		GoroutineID: getGoroutineID(), // 协程ID
-	}
+	// 从对象池获取日志消息对象
+	logMsg := getLogMessage()
+
+	// 使用字符串池
+	logMsg.Timestamp = l.stringPool.Intern(timestamp) // 时间戳
+	logMsg.Level = level                              // 日志级别
+	logMsg.Message = l.stringPool.Intern(message)     // 日志消息
+	logMsg.FileName = l.stringPool.Intern(filename)   // 文件名
+	logMsg.FuncName = l.stringPool.Intern(funcName)   // 函数名
+	logMsg.Line = line                                // 行号
+	logMsg.GoroutineID = getGoroutineID()             // 协程ID
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
 	if shouldDropLogByBackpressure(l.logChan, level) {
+		// 重要：如果丢弃日志，需要回收对象
+		putLogMessage(logMsg)
 		return
 	}
 

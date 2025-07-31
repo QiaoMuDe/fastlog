@@ -143,9 +143,11 @@ func TestAddColor(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "app.log")
 	log, _ := NewFastLog(cfg)
 
+	tempMsg := "test color"
+
 	msg := &logMessage{
 		Level:   INFO,
-		Message: "test color",
+		Message: &tempMsg,
 	}
 
 	colored := addColor(log, msg, "test color")
@@ -165,12 +167,18 @@ func TestAddColor(t *testing.T) {
 
 // TestFormatLog 测试日志格式化
 func TestFormatLog(t *testing.T) {
+	// 创建临时字符串变量
+	timestamp := "2023-01-01 12:00:00"
+	message := "test format"
+	fileName := "test.go"
+	funcName := "TestFunc"
+
 	msg := &logMessage{
-		Timestamp:   "2023-01-01 12:00:00",
+		Timestamp:   &timestamp,
 		Level:       INFO,
-		Message:     "test format",
-		FileName:    "test.go",
-		FuncName:    "TestFunc",
+		Message:     &message,
+		FileName:    &fileName,
+		FuncName:    &funcName,
 		Line:        42,
 		GoroutineID: 123,
 	}
@@ -252,9 +260,11 @@ func TestBackpressure(t *testing.T) {
 				<-testChan
 			}
 
+			msg := "填充消息"
+
 			// 填充通道到指定数量
 			for i := 0; i < tc.channelFill; i++ {
-				testChan <- &logMessage{Level: INFO, Message: "填充消息"}
+				testChan <- &logMessage{Level: INFO, Message: &msg}
 			}
 
 			// 测试背压函数

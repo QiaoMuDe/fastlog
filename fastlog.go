@@ -59,6 +59,8 @@ type FastLog struct {
 
 	// 嵌入的配置结构体
 	config *FastLogConfig
+
+	stringPool *StringPool // 字符串池
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
@@ -150,6 +152,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		closeOnce:     sync.Once{},                             // 用于在结束时确保只执行一次
 		cancel:        cancel,                                  // 用于取消上下文的函数
 		ctx:           ctx,                                     // 上下文, 用于控制协程退出
+		stringPool:    NewStringPool(cfg.StringPoolCapacity),   // 初始化字符串池，容量1000
 	}
 
 	// 根据noColor的值, 设置颜色库的颜色选项
