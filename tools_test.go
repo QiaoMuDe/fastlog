@@ -9,7 +9,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 )
@@ -17,8 +16,7 @@ import (
 // TestCheckPath 测试路径检查功能
 func TestCheckPath(t *testing.T) {
 	// 创建临时目录
-	tempDir := t.TempDir()
-	filePath := filepath.Join(tempDir, "test.txt")
+	filePath := filepath.Join("logs", "test.txt")
 
 	// 创建测试文件
 	_ = os.WriteFile(filePath, []byte("test"), 0644)
@@ -33,7 +31,7 @@ func TestCheckPath(t *testing.T) {
 	}
 
 	// 测试存在的目录
-	info, err = checkPath(tempDir)
+	info, err = checkPath("logs")
 	if err != nil {
 		t.Errorf("检查存在的目录失败: %v", err)
 	}
@@ -42,7 +40,7 @@ func TestCheckPath(t *testing.T) {
 	}
 
 	// 测试不存在的路径
-	info, err = checkPath(filepath.Join(tempDir, "nonexistent"))
+	info, err = checkPath(filepath.Join("logs", "nonexistent"))
 	if err == nil || info.Exists {
 		t.Error("检查不存在的路径时应返回错误")
 	}
@@ -70,40 +68,6 @@ func testGetCallerInfoHelper(t *testing.T) {
 	}
 	if fileName != "tools_test.go" || !strings.HasSuffix(funcName, "TestGetCallerInfo") {
 		t.Errorf("间接调用者信息不匹配: 文件=%s, 函数=%s", fileName, funcName)
-	}
-}
-
-// TestGetGoroutineID 测试协程ID获取
-func TestGetGoroutineID(t *testing.T) {
-	// 主协程ID
-	mainID := getGoroutineID()
-	if mainID <= 0 {
-		t.Error("主协程ID应为正数")
-	}
-
-	// 测试不同协程ID
-	var wg sync.WaitGroup
-	ids := make([]uint32, 5) // 改为 uint32
-
-	for i := 0; i < 5; i++ {
-		wg.Add(1)
-		go func(idx int) {
-			defer wg.Done()
-			ids[idx] = getGoroutineID()
-			if ids[idx] <= 0 {
-				t.Errorf("协程ID应为正数，实际为%d", ids[idx])
-			}
-		}(i)
-	}
-	wg.Wait()
-
-	// 检查所有ID是否唯一
-	idSet := make(map[uint32]bool)
-	for _, id := range ids {
-		if idSet[id] {
-			t.Errorf("发现重复的协程ID: %d", id)
-		}
-		idSet[id] = true
 	}
 }
 
@@ -174,13 +138,12 @@ func TestFormatLog(t *testing.T) {
 	funcName := "TestFunc"
 
 	msg := &logMsg{
-		Timestamp:   &timestamp,
-		Level:       INFO,
-		Message:     &message,
-		FileName:    &fileName,
-		FuncName:    &funcName,
-		Line:        42,
-		GoroutineID: 123,
+		Timestamp: &timestamp,
+		Level:     INFO,
+		Message:   &message,
+		FileName:  &fileName,
+		FuncName:  &funcName,
+		Line:      42,
 	}
 
 	// 测试详细格式 - 创建第一个实例

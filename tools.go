@@ -5,7 +5,6 @@ tools.go - 工具函数集合
 package fastlog
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -96,40 +95,6 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	return
 }
 
-// getGoroutineID 获取当前 Goroutine 的 ID
-//
-// 返回值：
-//   - uint32: 当前 Goroutine 的 ID
-func getGoroutineID() uint32 {
-	var buf [64]byte
-	n := runtime.Stack(buf[:], false)
-
-	// 安全检查：确保有足够的数据
-	if n < 10 { // "goroutine " 至少需要10个字符
-		return 0
-	}
-
-	fields := bytes.Fields(buf[:n])
-
-	// 安全检查：确保有足够的字段
-	if len(fields) < 2 {
-		return 0
-	}
-
-	// 尝试解析协程ID
-	idField := fields[1]
-	id, err := strconv.ParseInt(string(idField), 10, 64)
-	if err != nil {
-		return 0
-	}
-
-	// 安全转换到uint32范围
-	if id >= 0 && id <= 0xFFFFFFFF {
-		return uint32(id)
-	}
-	return 0
-}
-
 // logLevelToString 将 LogLevel 转换为对应的字符串，并以大写形式返回
 //
 // 参数：
@@ -215,13 +180,12 @@ func formatLog(f *FastLog, l *logMsg) string {
 	case Json:
 		// 构建json数据
 		logData := logMsg{
-			Timestamp:   l.Timestamp,   // 格式化时间
-			Level:       l.Level,       // 格式化日志级别
-			FileName:    l.FileName,    // 文件名
-			FuncName:    l.FuncName,    // 函数名
-			Line:        l.Line,        // 行号
-			GoroutineID: l.GoroutineID, // 协程ID
-			Message:     l.Message,     // 日志消息
+			Timestamp: l.Timestamp, // 格式化时间
+			Level:     l.Level,     // 格式化日志级别
+			FileName:  l.FileName,  // 文件名
+			FuncName:  l.FuncName,  // 函数名
+			Line:      l.Line,      // 行号
+			Message:   l.Message,   // 日志消息
 		}
 
 		// 编码json
@@ -238,7 +202,7 @@ func formatLog(f *FastLog, l *logMsg) string {
 				// 最后的兜底方案：手动构建JSON字符串
 				return fmt.Sprintf(
 					logFormatMap[Json],
-					l.Timestamp, levelStr, "unknown", "unknown", 0, l.GoroutineID, logData.Message,
+					l.Timestamp, levelStr, "unknown", "unknown", 0, logData.Message,
 				)
 			}
 		}
@@ -268,30 +232,6 @@ func formatLog(f *FastLog, l *logMsg) string {
 		builder.WriteByte(':')
 		builder.WriteString(strconv.Itoa(int(l.Line)))
 		builder.WriteString(" - ")
-		builder.WriteString(safeDeref(l.Message))
-
-		return builder.String()
-
-	// 协程格式 - 使用 strings.Builder 优化
-	case Threaded:
-		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
-
-		var builder strings.Builder
-		builder.Grow(estimatedSize)
-
-		builder.WriteString(safeDeref(l.Timestamp))
-		builder.WriteString(" | ")
-
-		// 格式化日志级别，左对齐7个字符
-		builder.WriteString(levelStr)
-		for i := len(levelStr); i < 7; i++ {
-			builder.WriteByte(' ')
-		}
-
-		builder.WriteString(" | [thread=\"")
-		builder.WriteString(strconv.FormatUint(uint64(l.GoroutineID), 10))
-		builder.WriteString("\"] ")
 		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()
@@ -335,8 +275,6 @@ func formatLog(f *FastLog, l *logMsg) string {
 			builder.WriteByte(' ')
 		}
 
-		builder.WriteString("|G:") // 协程id
-		builder.WriteString(strconv.FormatUint(uint64(l.GoroutineID), 10))
 		builder.WriteString("|F:") // 文件信息
 		builder.WriteString(safeDeref(l.FileName))
 		builder.WriteByte(':')

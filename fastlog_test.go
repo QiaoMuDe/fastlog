@@ -138,8 +138,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 
 	// 测试正常初始化 - 使用临时目录避免文件冲突
 	t.Run("normal initialization", func(t *testing.T) {
-		tempDir := t.TempDir()
-		cfg := NewFastLogConfig(tempDir, "init_test.log")
+		cfg := NewFastLogConfig("logs", "init_test.log")
 		cfg.OutputToConsole = false // 禁用控制台输出，避免测试干扰
 		cfg.OutputToFile = true     // 只测试文件输出
 
@@ -162,7 +161,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 		log.Close()
 
 		// 验证日志文件是否创建成功
-		logFile := filepath.Join(tempDir, "init_test.log")
+		logFile := filepath.Join("logs", "init_test.log")
 		if _, err := os.Stat(logFile); os.IsNotExist(err) {
 			t.Error("日志文件未创建")
 		}
@@ -172,10 +171,9 @@ func TestNewFastLog_Initialization(t *testing.T) {
 // TestFastLog_LogLevels 测试不同日志级别的过滤功能
 func TestFastLog_LogLevels(t *testing.T) {
 	// 创建临时日志文件来测试级别过滤
-	tempDir := t.TempDir()
-	logFile := filepath.Join(tempDir, "level_test.log")
+	logFile := filepath.Join("logs", "level_test.log")
 
-	cfg := NewFastLogConfig(tempDir, "level_test.log")
+	cfg := NewFastLogConfig("logs", "level_test.log")
 	cfg.LogLevel = WARN
 	cfg.OutputToConsole = false // 只写入文件，不输出到控制台
 	log, err := NewFastLog(cfg)
@@ -271,7 +269,7 @@ func TestLogFormats(t *testing.T) {
 		Detailed:   "detailed.log",
 		Json:       "json.log",
 		Structured: "structured.log",
-		Threaded:   "threaded.log",
+		Simple:     "simple.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		Custom: "custom.log",
 	}

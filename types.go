@@ -61,13 +61,12 @@ const (
 
 // logMsg 结构体用于封装日志消息
 type logMsg struct {
-	Timestamp   *string  `json:"time"`     // 预格式化的时间字符串 (使用字符串池)
-	Level       LogLevel `json:"level"`    // 日志级别
-	Message     *string  `json:"message"`  // 日志消息 (使用字符串池)
-	FuncName    *string  `json:"function"` // 调用函数名 (使用字符串池)
-	FileName    *string  `json:"file"`     // 文件名 (使用字符串池)
-	Line        uint16   `json:"line"`     // 行号
-	GoroutineID uint32   `json:"thread"`   // 协程ID
+	Timestamp *string  `json:"time"`     // 预格式化的时间字符串 (使用字符串池)
+	Level     LogLevel `json:"level"`    // 日志级别
+	Message   *string  `json:"message"`  // 日志消息 (使用字符串池)
+	FuncName  *string  `json:"function"` // 调用函数名 (使用字符串池)
+	FileName  *string  `json:"file"`     // 文件名 (使用字符串池)
+	Line      uint16   `json:"line"`     // 行号
 }
 
 // logMsgPool 是一个日志消息对象池
@@ -97,7 +96,6 @@ func putLogMsg(msg *logMsg) {
 	msg.FuncName = nil  // 清理函数名
 	msg.FileName = nil  // 清理文件名
 	msg.Line = 0        // 重置行号
-	msg.GoroutineID = 0 // 重置协程ID
 
 	// 归还对象
 	logMsgPool.Put(msg)
@@ -110,7 +108,6 @@ type LogFormatType int
 const (
 	Detailed   LogFormatType = iota // 详细格式
 	Json                            // json格式
-	Threaded                        // 协程格式
 	Simple                          // 简约格式
 	Structured                      // 结构化格式
 	Custom                          // 自定义格式
@@ -119,12 +116,11 @@ const (
 
 // 定义日志格式
 var logFormatMap = map[LogFormatType]string{
-	Json:       `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d", "thread":"%d","message":"%s"}`, // Json格式
-	Detailed:   `%s | %-7s | %s:%s:%d - %s`,                                                                        // 详细格式
-	Threaded:   `%s | %-7s | [thread="%d"] %s`,                                                                     // 协程格式
-	Simple:     `%s | %-7s | %s`,                                                                                   // 简约格式                                                                                                // 自定义格式
-	Structured: `T:%s|L:%-7s|G:%d|F:%s:%s:%d|M:%s`,                                                                 // 结构化格式
-	// ExtendedStructured: `T:%s|L:%-7s|G:%d|%s|M:%s`,                                                                         // 可扩展结构化格式
+	Json:       `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d","message":"%s"}`, // Json格式
+	Detailed:   `%s | %-7s | %s:%s:%d - %s`,                                                         // 详细格式
+	Simple:     `%s | %-7s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
+	Structured: `T:%s|L:%-7s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
+	// ExtendedStructured: `T:%s|L:%-7s|%s|M:%s`,                                                                         // 可扩展结构化格式
 }
 
 // 文件名验证相关常量

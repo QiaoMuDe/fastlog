@@ -46,7 +46,6 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.FileName = l.stringPool.Intern(filename)   // 文件名
 	logMessage.FuncName = l.stringPool.Intern(funcName)   // 函数名
 	logMessage.Line = line                                // 行号
-	logMessage.GoroutineID = getGoroutineID()             // 协程ID
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
 	if shouldDropLogByBackpressure(l.logChan, level) {
