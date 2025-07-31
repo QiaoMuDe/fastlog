@@ -19,8 +19,8 @@ func TestNewFastLogConfig(t *testing.T) {
 	}
 
 	// 验证默认最大日志文件大小
-	if cfg.MaxLogFileSize != 5 {
-		t.Errorf("默认最大日志文件大小应为5MB，实际为%d", cfg.MaxLogFileSize)
+	if cfg.MaxLogFileSize != 10 {
+		t.Errorf("默认最大日志文件大小应为10MB，实际为%d", cfg.MaxLogFileSize)
 	}
 
 	// 验证默认刷新间隔

@@ -12,6 +12,7 @@ type StringPool struct {
 	stats StringPoolStats    // 统计信息
 }
 
+// StringPoolStats 字符串池统计信息
 type StringPoolStats struct {
 	Hits   int64 // 命中次数
 	Misses int64 // 未命中次数
