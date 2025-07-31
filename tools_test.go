@@ -111,7 +111,7 @@ func TestAddColor(t *testing.T) {
 
 	msg := &logMsg{
 		Level:   INFO,
-		Message: &tempMsg,
+		Message: tempMsg,
 	}
 
 	colored := addColor(log, msg, "test color")
@@ -138,11 +138,11 @@ func TestFormatLog(t *testing.T) {
 	funcName := "TestFunc"
 
 	msg := &logMsg{
-		Timestamp: &timestamp,
+		Timestamp: timestamp,
 		Level:     INFO,
-		Message:   &message,
-		FileName:  &fileName,
-		FuncName:  &funcName,
+		Message:   message,
+		FileName:  fileName,
+		FuncName:  funcName,
 		Line:      42,
 	}
 
@@ -227,7 +227,7 @@ func TestBackpressure(t *testing.T) {
 
 			// 填充通道到指定数量
 			for i := 0; i < tc.channelFill; i++ {
-				testChan <- &logMsg{Level: INFO, Message: &msg}
+				testChan <- &logMsg{Level: INFO, Message: msg}
 			}
 
 			// 测试背压函数

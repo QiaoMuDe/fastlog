@@ -45,12 +45,12 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage := getLogMsg()
 
 	// 使用字符串池
-	logMessage.Timestamp = l.stringPool.Intern(timestamp) // 时间戳
-	logMessage.Level = level                              // 日志级别
-	logMessage.Message = l.stringPool.Intern(message)     // 日志消息
-	logMessage.FileName = l.stringPool.Intern(filename)   // 文件名
-	logMessage.FuncName = l.stringPool.Intern(funcName)   // 函数名
-	logMessage.Line = line                                // 行号
+	logMessage.Timestamp = timestamp // 时间戳
+	logMessage.Level = level         // 日志级别
+	logMessage.Message = message     // 日志消息
+	logMessage.FileName = filename   // 文件名
+	logMessage.FuncName = funcName   // 函数名
+	logMessage.Line = line           // 行号
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
 	if shouldDropLogByBackpressure(l.logChan, level) {

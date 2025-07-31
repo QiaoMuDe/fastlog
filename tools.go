@@ -26,7 +26,7 @@ func checkPath(path string) (PathInfo, error) {
 	// 创建一个 PathInfo 结构体
 	var info PathInfo
 
-	// 清理路径，确保没有多余的斜杠
+	// 清理路径, 确保没有多余的斜杠
 	path = filepath.Clean(path)
 
 	// 设置路径
@@ -38,15 +38,15 @@ func checkPath(path string) (PathInfo, error) {
 		if os.IsNotExist(err) {
 			// 如果路径不存在, 则直接返回
 			info.Exists = false
-			return info, fmt.Errorf("路径 '%s' 不存在，请检查路径是否正确: %s", path, err)
+			return info, fmt.Errorf("路径 '%s' 不存在, 请检查路径是否正确: %s", path, err)
 		} else {
 			return info, fmt.Errorf("无法访问路径 '%s': %s", path, err)
 		}
 	}
 
-	// 路径存在，填充信息
+	// 路径存在, 填充信息
 	info.Exists = true                // 标记路径存在
-	info.IsFile = !fileInfo.IsDir()   // 通过取反判断是否为文件，因为 IsDir 返回 false 表示是文件
+	info.IsFile = !fileInfo.IsDir()   // 通过取反判断是否为文件, 因为 IsDir 返回 false 表示是文件
 	info.IsDir = fileInfo.IsDir()     // 直接使用 IsDir 方法判断是否为目录
 	info.Size = fileInfo.Size()       // 获取文件大小
 	info.Mode = fileInfo.Mode()       // 获取文件权限
@@ -59,7 +59,7 @@ func checkPath(path string) (PathInfo, error) {
 // getCallerInfo 获取调用者的信息
 //
 // 参数：
-//   - skip: 跳过的调用层数（通常设置为1或2，具体取决于调用链的深度）
+//   - skip: 跳过的调用层数（通常设置为1或2, 具体取决于调用链的深度）
 //
 // 返回值：
 //   - fileName: 调用者的文件名（不包含路径）
@@ -67,7 +67,7 @@ func checkPath(path string) (PathInfo, error) {
 //   - line: 调用者的行号
 //   - ok: 是否成功获取到调用者信息
 func getCallerInfo(skip int) (fileName string, functionName string, line uint16, ok bool) {
-	// 获取调用者信息，跳过指定的调用层数
+	// 获取调用者信息, 跳过指定的调用层数
 	pc, file, lineInt, ok := runtime.Caller(skip)
 	if !ok {
 		line = 0
@@ -81,7 +81,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 		line = 0 // 超出范围使用默认值
 	}
 
-	// 获取文件名（只保留文件名，不包含路径）
+	// 获取文件名（只保留文件名, 不包含路径）
 	fileName = filepath.Base(file)
 
 	// 获取函数名
@@ -95,13 +95,13 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	return
 }
 
-// logLevelToString 将 LogLevel 转换为对应的字符串，并以大写形式返回
+// logLevelToString 将 LogLevel 转换为对应的字符串, 并以大写形式返回
 //
 // 参数：
 //   - level: 要转换的日志级别
 //
 // 返回值：
-//   - string: 对应的日志级别字符串，如果 level 无效，则返回 "UNKNOWN"
+//   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
 	// 使用 switch 语句根据日志级别返回对应的字符串
 	switch level {
@@ -136,7 +136,7 @@ func logLevelToString(level LogLevel) string {
 func addColor(f *FastLog, l *logMsg, s string) string {
 	// 添加空指针检查
 	if f == nil || l == nil || f.cl == nil {
-		return s // 如果任何参数为nil，返回原始字符串
+		return s // 如果任何参数为nil, 返回原始字符串
 	}
 
 	// 根据匹配到的日志级别添加颜色
@@ -154,11 +154,11 @@ func addColor(f *FastLog, l *logMsg, s string) string {
 	case FATAL:
 		return f.cl.Sred(s) // Red
 	default:
-		return s // 如果没有匹配到日志级别，返回原始字符串
+		return s // 如果没有匹配到日志级别, 返回原始字符串
 	}
 }
 
-// formatLog 格式化日志消息（优化版本，使用 strings.Builder 提升性能）
+// formatLog 格式化日志消息（优化版本, 使用 strings.Builder 提升性能）
 //
 // 参数：
 //   - f: FastLog 实例
@@ -168,15 +168,15 @@ func addColor(f *FastLog, l *logMsg, s string) string {
 //   - string: 格式化后的日志消息
 func formatLog(f *FastLog, l *logMsg) string {
 	if f == nil || l == nil {
-		return "" // 如果 FastLog 或 logMessage 为 nil，返回空字符串
+		return "" // 如果 FastLog 或 logMessage 为 nil, 返回空字符串
 	}
 
-	// 预先格式化公共部分，避免重复计算
+	// 预先格式化公共部分, 避免重复计算
 	levelStr := logLevelToString(l.Level)
 
-	// 根据日志格式选项，格式化日志消息
+	// 根据日志格式选项, 格式化日志消息
 	switch f.config.LogFormat {
-	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂，解析开销可接受）
+	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂, 解析开销可接受）
 	case Json:
 		// 构建json数据
 		logData := logMsg{
@@ -192,10 +192,9 @@ func formatLog(f *FastLog, l *logMsg) string {
 		jsonBytes, err := json.Marshal(logData)
 		if err != nil {
 			// 使用字符串池处理json编码失败的情况
-			errorMsg := fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, safeDeref(l.Message))
-			logData.Message = f.stringPool.Intern(errorMsg)
+			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.Message)
 
-			// 再次尝试序列化，如果还失败就使用最基本的格式
+			// 再次尝试序列化, 如果还失败就使用最基本的格式
 			if fallbackBytes, fallbackErr := json.Marshal(logData); fallbackErr == nil {
 				return string(fallbackBytes)
 			} else {
@@ -211,84 +210,84 @@ func formatLog(f *FastLog, l *logMsg) string {
 	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(safeDeref(l.Timestamp))
+		builder.WriteString(l.Timestamp)
 		builder.WriteString(" | ")
 
-		// 格式化日志级别，左对齐7个字符
+		// 格式化日志级别, 左对齐7个字符
 		builder.WriteString(levelStr)
 		for i := len(levelStr); i < 7; i++ {
 			builder.WriteByte(' ')
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(safeDeref(l.FileName))
+		builder.WriteString(l.FileName)
 		builder.WriteByte(':')
-		builder.WriteString(safeDeref(l.FuncName))
+		builder.WriteString(l.FuncName)
 		builder.WriteByte(':')
 		builder.WriteString(strconv.Itoa(int(l.Line)))
 		builder.WriteString(" - ")
-		builder.WriteString(safeDeref(l.Message))
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 简约格式 - 使用 strings.Builder 优化
 	case Simple:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
+		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(safeDeref(l.Timestamp))
+		builder.WriteString(l.Timestamp)
 		builder.WriteString(" | ")
 
-		// 格式化日志级别，左对齐7个字符
+		// 格式化日志级别, 左对齐7个字符
 		builder.WriteString(levelStr)
 		for i := len(levelStr); i < 7; i++ {
 			builder.WriteByte(' ')
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(safeDeref(l.Message))
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 结构化格式 - 使用 strings.Builder 优化
 	case Structured:
-		estimatedSize := 100 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
+		estimatedSize := 100 + len(l.Message) + len(l.FileName) + len(l.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
 		builder.WriteString("T:") // 时间戳
-		builder.WriteString(safeDeref(l.Timestamp))
-		builder.WriteString("|L:") // 格式化日志级别，左对齐7个字符
+		builder.WriteString(l.Timestamp)
+		builder.WriteString("|L:") // 格式化日志级别, 左对齐7个字符
 
-		// 格式化日志级别，左对齐7个字符
+		// 格式化日志级别, 左对齐7个字符
 		builder.WriteString(levelStr)
 		for i := len(levelStr); i < 7; i++ {
 			builder.WriteByte(' ')
 		}
 
 		builder.WriteString("|F:") // 文件信息
-		builder.WriteString(safeDeref(l.FileName))
+		builder.WriteString(l.FileName)
 		builder.WriteByte(':')
-		builder.WriteString(safeDeref(l.FuncName))
+		builder.WriteString(l.FuncName)
 		builder.WriteByte(':')
 		builder.WriteString(strconv.Itoa(int(l.Line)))
 		builder.WriteString("|M:") // 消息
-		builder.WriteString(safeDeref(l.Message))
+		builder.WriteString(l.Message)
 
 		return builder.String()
 
 	// 自定义格式
 	case Custom:
-		return safeDeref(l.Message)
+		return l.Message
 
 	// 无法识别的日志格式选项
 	default:
@@ -303,18 +302,18 @@ func formatLog(f *FastLog, l *logMsg) string {
 //   - level: 日志级别
 //
 // 返回:
-//   - bool: true表示应该丢弃该日志，false表示应该保留
+//   - bool: true表示应该丢弃该日志, false表示应该保留
 func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	// 添加空指针检查
 	if logChan == nil {
-		return false // 如果通道为nil，不丢弃日志
+		return false // 如果通道为nil, 不丢弃日志
 	}
 
-	// 提前获取通道长度和容量，供后续复用
+	// 提前获取通道长度和容量, 供后续复用
 	chanLen := len(logChan)
 	chanCap := cap(logChan)
 
-	// 当通道满了，立即丢弃所有新日志
+	// 当通道满了, 立即丢弃所有新日志
 	if chanLen >= chanCap {
 		return true
 	}
@@ -323,7 +322,7 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	// 例如: chanLen=60, chanCap=100 => channelUsage=60
 	channelUsage := chanLen * 100 / chanCap
 
-	// 根据通道使用率决定是否丢弃日志，按照日志级别重要性递增
+	// 根据通道使用率决定是否丢弃日志, 按照日志级别重要性递增
 	switch {
 	case channelUsage >= 98: // 98%+ 只保留FATAL
 		return level < FATAL
@@ -338,18 +337,4 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	default:
 		return false // 70%以下不丢弃任何日志
 	}
-}
-
-// safeDeref 安全地解引用字符串指针，如果指针为nil则返回空字符串
-//
-// 参数:
-//   - s: 字符串指针
-//
-// 返回:
-//   - 解引用后的字符串，如果指针为nil则返回空字符串
-func safeDeref(s *string) string {
-	if s == nil {
-		return ""
-	}
-	return *s
 }

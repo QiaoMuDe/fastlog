@@ -61,11 +61,11 @@ const (
 
 // logMsg 结构体用于封装日志消息
 type logMsg struct {
-	Timestamp *string  `json:"time"`     // 预格式化的时间字符串 (使用字符串池)
+	Timestamp string   `json:"time"`     // 预格式化的时间字符串
 	Level     LogLevel `json:"level"`    // 日志级别
-	Message   *string  `json:"message"`  // 日志消息 (使用字符串池)
-	FuncName  *string  `json:"function"` // 调用函数名 (使用字符串池)
-	FileName  *string  `json:"file"`     // 文件名 (使用字符串池)
+	Message   string   `json:"message"`  // 日志消息
+	FuncName  string   `json:"function"` // 调用函数名
+	FileName  string   `json:"file"`     // 文件名
 	Line      uint16   `json:"line"`     // 行号
 }
 
@@ -90,12 +90,12 @@ func getLogMsg() *logMsg {
 //   - msg: 日志消息对象指针
 func putLogMsg(msg *logMsg) {
 	// 清理对象状态
-	msg.Timestamp = nil // 清理时间戳
-	msg.Level = 0       // 重置日志级别
-	msg.Message = nil   // 清理消息
-	msg.FuncName = nil  // 清理函数名
-	msg.FileName = nil  // 清理文件名
-	msg.Line = 0        // 重置行号
+	msg.Timestamp = "" // 清理时间戳
+	msg.Level = 0      // 重置日志级别
+	msg.Message = ""   // 清理消息
+	msg.FuncName = ""  // 清理函数名
+	msg.FileName = ""  // 清理文件名
+	msg.Line = 0       // 重置行号
 
 	// 归还对象
 	logMsgPool.Put(msg)
