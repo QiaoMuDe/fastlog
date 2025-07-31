@@ -21,7 +21,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg.OutputToConsole = true
 	cfg.OutputToFile = true
 	cfg.MaxLogFileSize = 5
-	cfg.LogFormat = Simple
+	cfg.LogFormat = Structured
 	cfg.ChanIntSize = 100000 // 增大通道容量以支持更高并发
 
 	// 创建日志记录器
@@ -32,8 +32,8 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 持续时间为3秒
 	duration := 3
-	// 每秒生成10000条日志
-	rate := 10000
+	// 每秒生成100000条日志
+	rate := 300000
 
 	defer func() {
 		log.Close()
