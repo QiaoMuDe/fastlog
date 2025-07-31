@@ -255,21 +255,6 @@ func formatLog(f *FastLog, l *logMessage) string {
 
 		return builder.String()
 
-	// 括号格式 - 使用 strings.Builder 优化
-	case Bracket:
-		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
-
-		var builder strings.Builder
-		builder.Grow(estimatedSize)
-
-		builder.WriteByte('[')
-		builder.WriteString(levelStr)
-		builder.WriteString("] ")
-		builder.WriteString(safeDeref(l.Message))
-
-		return builder.String()
-
 	// 协程格式 - 使用 strings.Builder 优化
 	case Threaded:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
@@ -312,6 +297,36 @@ func formatLog(f *FastLog, l *logMessage) string {
 		}
 
 		builder.WriteString(" | ")
+		builder.WriteString(safeDeref(l.Message))
+
+		return builder.String()
+
+	// 结构化格式 - 使用 strings.Builder 优化
+	case Structured:
+		estimatedSize := 100 + len(safeDeref(l.Message)) + len(safeDeref(l.FileName)) + len(safeDeref(l.FuncName))
+
+		var builder strings.Builder
+		builder.Grow(estimatedSize)
+
+		builder.WriteString("T:") // 时间戳
+		builder.WriteString(safeDeref(l.Timestamp))
+		builder.WriteString("|L:") // 格式化日志级别，左对齐7个字符
+
+		// 格式化日志级别，左对齐7个字符
+		builder.WriteString(levelStr)
+		for i := len(levelStr); i < 7; i++ {
+			builder.WriteByte(' ')
+		}
+
+		builder.WriteString("|G:") // 协程id
+		builder.WriteString(strconv.FormatUint(uint64(l.GoroutineID), 10))
+		builder.WriteString("|F:") // 文件信息
+		builder.WriteString(safeDeref(l.FileName))
+		builder.WriteByte(':')
+		builder.WriteString(safeDeref(l.FuncName))
+		builder.WriteByte(':')
+		builder.WriteString(strconv.Itoa(int(l.Line)))
+		builder.WriteString("|M:") // 消息
 		builder.WriteString(safeDeref(l.Message))
 
 		return builder.String()

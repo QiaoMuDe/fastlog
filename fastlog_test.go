@@ -268,10 +268,10 @@ func generateLargeString(size int) []byte {
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
 	formats := map[LogFormatType]string{
-		Detailed: "detailed.log",
-		Bracket:  "bracket.log",
-		Json:     "json.log",
-		Threaded: "threaded.log",
+		Detailed:   "detailed.log",
+		Json:       "json.log",
+		Structured: "structured.log",
+		Threaded:   "threaded.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		Custom: "custom.log",
 	}
