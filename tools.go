@@ -136,8 +136,13 @@ func logLevelToString(level LogLevel) string {
 // 返回值:
 //   - string: 带有颜色的字符串
 func addColorToMessage(cl *colorlib.ColorLib, level LogLevel, message string) string {
-	// 添加空指针检查
+	// 完整的空指针和参数检查
 	if cl == nil {
+		return message
+	}
+
+	// 检查消息是否为空
+	if message == "" {
 		return message
 	}
 
@@ -188,8 +193,26 @@ func addColor(f *FastLog, l *logMsg, s string) string {
 // 返回值:
 //   - string: 格式化后的日志消息
 func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
-	if config == nil || logMsg == nil {
-		return "" // 如果配置或日志消息为 nil, 返回空字符串
+	// 完整的空指针检查
+	if config == nil {
+		return ""
+	}
+	if logMsg == nil {
+		return ""
+	}
+
+	// 检查关键字段是否为空
+	if logMsg.Message == "" {
+		return ""
+	}
+	if logMsg.Timestamp == "" {
+		logMsg.Timestamp = "unknown-time"
+	}
+	if logMsg.FileName == "" {
+		logMsg.FileName = "unknown-file"
+	}
+	if logMsg.FuncName == "" {
+		logMsg.FuncName = "unknown-func"
 	}
 
 	// 预先格式化公共部分, 避免重复计算
@@ -325,7 +348,7 @@ func formatLog(f *FastLog, l *logMsg) string {
 // 返回:
 //   - bool: true表示应该丢弃该日志, false表示应该保留
 func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
-	// 添加空指针检查
+	// 完整的空指针和边界检查
 	if logChan == nil {
 		return false // 如果通道为nil, 不丢弃日志
 	}
@@ -334,14 +357,39 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	chanLen := len(logChan)
 	chanCap := cap(logChan)
 
+	// 边界条件检查：防止除零错误和异常情况
+	if chanCap <= 0 {
+		return false // 容量异常，不丢弃日志
+	}
+
+	if chanLen < 0 {
+		return false // 长度异常，不丢弃日志
+	}
+
 	// 当通道满了, 立即丢弃所有新日志
 	if chanLen >= chanCap {
 		return true
 	}
 
-	// 使用整数计算通道使用率(扩大100倍避免浮点运算)
-	// 例如: chanLen=60, chanCap=100 => channelUsage=60
-	channelUsage := chanLen * 100 / chanCap
+	// 安全的通道使用率计算，防止整数溢出
+	// 使用64位整数进行计算，然后转换回int
+	var channelUsage int
+	if chanLen > 0 && chanCap > 0 {
+		// 检查是否可能发生溢出 (chanLen * 100 > MaxInt)
+		if chanLen <= (1<<31-1)/100 { // 对于32位系统的安全检查
+			channelUsage = (chanLen * 100) / chanCap
+		} else {
+			// 使用64位计算防止溢出
+			usage64 := (int64(chanLen) * 100) / int64(chanCap)
+			if usage64 > 100 {
+				channelUsage = 100 // 限制最大值为100%
+			} else {
+				channelUsage = int(usage64)
+			}
+		}
+	} else {
+		channelUsage = 0
+	}
 
 	// 根据通道使用率决定是否丢弃日志, 按照日志级别重要性递增
 	switch {

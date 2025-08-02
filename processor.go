@@ -134,17 +134,44 @@ func (p *processor) singleThreadProcessor() {
 // 参数:
 // - batch []*logMsg: 日志批处理缓冲区，包含一批待处理的日志消息。
 func (p *processor) processAndFlushBatch(batch []*logMsg) {
+	// 完整的空指针检查
+	if p == nil {
+		return
+	}
+	if p.fileBuffer == nil || p.consoleBuffer == nil {
+		return
+	}
+	if p.deps == nil {
+		return
+	}
+	if len(batch) == 0 {
+		return
+	}
+
 	// 重置缓冲区（清空原有内容，准备接收新数据）
 	p.fileBuffer.Reset()    // 重置文件缓冲区
 	p.consoleBuffer.Reset() // 重置控制台缓冲区
 
-	// 获取配置
+	// 获取配置并检查
 	config := p.deps.GetConfig()
+	if config == nil {
+		return
+	}
 
 	// 遍历批处理中的所有日志消息
 	for _, logMsg := range batch {
+		// 跳过空的日志消息
+		if logMsg == nil {
+			continue
+		}
+
 		// 格式化日志消息，包括时间戳、级别、调用者信息等
 		formattedMsg := p.formatLogWithDeps(logMsg)
+
+		// 检查格式化结果
+		if formattedMsg == "" {
+			continue
+		}
 
 		// 文件输出处理：如果启用了文件输出，则将格式化后的消息写入文件缓冲区
 		if config.OutputToFile {
@@ -195,14 +222,43 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 
 // formatLogWithDeps 使用依赖接口格式化日志消息（优化版本，直接调用纯函数）
 func (p *processor) formatLogWithDeps(logMsg *logMsg) string {
+	// 完整的空指针检查
+	if p == nil || p.deps == nil {
+		return ""
+	}
+	if logMsg == nil {
+		return ""
+	}
+
+	config := p.deps.GetConfig()
+	if config == nil {
+		return ""
+	}
+
 	// 直接调用纯函数版本，避免创建临时对象
-	return formatLogMessage(p.deps.GetConfig(), logMsg)
+	return formatLogMessage(config, logMsg)
 }
 
 // addColorWithDeps 使用依赖接口添加颜色（优化版本，直接调用纯函数）
 func (p *processor) addColorWithDeps(logMsg *logMsg, formattedMsg string) string {
+	// 完整的空指针检查
+	if p == nil || p.deps == nil {
+		return formattedMsg
+	}
+	if logMsg == nil {
+		return formattedMsg
+	}
+	if formattedMsg == "" {
+		return formattedMsg
+	}
+
+	colorLib := p.deps.GetColorLib()
+	if colorLib == nil {
+		return formattedMsg
+	}
+
 	// 直接调用纯函数版本，避免创建临时对象
-	return addColorToMessage(p.deps.GetColorLib(), logMsg.Level, formattedMsg)
+	return addColorToMessage(colorLib, logMsg.Level, formattedMsg)
 }
 
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
