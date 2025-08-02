@@ -5,13 +5,13 @@ tools.go - 工具函数集合
 package fastlog
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -137,87 +137,70 @@ func logLevelToPaddedString(level LogLevel) string {
 	return "UNKNOWN"
 }
 
-// addColorToMessage 根据日志级别为消息添加颜色（纯函数版本）
+// addColorToBuffer 直接将带颜色的消息写入缓冲区，避免创建中间字符串（零拷贝优化版本）
 //
 // 参数：
+//   - buffer: 目标缓冲区
 //   - cl: 颜色库实例
 //   - level: 日志级别
-//   - message: 原始消息字符串
-//
-// 返回值:
-//   - string: 带有颜色的字符串
-func addColorToMessage(cl *colorlib.ColorLib, level LogLevel, message string) string {
+//   - sourceBuffer: 源缓冲区（包含原始消息内容）
+func addColorToBuffer(buffer *bytes.Buffer, cl *colorlib.ColorLib, level LogLevel, sourceBuffer *bytes.Buffer) {
 	// 完整的空指针和参数检查
-	if cl == nil {
-		return message
+	if buffer == nil || cl == nil || sourceBuffer == nil {
+		return
 	}
 
-	// 检查消息是否为空
-	if message == "" {
-		return message
+	// 检查源缓冲区是否为空
+	if sourceBuffer.Len() == 0 {
+		return
 	}
 
-	// 根据日志级别添加颜色
+	// 获取源缓冲区的内容（避免String()调用的内存分配）
+	sourceBytes := sourceBuffer.Bytes()
+	sourceString := string(sourceBytes) // 这里仍需要一次转换，但比多次String()调用更高效
+
+	// 根据日志级别添加颜色并直接写入目标缓冲区
 	switch level {
 	case INFO:
-		return cl.Sblue(message) // Blue
+		buffer.WriteString(cl.Sblue(sourceString)) // Blue
 	case WARN:
-		return cl.Syellow(message) // Yellow
+		buffer.WriteString(cl.Syellow(sourceString)) // Yellow
 	case ERROR:
-		return cl.Sred(message) // Red
+		buffer.WriteString(cl.Sred(sourceString)) // Red
 	case SUCCESS:
-		return cl.Sgreen(message) // Green
+		buffer.WriteString(cl.Sgreen(sourceString)) // Green
 	case DEBUG:
-		return cl.Spurple(message) // Purple
+		buffer.WriteString(cl.Spurple(sourceString)) // Purple
 	case FATAL:
-		return cl.Sred(message) // Red
+		buffer.WriteString(cl.Sred(sourceString)) // Red
 	default:
-		return message // 如果没有匹配到日志级别, 返回原始字符串
+		// 如果没有匹配到日志级别，直接写入原始内容
+		buffer.Write(sourceBytes)
 	}
 }
 
-// addColor 根据日志级别添加颜色（兼容性包装器）
+// formatLogDirectlyToBuffer 直接将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
 //
 // 参数：
-//   - f: FastLog 实例
-//   - l: 日志消息
-//   - s: 原始字符串
-//
-// 返回值:
-//   - string: 带有颜色的字符串
-func addColor(f *FastLog, l *logMsg, s string) string {
-	// 添加空指针检查
-	if f == nil || l == nil || f.cl == nil {
-		return s
-	}
-
-	// 调用新的纯函数版本
-	return addColorToMessage(f.cl, l.Level, s)
-}
-
-// formatLogMessage 格式化日志消息（纯函数版本，优化版本, 使用 strings.Builder 提升性能）
-//
-// 参数：
+//   - buffer: 目标缓冲区
 //   - config: 日志配置
 //   - logMsg: 日志消息
-//
-// 返回值:
-//   - string: 格式化后的日志消息
-func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
-	// 完整的空指针检查
-	if config == nil {
-		return ""
-	}
-	if logMsg == nil {
-		return ""
+//   - withColor: 是否添加颜色（用于控制台输出）
+//   - colorLib: 颜色库实例（当withColor为true时使用）
+func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logMsg *logMsg, withColor bool, colorLib *colorlib.ColorLib) {
+	// 检查参数有效性
+	if buffer == nil || config == nil || logMsg == nil || colorLib == nil {
+		return
 	}
 
-	// 检查关键字段是否为空
-	if logMsg.Message == "" {
-		return ""
-	}
+	// 如果时间戳为空，使用缓存的时间戳
 	if logMsg.Timestamp == "" {
-		logMsg.Timestamp = "unknown-time"
+		logMsg.Timestamp = getCachedTimestamp()
+	}
+
+	// 检查关键字段是否为空，设置默认值
+	if logMsg.Message == "" {
+		return // 消息为空直接返回
 	}
 	if logMsg.FileName == "" {
 		logMsg.FileName = "unknown-file"
@@ -226,126 +209,92 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		logMsg.FuncName = "unknown-func"
 	}
 
-	// 根据日志格式选项, 格式化日志消息
-	switch config.LogFormat {
-	// Json格式 - 直接序列化，使用不带填充的日志级别
-	case Json:
-		// 直接序列化传入的logMsg结构体
-		jsonBytes, err := json.Marshal(logMsg)
-		if err != nil {
-			// JSON编码失败时的兜底方案：手动构建JSON字符串
-			levelStr := logLevelToString(logMsg.Level) // JSON格式使用不带填充的级别字符串
-			return fmt.Sprintf(
+	// JSON格式特殊处理，不添加颜色（避免破坏JSON结构）
+	if config.LogFormat == Json {
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(logMsg); err == nil {
+			buffer.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(buffer,
 				logFormatMap[Json],
-				logMsg.Timestamp, levelStr, "unknown", "unknown", 0,
+				logMsg.Timestamp, logLevelToString(logMsg.Level), "unknown", "unknown", 0,
 				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
 			)
 		}
-		return string(jsonBytes)
+		return
+	}
 
-	// 详细格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
+	// 文本格式处理：先格式化到临时缓冲区，然后根据需要添加颜色
+	tempBuffer := getTempBuffer()
+	defer putTempBuffer(tempBuffer)
+
+	// 根据日志格式格式化到临时缓冲区
+	switch config.LogFormat {
+	// 详细格式
 	case Detailed:
-		// 从对象池获取字符串构建器
-		builder := getStringBuilder()
-		defer putStringBuilder(builder)
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" | ")
 
-		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
-		builder.Grow(estimatedSize)
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
 
-		builder.WriteString(logMsg.Timestamp)
-		builder.WriteString(" | ")
+		tempBuffer.WriteString(" | ")
+		tempBuffer.WriteString(logMsg.FileName) // 文件信息
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(logMsg.FuncName) // 函数
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(strconv.Itoa(int(logMsg.Line))) // 行号
+		tempBuffer.WriteString(" - ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
 
-		// 使用预填充的日志级别字符串，无需手动填充空格
-		levelStr := logLevelToPaddedString(logMsg.Level)
-		builder.WriteString(levelStr)
-
-		builder.WriteString(" | ")
-		builder.WriteString(logMsg.FileName)
-		builder.WriteByte(':')
-		builder.WriteString(logMsg.FuncName)
-		builder.WriteByte(':')
-		builder.WriteString(strconv.Itoa(int(logMsg.Line)))
-		builder.WriteString(" - ")
-		builder.WriteString(logMsg.Message)
-
-		return builder.String()
-
-	// 简约格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
+	// 简约格式
 	case Simple:
-		// 从对象池获取字符串构建器
-		builder := getStringBuilder()
-		defer putStringBuilder(builder)
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" | ")
 
-		// 动态计算容量: 80 + 消息长度
-		estimatedSize := 80 + len(logMsg.Message)
-		builder.Grow(estimatedSize)
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
 
-		builder.WriteString(logMsg.Timestamp)
-		builder.WriteString(" | ")
+		tempBuffer.WriteString(" | ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
 
-		// 使用预填充的日志级别字符串，无需手动填充空格
-		levelStr := logLevelToPaddedString(logMsg.Level)
-		builder.WriteString(levelStr)
-
-		builder.WriteString(" | ")
-		builder.WriteString(logMsg.Message)
-
-		return builder.String()
-
-	// 结构化格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
+	// 结构化格式
 	case Structured:
-		// 从对象池获取字符串构建器
-		builder := getStringBuilder()
-		defer putStringBuilder(builder)
+		tempBuffer.WriteString("T:") // 时间戳
+		tempBuffer.WriteString(logMsg.Timestamp)
+		tempBuffer.WriteString("|L:") // 日志级别
 
-		estimatedSize := 100 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
-		builder.Grow(estimatedSize)
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
 
-		builder.WriteString("T:") // 时间戳
-		builder.WriteString(logMsg.Timestamp)
-		builder.WriteString("|L:") // 日志级别
-
-		// 使用预填充的日志级别字符串，无需手动填充空格
-		levelStr := logLevelToPaddedString(logMsg.Level)
-		builder.WriteString(levelStr)
-
-		builder.WriteString("|F:") // 文件信息
-		builder.WriteString(logMsg.FileName)
-		builder.WriteByte(':')
-		builder.WriteString(logMsg.FuncName)
-		builder.WriteByte(':')
-		builder.WriteString(strconv.Itoa(int(logMsg.Line)))
-		builder.WriteString("|M:") // 消息
-		builder.WriteString(logMsg.Message)
-
-		return builder.String()
+		tempBuffer.WriteString("|F:") // 文件信息
+		tempBuffer.WriteString(logMsg.FileName)
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(logMsg.FuncName)
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(strconv.Itoa(int(logMsg.Line)))
+		tempBuffer.WriteString("|M:") // 消息
+		tempBuffer.WriteString(logMsg.Message)
 
 	// 自定义格式
 	case Custom:
-		return logMsg.Message
+		tempBuffer.WriteString(logMsg.Message)
 
-	// 无法识别的日志格式选项
+	// 默认情况
 	default:
-		return fmt.Sprintf("无法识别的日志格式选项: %v", config.LogFormat)
-	}
-}
-
-// formatLog 格式化日志消息（兼容性包装器）
-//
-// 参数：
-//   - f: FastLog 实例
-//   - l: 日志消息
-//
-// 返回值:
-//   - string: 格式化后的日志消息
-func formatLog(f *FastLog, l *logMsg) string {
-	if f == nil || l == nil {
-		return ""
+		tempBuffer.WriteString("无法识别的日志格式选项: ")
+		fmt.Fprintf(tempBuffer, "%v", config.LogFormat)
 	}
 
-	// 调用新的纯函数版本
-	return formatLogMessage(f.config, l)
+	// 根据withColor参数决定是否添加颜色
+	if withColor {
+		// 使用零拷贝版本：直接将带颜色的内容写入目标缓冲区(控制台)
+		addColorToBuffer(buffer, colorLib, logMsg.Level, tempBuffer)
+	} else {
+		// 直接写入原始内容(文件)
+		buffer.Write(tempBuffer.Bytes())
+	}
 }
 
 // shouldDropLogByBackpressure 根据通道背压情况判断是否应该丢弃日志
@@ -476,27 +425,27 @@ func getCachedTimestamp() string {
 // key: 完整文件路径，value: 文件名（不含路径）
 var fileNameCache = sync.Map{}
 
-// 字符串构建器对象池，用于复用临时字符串构建器，减少内存分配
-var stringBuilderPool = sync.Pool{
+// 临时缓冲区对象池，用于复用临时缓冲区，减少内存分配
+var tempBufferPool = sync.Pool{
 	New: func() any {
-		return &strings.Builder{}
+		return &bytes.Buffer{}
 	},
 }
 
-// getStringBuilder 从对象池获取字符串构建器，使用安全的类型断言
-func getStringBuilder() *strings.Builder {
-	// 方式1: 安全的类型断言 (推荐)
-	if builder, ok := stringBuilderPool.Get().(*strings.Builder); ok {
-		return builder
+// getTempBuffer 从对象池获取临时缓冲区，使用安全的类型断言
+func getTempBuffer() *bytes.Buffer {
+	// 安全的类型断言
+	if buffer, ok := tempBufferPool.Get().(*bytes.Buffer); ok {
+		return buffer
 	}
-	// 如果类型断言失败，创建新的构建器作为fallback
-	return &strings.Builder{}
+	// 如果类型断言失败，创建新的缓冲区作为fallback
+	return &bytes.Buffer{}
 }
 
-// putStringBuilder 将字符串构建器归还到对象池
-func putStringBuilder(builder *strings.Builder) {
-	if builder != nil {
-		builder.Reset()                // 重置构建器内容
-		stringBuilderPool.Put(builder) // 归还到对象池
+// putTempBuffer 将临时缓冲区归还到对象池
+func putTempBuffer(buffer *bytes.Buffer) {
+	if buffer != nil {
+		buffer.Reset()             // 重置缓冲区内容
+		tempBufferPool.Put(buffer) // 归还到对象池
 	}
 }
