@@ -105,25 +105,11 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 // 返回值：
 //   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
-	// 使用 switch 语句根据日志级别返回对应的字符串
-	switch level {
-	case DEBUG:
-		return "DEBUG"
-	case INFO:
-		return "INFO"
-	case SUCCESS:
-		return "SUCCESS"
-	case WARN:
-		return "WARN"
-	case ERROR:
-		return "ERROR"
-	case FATAL:
-		return "FATAL"
-	case NONE:
-		return "NONE"
-	default:
-		return "UNKNOWN"
+	// 使用预构建的映射表进行O(1)查询
+	if str, exists := logLevelStringMap[level]; exists {
+		return str
 	}
+	return "UNKNOWN"
 }
 
 // addColorToMessage 根据日志级别为消息添加颜色（纯函数版本）

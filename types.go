@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+// 预构建的日志级别到字符串的映射表，提升查询效率
+var logLevelStringMap = map[LogLevel]string{
+	DEBUG:   "DEBUG",
+	INFO:    "INFO",
+	SUCCESS: "SUCCESS",
+	WARN:    "WARN",
+	ERROR:   "ERROR",
+	FATAL:   "FATAL",
+	NONE:    "NONE",
+}
+
 // PathInfo 是一个结构体，用于封装路径的信息
 type PathInfo struct {
 	Path    string      // 路径
