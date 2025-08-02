@@ -134,6 +134,22 @@ func (p *processor) singleThreadProcessor() {
 // 参数:
 // - batch []*logMsg: 日志批处理缓冲区，包含一批待处理的日志消息。
 func (p *processor) processAndFlushBatch(batch []*logMsg) {
+	// 🛡️ 使用defer确保对象一定会被回收
+	defer func() {
+		// 批量回收所有对象
+		for _, logMsg := range batch {
+			if logMsg != nil {
+				putLogMsg(logMsg)
+			}
+		}
+
+		// 如果发生panic，记录但不重新抛出
+		if r := recover(); r != nil {
+			p.deps.getColorLib().PrintErrf("批处理时发生panic: %v\n", r)
+			// 不重新panic，保证处理器继续运行
+		}
+	}()
+
 	// 完整的空指针检查
 	if p == nil {
 		return
@@ -204,11 +220,6 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 			_ = writeErr // 静默忽略控制台输出错误
 		}
-	}
-
-	// 在这里批量回收所有对象
-	for _, logMsg := range batch {
-		putLogMsg(logMsg)
 	}
 }
 
