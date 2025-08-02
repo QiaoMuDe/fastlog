@@ -6,7 +6,6 @@ fastlog.go - FastLog日志记录器核心实现
 package fastlog
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -183,14 +182,12 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 			}
 		}()
 
-		// 创建处理器
-		processor := &processor{
-			f:             f,                    // 日志记录器
-			batchSize:     defaultBatchSize,     // 批量处理大小
-			flushInterval: cfg.FlushInterval,    // 刷新间隔
-			fileBuffer:    bytes.NewBuffer(nil), // 文件缓冲区
-			consoleBuffer: bytes.NewBuffer(nil), // 控制台缓冲区
-		}
+		// 创建处理器（使用依赖注入避免循环依赖）
+		processor := newProcessor(
+			f,                 // 传入FastLog作为依赖接口
+			defaultBatchSize,  // 批量处理大小
+			cfg.FlushInterval, // 刷新间隔
+		)
 
 		// 预分配缓冲区以减少内存分配
 		processor.fileBuffer.Grow(fileInitialBufferCapacity)
@@ -208,6 +205,43 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 返回FastLog实例和nil错误
 	return f, nil
+}
+
+// ===== 实现 ProcessorDependencies 接口 =====
+
+// GetConfig 获取日志配置
+func (f *FastLog) GetConfig() *FastLogConfig {
+	return f.config
+}
+
+// GetFileWriter 获取文件写入器
+func (f *FastLog) GetFileWriter() io.Writer {
+	return f.fileWriter
+}
+
+// GetConsoleWriter 获取控制台写入器
+func (f *FastLog) GetConsoleWriter() io.Writer {
+	return f.consoleWriter
+}
+
+// GetColorLib 获取颜色库实例
+func (f *FastLog) GetColorLib() *colorlib.ColorLib {
+	return f.cl
+}
+
+// GetContext 获取上下文
+func (f *FastLog) GetContext() context.Context {
+	return f.ctx
+}
+
+// GetLogChannel 获取日志消息通道（只读）
+func (f *FastLog) GetLogChannel() <-chan *logMsg {
+	return f.logChan
+}
+
+// NotifyProcessorDone 通知处理器完成工作
+func (f *FastLog) NotifyProcessorDone() {
+	f.logWait.Done()
 }
 
 // Close 安全关闭日志记录器

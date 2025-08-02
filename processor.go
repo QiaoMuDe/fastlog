@@ -13,16 +13,36 @@ import (
 
 // processor 单线程日志处理器
 type processor struct {
-	// 日志记录器
-	f *FastLog
+	// 依赖接口 (替代直接持有FastLog引用)
+	deps ProcessorDependencies
 
-	// 单一缓冲区（单线程使用，无需锁）
+	// 单一缓冲区 (单线程使用，无需锁)
 	fileBuffer    *bytes.Buffer // 文件缓冲区
 	consoleBuffer *bytes.Buffer // 控制台缓冲区
 
 	// 批量处理配置
 	batchSize     int           // 批量处理数量
 	flushInterval time.Duration // 批量处理间隔
+}
+
+// newProcessor 创建新的处理器实例
+// 使用依赖注入模式，避免循环依赖
+//
+// 参数:
+//   - deps: 依赖接口 (替代直接持有FastLog引用)
+//   - batchSize: 批处理条数
+//   - flushInterval: 定时刷新间隔
+//
+// 返回:
+//   - *processor: 新的处理器实例
+func newProcessor(deps ProcessorDependencies, batchSize int, flushInterval time.Duration) *processor {
+	return &processor{
+		deps:          deps,            // 依赖接口 (替代直接持有FastLog引用)
+		fileBuffer:    &bytes.Buffer{}, // 文件缓冲区
+		consoleBuffer: &bytes.Buffer{}, // 控制台缓冲区
+		batchSize:     batchSize,       // 批处理条数
+		flushInterval: flushInterval,   // 定时刷新间隔
+	}
 }
 
 // singleThreadProcessor 单线程日志处理器
@@ -32,11 +52,11 @@ func (p *processor) singleThreadProcessor() {
 	if p == nil {
 		panic("processor is nil")
 	}
-	if p.f == nil {
-		panic("processor.f is nil")
+	if p.deps == nil {
+		panic("processor.deps is nil")
 	}
-	if p.f.config == nil {
-		panic("processor.f.config is nil")
+	if p.deps.GetConfig() == nil {
+		panic("processor.deps.GetConfig() is nil")
 	}
 	if p.fileBuffer == nil {
 		panic("processor.fileBuffer is nil")
@@ -45,8 +65,8 @@ func (p *processor) singleThreadProcessor() {
 		panic("processor.consoleBuffer is nil")
 	}
 	// 检查通道是否为nil
-	if p.f.logChan == nil {
-		panic("processor.f.logChan is nil")
+	if p.deps.GetLogChannel() == nil {
+		panic("processor.deps.GetLogChannel() is nil")
 	}
 
 	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
@@ -58,17 +78,17 @@ func (p *processor) singleThreadProcessor() {
 	defer func() {
 		// 捕获panic
 		if r := recover(); r != nil {
-			p.f.cl.PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
+			p.deps.GetColorLib().PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
 		}
 
 		// 减少等待组中的计数器。
-		p.f.logWait.Done()
+		p.deps.NotifyProcessorDone()
 	}()
 
 	// 主循环：持续处理日志消息和定时事件
 	for {
 		select {
-		case logMsg := <-p.f.logChan: // 从日志通道接收新日志消息
+		case logMsg := <-p.deps.GetLogChannel(): // 从日志通道接收新日志消息
 			// 添加消息空值检查
 			if logMsg == nil {
 				continue // 跳过 nil 消息
@@ -93,7 +113,7 @@ func (p *processor) singleThreadProcessor() {
 				batch = batch[:0]             // 重置batch
 			}
 
-		case <-p.f.ctx.Done(): // 上下文取消信号，表示应停止处理
+		case <-p.deps.GetContext().Done(): // 上下文取消信号，表示应停止处理
 			// 关闭定时器
 			ticker.Stop()
 
@@ -118,34 +138,37 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	p.fileBuffer.Reset()    // 重置文件缓冲区
 	p.consoleBuffer.Reset() // 重置控制台缓冲区
 
+	// 获取配置
+	config := p.deps.GetConfig()
+
 	// 遍历批处理中的所有日志消息
 	for _, logMsg := range batch {
 		// 格式化日志消息，包括时间戳、级别、调用者信息等
-		formattedMsg := formatLog(p.f, logMsg)
+		formattedMsg := p.formatLogWithDeps(logMsg)
 
 		// 文件输出处理：如果启用了文件输出，则将格式化后的消息写入文件缓冲区
-		if p.f.config.OutputToFile {
+		if config.OutputToFile {
 			p.fileBuffer.WriteString(formattedMsg + "\n")
 		}
 
 		// 控制台输出处理：如果启用了控制台输出，则将带颜色的消息写入控制台缓冲区
-		if p.f.config.OutputToConsole {
+		if config.OutputToConsole {
 			// 先渲染颜色再写入缓冲区，以确保控制台输出具有颜色效果
-			coloredMsg := addColor(p.f, logMsg, formattedMsg)
+			coloredMsg := p.addColorWithDeps(logMsg, formattedMsg)
 			p.consoleBuffer.WriteString(coloredMsg + "\n")
 		}
 	}
 
 	// 如果启用文件输出, 并且文件缓冲区有内容, 则将缓冲区内容写入文件
-	if p.f.config.OutputToFile && p.fileBuffer.Len() > 0 {
+	if config.OutputToFile && p.fileBuffer.Len() > 0 {
 		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
-		if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.GetFileWriter().Write(p.fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
-			p.f.cl.PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
+			p.deps.GetColorLib().PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
-			if p.f.config.OutputToConsole {
-				if _, consoleErr := p.f.consoleWriter.Write(p.fileBuffer.Bytes()); consoleErr != nil {
+			if config.OutputToConsole {
+				if _, consoleErr := p.deps.GetConsoleWriter().Write(p.fileBuffer.Bytes()); consoleErr != nil {
 					// 控制台输出失败时静默处理，避免影响程序运行
 					// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 					_ = writeErr // 静默忽略控制台输出错误
@@ -155,9 +178,9 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	}
 
 	// 如果启用控制台输出, 并且控制台缓冲区有内容, 则将缓冲区内容写入控制台
-	if p.f.config.OutputToConsole && p.consoleBuffer.Len() > 0 {
+	if config.OutputToConsole && p.consoleBuffer.Len() > 0 {
 		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
-		if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.GetConsoleWriter().Write(p.consoleBuffer.Bytes()); writeErr != nil {
 			// 控制台输出失败时静默处理，避免影响程序运行
 			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 			_ = writeErr // 静默忽略控制台输出错误
@@ -170,18 +193,40 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	}
 }
 
+// formatLogWithDeps 使用依赖接口格式化日志消息
+func (p *processor) formatLogWithDeps(logMsg *logMsg) string {
+	// 创建临时的FastLog结构用于兼容现有的formatLog函数
+	tempFastLog := &FastLog{
+		config: p.deps.GetConfig(),
+		cl:     p.deps.GetColorLib(),
+	}
+	return formatLog(tempFastLog, logMsg)
+}
+
+// addColorWithDeps 使用依赖接口添加颜色
+func (p *processor) addColorWithDeps(logMsg *logMsg, formattedMsg string) string {
+	// 创建临时的FastLog结构用于兼容现有的addColor函数
+	tempFastLog := &FastLog{
+		config: p.deps.GetConfig(),
+		cl:     p.deps.GetColorLib(),
+	}
+	return addColor(tempFastLog, logMsg, formattedMsg)
+}
+
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
 // 当文件缓冲区或控制台缓冲区任一达到90%阈值时返回true
 func (p *processor) shouldFlushByThreshold() bool {
+	config := p.deps.GetConfig()
+
 	// 检查文件缓冲区是否达到90%阈值
-	if p.f.config.OutputToFile {
+	if config.OutputToFile {
 		if p.fileBuffer.Len() >= fileFlushThreshold {
 			return true
 		}
 	}
 
 	// 检查控制台缓冲区是否达到90%阈值
-	if p.f.config.OutputToConsole {
+	if config.OutputToConsole {
 		if p.consoleBuffer.Len() >= consoleFlushThreshold {
 			return true
 		}
