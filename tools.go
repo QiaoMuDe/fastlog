@@ -209,28 +209,26 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 		logMsg.FuncName = "unknown-func"
 	}
 
-	// JSON格式特殊处理，不添加颜色（避免破坏JSON结构）
-	if config.LogFormat == Json {
-		// 序列化为JSON并直接写入缓冲区
-		if jsonBytes, err := json.Marshal(logMsg); err == nil {
-			buffer.Write(jsonBytes)
-		} else {
-			// JSON序列化失败时的降级处理
-			fmt.Fprintf(buffer,
-				logFormatMap[Json],
-				logMsg.Timestamp, logLevelToString(logMsg.Level), "unknown", "unknown", 0,
-				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
-			)
-		}
-		return
-	}
-
 	// 文本格式处理：先格式化到临时缓冲区，然后根据需要添加颜色
 	tempBuffer := getTempBuffer()
 	defer putTempBuffer(tempBuffer)
 
 	// 根据日志格式格式化到临时缓冲区
 	switch config.LogFormat {
+	// JSON格式
+	case Json:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(logMsg); err == nil {
+			tempBuffer.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(tempBuffer,
+				logFormatMap[Json],
+				logMsg.Timestamp, logLevelToString(logMsg.Level), "unknown", "unknown", 0,
+				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
+			)
+		}
+
 	// 详细格式
 	case Detailed:
 		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳

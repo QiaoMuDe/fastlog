@@ -85,10 +85,10 @@ const (
 type logMsg struct {
 	Timestamp string   `json:"time"`     // 预格式化的时间字符串
 	Level     LogLevel `json:"level"`    // 日志级别
-	Message   string   `json:"message"`  // 日志消息
-	FuncName  string   `json:"function"` // 调用函数名
 	FileName  string   `json:"file"`     // 文件名
+	FuncName  string   `json:"function"` // 调用函数名
 	Line      uint16   `json:"line"`     // 行号
+	Message   string   `json:"message"`  // 日志消息
 }
 
 // logMsgPool 是一个日志消息对象池
