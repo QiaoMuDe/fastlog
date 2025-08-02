@@ -90,6 +90,9 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		panic("FastLogConfig 不能为 nil")
 	}
 
+	// 最终配置修正 - 直接在原始配置上修正所有不合理的值
+	config.fixFinalConfig()
+
 	// 克隆配置结构体防止原配置被意外修改
 	cfg := &FastLogConfig{
 		LogDirName:      config.LogDirName,      // 日志目录名称
@@ -108,9 +111,6 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		NoColor:         config.NoColor,         // 是否禁用终端颜色
 		NoBold:          config.NoBold,          // 是否禁用终端字体加粗
 	}
-
-	// 最终配置修正 - 修正所有不合理的值
-	cfg.fixFinalConfig()
 
 	// 初始化写入器
 	var fileWriter io.Writer    // 文件写入器

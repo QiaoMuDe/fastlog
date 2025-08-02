@@ -275,23 +275,89 @@ func TestEmptyDirectoryAndFileName(t *testing.T) {
 
 // TestConfigConsistency 测试配置一致性
 func TestConfigConsistency(t *testing.T) {
-	t.Run("禁用所有输出的配置", func(t *testing.T) {
+	t.Run("禁用所有输出的配置应该panic", func(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "test.log")
 		cfg.OutputToConsole = false
 		cfg.OutputToFile = false
 
-		// 这种配置应该能正常创建日志实例，但不会有实际输出
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("禁用所有输出的配置应该能正常创建日志实例：%v", err)
-		}
-		defer logger.Close()
+		// 这种配置应该触发panic，因为没有任何输出方式
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("禁用所有输出的配置应该触发panic")
+			} else {
+				expectedMsg := "必须启用至少一种输出方式"
+				if !strings.Contains(r.(string), expectedMsg) {
+					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
+				}
+			}
+		}()
 
-		// 记录日志不应该出错
-		logger.Info("测试消息")
+		// 这里应该panic
+		NewFastLog(cfg)
 	})
 
-	t.Run("矛盾配置的处理", func(t *testing.T) {
+	t.Run("文件输出时目录名和文件名都为空应该panic", func(t *testing.T) {
+		cfg := NewFastLogConfig("", "")
+		cfg.OutputToConsole = false
+		cfg.OutputToFile = true
+
+		// 这种配置应该触发panic
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("文件输出时目录名和文件名都为空应该触发panic")
+			} else {
+				expectedMsg := "日志目录名(LogDirName)和文件名(LogFileName)不能同时为空"
+				if !strings.Contains(r.(string), expectedMsg) {
+					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
+				}
+			}
+		}()
+
+		// 这里应该panic
+		NewFastLog(cfg)
+	})
+
+	t.Run("超大通道大小应该panic", func(t *testing.T) {
+		cfg := NewFastLogConfig("logs", "test.log")
+		cfg.ChanIntSize = 2000000 // 200万，超过100万的限制
+
+		// 这种配置应该触发panic
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("超大通道大小应该触发panic")
+			} else {
+				expectedMsg := "通道大小过大"
+				if !strings.Contains(r.(string), expectedMsg) {
+					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
+				}
+			}
+		}()
+
+		// 这里应该panic
+		NewFastLog(cfg)
+	})
+
+	t.Run("超大文件大小应该panic", func(t *testing.T) {
+		cfg := NewFastLogConfig("logs", "test.log")
+		cfg.MaxLogFileSize = 15000 // 15GB，超过10GB的限制
+
+		// 这种配置应该触发panic
+		defer func() {
+			if r := recover(); r == nil {
+				t.Errorf("超大文件大小应该触发panic")
+			} else {
+				expectedMsg := "单个日志文件大小过大"
+				if !strings.Contains(r.(string), expectedMsg) {
+					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
+				}
+			}
+		}()
+
+		// 这里应该panic
+		NewFastLog(cfg)
+	})
+
+	t.Run("正常配置应该成功", func(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "test.log")
 		cfg.OutputToFile = false
 		cfg.MaxLogFileSize = 100 // 设置了文件相关配置但禁用了文件输出
@@ -299,9 +365,78 @@ func TestConfigConsistency(t *testing.T) {
 		// 应该能正常创建，文件相关配置被忽略
 		logger, err := NewFastLog(cfg)
 		if err != nil {
-			t.Fatalf("矛盾配置应该能正常处理：%v", err)
+			t.Fatalf("正常配置应该能正常处理：%v", err)
 		}
 		defer logger.Close()
+
+		// 记录日志不应该出错
+		logger.Info("测试消息")
+	})
+
+	t.Run("配置自动修正验证", func(t *testing.T) {
+		cfg := NewFastLogConfig("logs", "test.log")
+		
+		// 设置一些需要修正的值
+		originalChanSize := -100
+		originalFlushInterval := -1 * time.Second
+		originalMaxFileSize := 2000
+		originalMaxAge := 5000
+		originalMaxBackups := 2000
+		
+		cfg.ChanIntSize = originalChanSize
+		cfg.FlushInterval = originalFlushInterval
+		cfg.MaxLogFileSize = originalMaxFileSize
+		cfg.MaxLogAge = originalMaxAge
+		cfg.MaxLogBackups = originalMaxBackups
+		
+		// 记录修正前的值
+		t.Logf("修正前: ChanIntSize=%d, FlushInterval=%v, MaxLogFileSize=%d, MaxLogAge=%d, MaxLogBackups=%d",
+			cfg.ChanIntSize, cfg.FlushInterval, cfg.MaxLogFileSize, cfg.MaxLogAge, cfg.MaxLogBackups)
+		
+		// 应该能正常创建，配置被自动修正
+		logger, err := NewFastLog(cfg)
+		if err != nil {
+			t.Fatalf("配置自动修正应该成功：%v", err)
+		}
+		defer logger.Close()
+		
+		// 记录修正后的值
+		t.Logf("修正后: ChanIntSize=%d, FlushInterval=%v, MaxLogFileSize=%d, MaxLogAge=%d, MaxLogBackups=%d",
+			cfg.ChanIntSize, cfg.FlushInterval, cfg.MaxLogFileSize, cfg.MaxLogAge, cfg.MaxLogBackups)
+		
+		// 验证配置被正确修正
+		if cfg.ChanIntSize != 10000 {
+			t.Errorf("ChanIntSize应被修正为10000，实际为%d", cfg.ChanIntSize)
+		}
+		if cfg.FlushInterval != 500*time.Millisecond {
+			t.Errorf("FlushInterval应被修正为500ms，实际为%v", cfg.FlushInterval)
+		}
+		if cfg.MaxLogFileSize != 1000 {
+			t.Errorf("MaxLogFileSize应被修正为1000，实际为%d", cfg.MaxLogFileSize)
+		}
+		if cfg.MaxLogAge != 3650 {
+			t.Errorf("MaxLogAge应被修正为3650，实际为%d", cfg.MaxLogAge)
+		}
+		if cfg.MaxLogBackups != 1000 {
+			t.Errorf("MaxLogBackups应被修正为1000，实际为%d", cfg.MaxLogBackups)
+		}
+		
+		// 验证修正确实发生了
+		if cfg.ChanIntSize == originalChanSize {
+			t.Error("ChanIntSize没有被修正")
+		}
+		if cfg.FlushInterval == originalFlushInterval {
+			t.Error("FlushInterval没有被修正")
+		}
+		if cfg.MaxLogFileSize == originalMaxFileSize {
+			t.Error("MaxLogFileSize没有被修正")
+		}
+		if cfg.MaxLogAge == originalMaxAge {
+			t.Error("MaxLogAge没有被修正")
+		}
+		if cfg.MaxLogBackups == originalMaxBackups {
+			t.Error("MaxLogBackups没有被修正")
+		}
 	})
 }
 
