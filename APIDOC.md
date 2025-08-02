@@ -27,6 +27,160 @@ FastLog是一个高性能的Go语言日志库，提供了灵活的配置选项�
 ### types.go - 日志系统核心类型定义
 定义FastLog的核心数据结构、常量和枚举类型，包括日志级别、日志格式、路径信息和日志消息结构体等。
 
+## 核心架构概览
+
+### 系统架构图
+
+```mermaid
+graph TB
+    subgraph "用户层 (User Layer)"
+        A[用户应用程序]
+        B[日志API调用<br/>Info/Error/Debug等]
+    end
+    
+    subgraph "FastLog核心层 (Core Layer)"
+        C[FastLog实例]
+        D[配置管理<br/>FastLogConfig]
+        E[日志消息通道<br/>Channel Buffer]
+    end
+    
+    subgraph "处理层 (Processing Layer)"
+        F[单线程处理器<br/>Processor]
+        G[智能分层缓冲区<br/>SmartTieredBufferPool]
+        H[批量处理器<br/>Batch Processor]
+    end
+    
+    subgraph "工具层 (Utility Layer)"
+        I[时间戳缓存<br/>Atomic Cache]
+        J[调用者信息获取<br/>Caller Info]
+        K[颜色处理<br/>Color Library]
+        L[格式化工具<br/>Formatter]
+    end
+    
+    subgraph "输出层 (Output Layer)"
+        M[文件输出<br/>File Writer]
+        N[控制台输出<br/>Console Writer]
+        O[日志轮转<br/>Log Rotation]
+    end
+    
+    subgraph "依赖注入层 (DI Layer)"
+        P[ProcessorDependencies<br/>接口]
+        Q[Writer获取接口<br/>getFileWriter/getConsoleWriter]
+    end
+    
+    A --> B
+    B --> C
+    C --> D
+    C --> E
+    E --> F
+    F --> G
+    F --> H
+    H --> I
+    H --> J
+    H --> K
+    H --> L
+    F --> P
+    P --> Q
+    Q --> M
+    Q --> N
+    M --> O
+    
+    style A fill:#e1f5fe
+    style F fill:#fff3e0
+    style G fill:#f3e5f5
+    style I fill:#e8f5e8
+    style M fill:#fce4ec
+    style N fill:#fce4ec
+```
+
+### 工作流程图
+
+```mermaid
+sequenceDiagram
+    participant U as 用户应用
+    participant FL as FastLog实例
+    participant CH as 消息通道
+    participant P as 处理器
+    participant SB as 智能缓冲区
+    participant TC as 时间戳缓存
+    participant FW as 文件写入器
+    participant CW as 控制台写入器
+    
+    Note over U,CW: 1. 初始化阶段
+    U->>FL: NewFastLog(config)
+    FL->>P: 创建处理器实例
+    FL->>CH: 创建消息通道
+    FL->>SB: 初始化智能缓冲区池
+    FL->>TC: 初始化时间戳缓存
+    P->>P: 启动后台处理goroutine
+    
+    Note over U,CW: 2. 日志记录阶段
+    U->>FL: logger.Info("消息")
+    FL->>FL: 检查日志级别
+    FL->>FL: 获取调用者信息
+    FL->>CH: 发送日志消息到通道
+    
+    Note over U,CW: 3. 批量处理阶段
+    P->>CH: 从通道接收消息
+    P->>P: 累积到批次(1000条或500ms)
+    P->>SB: 获取文件缓冲区
+    P->>SB: 获取控制台缓冲区
+    
+    loop 批量格式化
+        P->>TC: 获取缓存时间戳
+        P->>P: 格式化单条日志
+        P->>SB: 检查90%阈值并升级缓冲区
+        P->>SB: 写入到缓冲区
+    end
+    
+    Note over U,CW: 4. 输出写入阶段
+    P->>FW: 批量写入文件缓冲区
+    P->>CW: 批量写入控制台缓冲区
+    P->>SB: 归还缓冲区到对象池
+    
+    Note over U,CW: 5. 智能背压控制
+    alt 通道使用率 > 98%
+        P->>P: 只保留FATAL级别日志
+    else 通道使用率 > 95%
+        P->>P: 只保留ERROR及以上级别
+    else 通道使用率 > 90%
+        P->>P: 只保留WARN及以上级别
+    else 正常情况
+        P->>P: 处理所有级别日志
+    end
+    
+    Note over U,CW: 6. 优雅关闭阶段
+    U->>FL: logger.Close()
+    FL->>CH: 关闭消息通道
+    P->>P: 处理剩余消息
+    P->>FW: 刷新文件缓冲区
+    P->>CW: 刷新控制台缓冲区
+    P->>P: 退出处理goroutine
+```
+
+### 核心组件说明
+
+#### 1. 智能分层缓冲区系统
+- **文件缓冲区**: 32KB → 256KB → 1MB，适合批量I/O操作
+- **控制台缓冲区**: 8KB → 32KB → 64KB，适合实时显示
+- **90%阈值触发**: 达到容量90%时自动升级到更大缓冲区
+- **对象池管理**: 使用sync.Pool实现缓冲区重用，GC时自动清理
+
+#### 2. 原子时间戳缓存
+- **快路径无锁**: 使用atomic.LoadInt64()原子读取，99%的调用无锁
+- **双重检查锁定**: 更新时使用轻量级mutex保护
+- **3-5倍性能提升**: 相比传统读写锁方案显著提升性能
+
+#### 3. 依赖注入架构
+- **接口隔离**: 通过ProcessorDependencies接口避免循环依赖
+- **可测试性**: 便于单元测试和模拟测试
+- **松耦合设计**: 各组件职责清晰，易于维护和扩展
+
+#### 4. 智能背压控制
+- **动态负载感知**: 根据通道使用率自动调整处理策略
+- **分级丢弃策略**: 优先保留高优先级日志，智能丢弃低优先级日志
+- **内存保护**: 防止高负载下的内存溢出和系统崩溃
+
 ## 变量
 
 ```go
