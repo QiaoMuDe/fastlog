@@ -92,6 +92,8 @@ func TestMemoryLeakPrevention(t *testing.T) {
 	// 记录初始内存统计
 	var m1 runtime.MemStats
 	runtime.GC()
+	runtime.GC() // 执行两次GC确保稳定状态
+	time.Sleep(50 * time.Millisecond)
 	runtime.ReadMemStats(&m1)
 
 	// 创建和销毁多个日志实例
@@ -123,13 +125,24 @@ func TestMemoryLeakPrevention(t *testing.T) {
 	var m2 runtime.MemStats
 	runtime.ReadMemStats(&m2)
 
-	// 检查内存增长是否合理（允许一定的增长，但不应该有明显的泄漏）
-	memoryGrowth := m2.Alloc - m1.Alloc
-	t.Logf("内存增长: %d bytes", memoryGrowth)
+	// 安全地计算内存变化（处理uint64下溢问题）
+	var memoryChange int64
+	if m2.Alloc >= m1.Alloc {
+		memoryChange = int64(m2.Alloc - m1.Alloc)
+		t.Logf("内存增长: %d bytes", memoryChange)
+	} else {
+		memoryChange = -int64(m1.Alloc - m2.Alloc)
+		t.Logf("内存减少: %d bytes", -memoryChange)
+	}
 
-	// 如果内存增长超过1MB，可能存在泄漏
-	if memoryGrowth > 1024*1024 {
-		t.Errorf("可能存在内存泄漏，内存增长: %d bytes", memoryGrowth)
+	// 检查是否存在明显的内存泄漏
+	// 允许合理的内存增长（最多1MB），但不应该有大量泄漏
+	if memoryChange > 1024*1024 {
+		t.Errorf("可能存在内存泄漏，内存增长: %d bytes", memoryChange)
+	} else if memoryChange < 0 {
+		t.Logf("内存使用优化良好，减少了 %d bytes", -memoryChange)
+	} else {
+		t.Logf("内存增长在合理范围内: %d bytes", memoryChange)
 	}
 
 	t.Log("内存泄漏预防测试通过")

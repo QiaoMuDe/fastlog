@@ -371,14 +371,17 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 		return true
 	}
 
-	// 简化的通道使用率计算（针对实际使用场景优化）
-	// 在实际应用中，通道容量很少超过百万级别，溢出风险极低
-	var channelUsage int
+	// 使用int64进行安全的通道使用率计算，防止整数溢出
+	var channelUsage int64
 	if chanCap > 0 {
-		channelUsage = (chanLen * 100) / chanCap
-		// 简单的边界检查，防止计算错误
+		// 直接使用int64计算，避免类型转换开销
+		channelUsage = (int64(chanLen) * 100) / int64(chanCap)
+
+		// 边界检查，确保结果在合理范围内
 		if channelUsage > 100 {
 			channelUsage = 100
+		} else if channelUsage < 0 {
+			channelUsage = 0 // 防止异常的负值
 		}
 	}
 
