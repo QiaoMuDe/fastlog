@@ -58,31 +58,31 @@ func TestProcessorDependencyInterface(t *testing.T) {
 	defer logger.Close()
 
 	// 验证FastLog实现了ProcessorDependencies接口
-	var deps ProcessorDependencies = logger
+	var deps processorDependencies = logger
 
 	// 测试接口方法
-	if deps.GetConfig() == nil {
-		t.Error("GetConfig() 返回 nil")
+	if deps.getConfig() == nil {
+		t.Error("getConfig() 返回 nil")
 	}
 
-	if deps.GetFileWriter() == nil {
-		t.Error("GetFileWriter() 返回 nil")
+	if deps.getFileWriter() == nil {
+		t.Error("getFileWriter() 返回 nil")
 	}
 
-	if deps.GetConsoleWriter() == nil {
-		t.Error("GetConsoleWriter() 返回 nil")
+	if deps.getConsoleWriter() == nil {
+		t.Error("getConsoleWriter() 返回 nil")
 	}
 
-	if deps.GetColorLib() == nil {
-		t.Error("GetColorLib() 返回 nil")
+	if deps.getColorLib() == nil {
+		t.Error("getColorLib() 返回 nil")
 	}
 
-	if deps.GetContext() == nil {
-		t.Error("GetContext() 返回 nil")
+	if deps.getContext() == nil {
+		t.Error("getContext() 返回 nil")
 	}
 
-	if deps.GetLogChannel() == nil {
-		t.Error("GetLogChannel() 返回 nil")
+	if deps.getLogChannel() == nil {
+		t.Error("getLogChannel() 返回 nil")
 	}
 
 	t.Log("ProcessorDependencies接口实现验证通过")

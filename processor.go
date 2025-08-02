@@ -41,7 +41,7 @@ func putStringBuilder(builder *strings.Builder) {
 // processor 单线程日志处理器
 type processor struct {
 	// 依赖接口 (替代直接持有FastLog引用)
-	deps ProcessorDependencies
+	deps processorDependencies
 
 	// 单一缓冲区 (单线程使用，无需锁)
 	fileBuffer    *bytes.Buffer // 文件缓冲区
@@ -62,7 +62,7 @@ type processor struct {
 //
 // 返回:
 //   - *processor: 新的处理器实例
-func newProcessor(deps ProcessorDependencies, batchSize int, flushInterval time.Duration) *processor {
+func newProcessor(deps processorDependencies, batchSize int, flushInterval time.Duration) *processor {
 	return &processor{
 		deps:          deps,            // 依赖接口 (替代直接持有FastLog引用)
 		fileBuffer:    &bytes.Buffer{}, // 文件缓冲区
@@ -82,8 +82,8 @@ func (p *processor) singleThreadProcessor() {
 	if p.deps == nil {
 		panic("processor.deps is nil")
 	}
-	if p.deps.GetConfig() == nil {
-		panic("processor.deps.GetConfig() is nil")
+	if p.deps.getConfig() == nil {
+		panic("processor.deps.getConfig() is nil")
 	}
 	if p.fileBuffer == nil {
 		panic("processor.fileBuffer is nil")
@@ -92,8 +92,8 @@ func (p *processor) singleThreadProcessor() {
 		panic("processor.consoleBuffer is nil")
 	}
 	// 检查通道是否为nil
-	if p.deps.GetLogChannel() == nil {
-		panic("processor.deps.GetLogChannel() is nil")
+	if p.deps.getLogChannel() == nil {
+		panic("processor.deps.getLogChannel() is nil")
 	}
 
 	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
@@ -105,17 +105,17 @@ func (p *processor) singleThreadProcessor() {
 	defer func() {
 		// 捕获panic
 		if r := recover(); r != nil {
-			p.deps.GetColorLib().PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
+			p.deps.getColorLib().PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
 		}
 
 		// 减少等待组中的计数器。
-		p.deps.NotifyProcessorDone()
+		p.deps.notifyProcessorDone()
 	}()
 
 	// 主循环：持续处理日志消息和定时事件
 	for {
 		select {
-		case logMsg := <-p.deps.GetLogChannel(): // 从日志通道接收新日志消息
+		case logMsg := <-p.deps.getLogChannel(): // 从日志通道接收新日志消息
 			// 添加消息空值检查
 			if logMsg == nil {
 				continue // 跳过 nil 消息
@@ -140,7 +140,7 @@ func (p *processor) singleThreadProcessor() {
 				batch = batch[:0]             // 重置batch
 			}
 
-		case <-p.deps.GetContext().Done(): // 上下文取消信号，表示应停止处理
+		case <-p.deps.getContext().Done(): // 上下文取消信号，表示应停止处理
 			// 关闭定时器
 			ticker.Stop()
 
@@ -180,7 +180,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	p.consoleBuffer.Reset() // 重置控制台缓冲区
 
 	// 获取配置并检查
-	config := p.deps.GetConfig()
+	config := p.deps.getConfig()
 	if config == nil {
 		return
 	}
@@ -229,13 +229,13 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	// 如果启用文件输出, 并且文件缓冲区有内容, 则将缓冲区内容写入文件
 	if config.OutputToFile && p.fileBuffer.Len() > 0 {
 		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
-		if _, writeErr := p.deps.GetFileWriter().Write(p.fileBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.getFileWriter().Write(p.fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
-			p.deps.GetColorLib().PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
+			p.deps.getColorLib().PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
 			if config.OutputToConsole {
-				if _, consoleErr := p.deps.GetConsoleWriter().Write(p.fileBuffer.Bytes()); consoleErr != nil {
+				if _, consoleErr := p.deps.getConsoleWriter().Write(p.fileBuffer.Bytes()); consoleErr != nil {
 					// 控制台输出失败时静默处理，避免影响程序运行
 					// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 					_ = writeErr // 静默忽略控制台输出错误
@@ -247,7 +247,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	// 如果启用控制台输出, 并且控制台缓冲区有内容, 则将缓冲区内容写入控制台
 	if config.OutputToConsole && p.consoleBuffer.Len() > 0 {
 		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
-		if _, writeErr := p.deps.GetConsoleWriter().Write(p.consoleBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.getConsoleWriter().Write(p.consoleBuffer.Bytes()); writeErr != nil {
 			// 控制台输出失败时静默处理，避免影响程序运行
 			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 			_ = writeErr // 静默忽略控制台输出错误
@@ -263,7 +263,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
 // 当文件缓冲区或控制台缓冲区任一达到90%阈值时返回true
 func (p *processor) shouldFlushByThreshold() bool {
-	config := p.deps.GetConfig()
+	config := p.deps.getConfig()
 
 	// 检查文件缓冲区是否达到90%阈值
 	if config.OutputToFile {
@@ -289,7 +289,7 @@ func (p *processor) formatLogDirectlyToBuilder(builder *strings.Builder, logMsg 
 		return
 	}
 
-	config := p.deps.GetConfig()
+	config := p.deps.getConfig()
 	if config == nil {
 		return
 	}
@@ -308,7 +308,7 @@ func (p *processor) addColorDirectlyToBuilder(builder *strings.Builder, logMsg *
 		return
 	}
 
-	colorLib := p.deps.GetColorLib()
+	colorLib := p.deps.getColorLib()
 	if colorLib == nil {
 		builder.WriteString(formattedMsg) // 如果没有颜色库，直接写入原始消息
 		return

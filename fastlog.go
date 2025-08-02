@@ -207,40 +207,40 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
-// ===== 实现 ProcessorDependencies 接口 =====
+// ===== 实现 processorDependencies 接口 =====
 
-// GetConfig 获取日志配置
-func (f *FastLog) GetConfig() *FastLogConfig {
+// getConfig 获取日志配置
+func (f *FastLog) getConfig() *FastLogConfig {
 	return f.config
 }
 
-// GetFileWriter 获取文件写入器
-func (f *FastLog) GetFileWriter() io.Writer {
+// getFileWriter 获取文件写入器
+func (f *FastLog) getFileWriter() io.Writer {
 	return f.fileWriter
 }
 
-// GetConsoleWriter 获取控制台写入器
-func (f *FastLog) GetConsoleWriter() io.Writer {
+// getConsoleWriter 获取控制台写入器
+func (f *FastLog) getConsoleWriter() io.Writer {
 	return f.consoleWriter
 }
 
-// GetColorLib 获取颜色库实例
-func (f *FastLog) GetColorLib() *colorlib.ColorLib {
+// getColorLib 获取颜色库实例
+func (f *FastLog) getColorLib() *colorlib.ColorLib {
 	return f.cl
 }
 
-// GetContext 获取上下文
-func (f *FastLog) GetContext() context.Context {
+// getContext 获取上下文
+func (f *FastLog) getContext() context.Context {
 	return f.ctx
 }
 
-// GetLogChannel 获取日志消息通道（只读）
-func (f *FastLog) GetLogChannel() <-chan *logMsg {
+// getLogChannel 获取日志消息通道（只读）
+func (f *FastLog) getLogChannel() <-chan *logMsg {
 	return f.logChan
 }
 
-// NotifyProcessorDone 通知处理器完成工作
-func (f *FastLog) NotifyProcessorDone() {
+// notifyProcessorDone 通知处理器完成工作
+func (f *FastLog) notifyProcessorDone() {
 	f.logWait.Done()
 }
 

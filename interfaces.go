@@ -12,29 +12,29 @@ import (
 	"gitee.com/MM-Q/colorlib"
 )
 
-// ProcessorDependencies 定义处理器所需的最小依赖接口
+// processorDependencies 定义处理器所需的最小依赖接口
 // 通过接口隔离原则，processor 只能访问必要的功能，避免持有完整的 FastLog 引用
-type ProcessorDependencies interface {
-	// GetConfig 获取日志配置
-	GetConfig() *FastLogConfig
+type processorDependencies interface {
+	// getConfig 获取日志配置
+	getConfig() *FastLogConfig
 
-	// GetFileWriter 获取文件写入器
-	GetFileWriter() io.Writer
+	// getFileWriter 获取文件写入器
+	getFileWriter() io.Writer
 
-	// GetConsoleWriter 获取控制台写入器
-	GetConsoleWriter() io.Writer
+	// getConsoleWriter 获取控制台写入器
+	getConsoleWriter() io.Writer
 
-	// GetColorLib 获取颜色库实例
-	GetColorLib() *colorlib.ColorLib
+	// getColorLib 获取颜色库实例
+	getColorLib() *colorlib.ColorLib
 
-	// GetContext 获取上下文，用于控制处理器生命周期
-	GetContext() context.Context
+	// getContext 获取上下文，用于控制处理器生命周期
+	getContext() context.Context
 
-	// GetLogChannel 获取日志消息通道
-	GetLogChannel() <-chan *logMsg
+	// getLogChannel 获取日志消息通道
+	getLogChannel() <-chan *logMsg
 
-	// NotifyProcessorDone 通知处理器完成工作
-	NotifyProcessorDone()
+	// notifyProcessorDone 通知处理器完成工作
+	notifyProcessorDone()
 }
 
 // WriterPair 写入器对，用于批量传递写入器
