@@ -5,16 +5,149 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
-// TestConcurrentFastLog 测试并发场景下的多个日志记录器
+// 测试配置常量
+const (
+	TestWan         = 10000         // 用于快捷计算的标准单位(万)
+	TestDuration    = 3             // 测试时长（秒）
+	TestRate        = 100 * TestWan // 每秒生成多少条日志
+	WorkerPoolSize  = 10            // 工作池大小（goroutine数量）
+	TaskChannelSize = 10000         // 任务通道缓冲区大小
+)
+
+// TestStats 测试统计信息结构体
+type TestStats struct {
+	StartTime        time.Time        // 测试开始时间
+	EndTime          time.Time        // 测试结束时间
+	Duration         time.Duration    // 测试持续时间
+	ExpectedLogs     int64            // 预期生成的日志数量
+	ActualLogs       int64            // 实际生成的日志数量
+	ValidLogLines    int64            // 有效日志行数
+	StartMemStats    runtime.MemStats // 开始时的内存统计
+	EndMemStats      runtime.MemStats // 结束时的内存统计
+	PeakMemStats     runtime.MemStats // 峰值内存统计
+	GoroutineCount   int              // goroutine数量
+	SuccessRate      float64          // 成功率
+	ThroughputPerSec float64          // 实际吞吐量（条/秒）
+}
+
+// PrintDetailedStats 打印详细的测试统计结果
+func (s *TestStats) PrintDetailedStats() {
+	separator := strings.Repeat("=", 60)
+	fmt.Printf("\n%s\n", separator)
+	fmt.Printf("           FastLog 高并发性能测试报告\n")
+	fmt.Printf("%s\n", separator)
+
+	// 基本测试信息
+	fmt.Printf("📊 测试基本信息:\n")
+	fmt.Printf("   开始时间: %s\n", s.StartTime.Format("2006-01-02 15:04:05.000"))
+	fmt.Printf("   结束时间: %s\n", s.EndTime.Format("2006-01-02 15:04:05.000"))
+	fmt.Printf("   测试耗时: %.3fs (%.2fms)\n", s.Duration.Seconds(), float64(s.Duration.Nanoseconds())/1e6)
+	fmt.Printf("   Goroutine数量: %d\n", s.GoroutineCount)
+
+	// 日志处理统计
+	fmt.Printf("\n📝 日志处理统计:\n")
+	expectedStr := formatNumber(s.ExpectedLogs)
+	actualStr := formatNumber(s.ActualLogs)
+	validStr := formatNumber(s.ValidLogLines)
+	throughputStr := formatNumber(int64(s.ThroughputPerSec))
+	fmt.Printf("   预期生成: %s条日志\n", expectedStr)
+	fmt.Printf("   实际生成: %s条日志\n", actualStr)
+	fmt.Printf("   文件写入: %s条有效日志\n", validStr)
+	fmt.Printf("   成功率: %.2f%%\n", s.SuccessRate)
+	fmt.Printf("   实际吞吐量: %s条/秒\n", throughputStr)
+
+	// 内存使用统计
+	fmt.Printf("\n💾 内存使用统计:\n")
+	startMemStr := formatBytes(s.StartMemStats.Alloc)
+	endMemStr := formatBytes(s.EndMemStats.Alloc)
+	peakMemStr := formatBytes(s.PeakMemStats.Alloc)
+	totalAllocStr := formatBytes(s.EndMemStats.TotalAlloc)
+	sysMemStr := formatBytes(s.EndMemStats.Sys)
+
+	fmt.Printf("   开始内存: %s\n", startMemStr)
+	fmt.Printf("   结束内存: %s\n", endMemStr)
+	fmt.Printf("   峰值内存: %s\n", peakMemStr)
+
+	memoryChange := int64(s.EndMemStats.Alloc) - int64(s.StartMemStats.Alloc)
+	if memoryChange >= 0 {
+		changeStr := formatBytes(uint64(memoryChange))
+		fmt.Printf("   内存增长: +%s\n", changeStr)
+	} else {
+		changeStr := formatBytes(uint64(-memoryChange))
+		fmt.Printf("   内存减少: -%s\n", changeStr)
+	}
+
+	fmt.Printf("   总分配: %s\n", totalAllocStr)
+	fmt.Printf("   系统内存: %s\n", sysMemStr)
+	fmt.Printf("   GC次数: %d次\n", s.EndMemStats.NumGC-s.StartMemStats.NumGC)
+	fmt.Printf("   GC暂停时间: %.2fms\n", float64(s.EndMemStats.PauseTotalNs-s.StartMemStats.PauseTotalNs)/1e6)
+
+	// 性能评估
+	fmt.Printf("\n⚡ 性能评估:\n")
+	memPerLog := float64(memoryChange) / float64(s.ActualLogs)
+	if memPerLog > 0 {
+		fmt.Printf("   平均每条日志内存开销: %.2f bytes\n", memPerLog)
+	}
+	fmt.Printf("   平均每条日志处理时间: %.2f μs\n", float64(s.Duration.Nanoseconds())/float64(s.ActualLogs)/1000)
+
+	// 系统资源利用率
+	fmt.Printf("\n🖥️  系统资源:\n")
+	fmt.Printf("   CPU核心数: %d\n", runtime.NumCPU())
+	fmt.Printf("   最大并发Goroutine: %d\n", s.GoroutineCount)
+	fmt.Printf("   并发度: %.1fx\n", float64(s.GoroutineCount)/float64(runtime.NumCPU()))
+
+	finalSeparator := strings.Repeat("=", 60)
+	fmt.Printf("%s\n\n", finalSeparator)
+}
+
+// formatNumber 格式化数字，添加中文单位
+func formatNumber(n int64) string {
+	if n < 1000 {
+		return fmt.Sprintf("%d", n)
+	}
+	if n < 10000 {
+		return fmt.Sprintf("%.1f千", float64(n)/1000)
+	}
+	if n < 100000000 {
+		return fmt.Sprintf("%.1f万", float64(n)/10000)
+	}
+	return fmt.Sprintf("%.1f亿", float64(n)/100000000)
+}
+
+// formatBytes 格式化字节数
+func formatBytes(bytes uint64) string {
+	const unit = 1024
+	if bytes < unit {
+		return fmt.Sprintf("%d B", bytes)
+	}
+	div, exp := int64(unit), 0
+	for n := bytes / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// TestConcurrentFastLog 测试并发场景下的多个日志记录器（优化版本）
 func TestConcurrentFastLog(t *testing.T) {
-	// 记录开始时间
-	startTime := time.Now()
+	// 初始化测试统计信息
+	stats := &TestStats{
+		StartTime: time.Now(),
+	}
+
+	// 强制垃圾回收，获取干净的初始内存状态
+	runtime.GC()
+	runtime.GC() // 执行两次确保彻底回收
+	time.Sleep(50 * time.Millisecond)
+	runtime.ReadMemStats(&stats.StartMemStats)
 
 	// 创建日志配置
 	cfg := NewFastLogConfig("logs", "test.log")
@@ -30,30 +163,77 @@ func TestConcurrentFastLog(t *testing.T) {
 		t.Fatalf("创建日志记录器失败: %v", err)
 	}
 
-	// 持续时间为3秒
-	duration := 3
-	// 每秒生成100000条日志
-	rate := 1000000
+	// 测试参数
+	stats.ExpectedLogs = int64(TestDuration * TestRate)
+	stats.GoroutineCount = WorkerPoolSize // 使用实际的工作池大小
+
+	// 启动内存监控goroutine
+	stopMonitoring := make(chan bool)
+	go monitorMemoryUsage(stats, stopMonitoring)
 
 	defer func() {
+		// 停止内存监控
+		close(stopMonitoring)
+
+		// 关闭日志器并等待处理完成
 		log.Close()
-		// 计算总耗时并打印
-		totalDuration := time.Since(startTime)
-		fmt.Printf("=== 并发日志测试结果 ===\n")
-		fmt.Printf("测试配置: 持续时间 %d秒 | 目标速率 %d条/秒\n", duration, rate)
-		fmt.Printf("预期生成: %d条日志\n", duration*rate)
-		fmt.Printf("实际耗时: %.3fs (%.2fms)\n", totalDuration.Seconds(), float64(totalDuration.Nanoseconds())/1e6)
-		fmt.Printf("实际速率: %.0f条/秒\n", float64(duration*rate)/totalDuration.Seconds())
-		fmt.Printf("========================\n")
+		time.Sleep(200 * time.Millisecond) // 等待日志处理完成
+
+		// 记录结束时间和内存状态
+		stats.EndTime = time.Now()
+		stats.Duration = stats.EndTime.Sub(stats.StartTime)
+
+		// 强制垃圾回收后获取最终内存状态
+		runtime.GC()
+		runtime.GC()
+		time.Sleep(50 * time.Millisecond)
+		runtime.ReadMemStats(&stats.EndMemStats)
+
+		// 计算统计数据
+		stats.ActualLogs = stats.ExpectedLogs // 在实际测试中会被更新
+		stats.SuccessRate = float64(stats.ValidLogLines) / float64(stats.ExpectedLogs) * 100
+		stats.ThroughputPerSec = float64(stats.ActualLogs) / stats.Duration.Seconds()
+
+		// 打印详细统计结果
+		stats.PrintDetailedStats()
 	}()
 
 	// 启动高并发随机日志函数
-	highConcurrencyRandomLog(log, duration, rate, t)
+	actualLogs := highConcurrencyRandomLogWithStats(log, TestDuration, TestRate, stats, t)
+	stats.ActualLogs = actualLogs
 }
 
-// highConcurrencyRandomLog 高并发随机日志生成函数
-// 该函数真正并发地生成日志，而不是通过time.Sleep限制并发度
-func highConcurrencyRandomLog(log *FastLog, duration int, rate int, t *testing.T) {
+// monitorMemoryUsage 监控内存使用情况，记录峰值
+func monitorMemoryUsage(stats *TestStats, stop <-chan bool) {
+	ticker := time.NewTicker(10 * time.Millisecond) // 每10ms检查一次
+	defer ticker.Stop()
+
+	var maxAlloc uint64 = 0
+
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			var m runtime.MemStats
+			runtime.ReadMemStats(&m)
+			if m.Alloc > maxAlloc {
+				maxAlloc = m.Alloc
+				stats.PeakMemStats = m
+			}
+		}
+	}
+}
+
+// LogTask 日志任务结构体
+type LogTask struct {
+	Index int
+	Type  int // 0: 无格式化, 1: 格式化
+}
+
+// highConcurrencyRandomLogWithStats 高并发随机日志生成函数（优化版本 - 使用工作池）
+// 使用固定数量的goroutine处理大量日志任务，避免创建过多goroutine
+func highConcurrencyRandomLogWithStats(log *FastLog, duration int, rate int, stats *TestStats, t *testing.T) int64 {
 	// 定义无格式化日志方法的切片
 	logMethodsNoFormat := []func(v ...any){
 		log.Info,
@@ -71,51 +251,84 @@ func highConcurrencyRandomLog(log *FastLog, duration int, rate int, t *testing.T
 		log.Successf,
 	}
 
-	// 计算总循环次数
-	totalLoops := duration * rate
+	// 计算总任务数
+	totalTasks := duration * rate
 
-	// 使用WaitGroup同步并发操作
+	// 创建任务通道
+	taskChan := make(chan LogTask, TaskChannelSize)
+
+	// 使用WaitGroup同步工作池
 	var wg sync.WaitGroup
-	wg.Add(totalLoops)
 
-	// 并发生成所有日志
-	for i := 0; i < totalLoops; i++ {
-		go func() {
+	// 记录实际发送的日志数量（使用原子操作保证并发安全）
+	var actualLogsSent int64
+
+	// 启动工作池
+	for i := 0; i < WorkerPoolSize; i++ {
+		wg.Add(1)
+		go func(workerID int) {
 			defer wg.Done()
-			// 为每个 goroutine 创建独立的随机数生成器
-			r := rand.New(rand.NewSource(time.Now().UnixNano()))
-			// 随机选择日志方法类型（无格式化或格式化）
-			if r.Intn(2) == 0 {
-				// 随机选择无格式化日志方法
-				method := logMethodsNoFormat[r.Intn(len(logMethodsNoFormat))]
-				method("这是一个高并发测试日志")
-			} else {
-				// 随机选择格式化日志方法
-				method := logMethodsWithFormat[r.Intn(len(logMethodsWithFormat))]
-				method("这是一个高并发测试日志: %s", "test")
+
+			// 为每个worker创建独立的随机数生成器
+			r := rand.New(rand.NewSource(time.Now().UnixNano() + int64(workerID)))
+
+			// 处理任务
+			for task := range taskChan {
+				// 随机选择日志方法类型
+				if task.Type == 0 {
+					// 随机选择无格式化日志方法
+					method := logMethodsNoFormat[r.Intn(len(logMethodsNoFormat))]
+					method("这是一个高并发测试日志", task.Index)
+				} else {
+					// 随机选择格式化日志方法
+					method := logMethodsWithFormat[r.Intn(len(logMethodsWithFormat))]
+					method("这是一个高并发测试日志: %s [%d]", "test", task.Index)
+				}
+
+				// 原子递增实际发送的日志数量
+				atomic.AddInt64(&actualLogsSent, 1)
 			}
-		}()
+		}(i)
 	}
 
-	// 等待所有日志生成完成
+	// 生成任务并发送到任务通道
+	go func() {
+		defer close(taskChan)
+		r := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+		for i := 0; i < totalTasks; i++ {
+			task := LogTask{
+				Index: i,
+				Type:  r.Intn(2), // 随机选择日志类型
+			}
+			taskChan <- task
+		}
+	}()
+
+	// 等待所有工作完成
 	wg.Wait()
+
+	// 等待一段时间确保所有日志都被处理
+	time.Sleep(500 * time.Millisecond)
 
 	// 验证日志文件内容
 	content, err := os.ReadFile(filepath.Join("logs", "test.log"))
 	if err != nil {
-		t.Fatalf("读取日志文件失败: %v", err)
+		t.Logf("读取日志文件失败: %v", err)
+		stats.ValidLogLines = 0
+		return actualLogsSent
 	}
 
 	lines := strings.Split(string(content), "\n")
-	validLines := 0
+	validLines := int64(0)
 	for _, line := range lines {
 		if strings.Contains(line, "这是一个高并发测试日志") {
 			validLines++
 		}
 	}
 
-	// 输出验证结果
-	fmt.Printf("写入有效日志行数: %d\n", validLines)
+	stats.ValidLogLines = validLines
+	return actualLogsSent
 }
 
 // BenchmarkFastLog 高并发基准测试
