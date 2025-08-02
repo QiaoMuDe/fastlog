@@ -67,7 +67,7 @@ type FastLog struct {
 	closeOnce sync.Once
 
 	// logrotatex 日志文件切割
-	logGer *logrotatex.LogRotateX
+	logger *logrotatex.LogRotateX
 
 	// 嵌入的配置结构体
 	config *FastLogConfig
@@ -147,7 +147,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logGer:          logger,                              // 日志文件切割器
+		logger:          logger,                              // 日志文件切割器
 		fileWriter:      fileWriter,                          // 文件写入器, 用于将日志写入文件
 		consoleWriter:   consoleWriter,                       // 控制台写入器, 用于将日志写入控制台
 		cl:              colorlib.NewColorLib(),              // 颜色库实例, 用于在终端中显示颜色
@@ -267,8 +267,8 @@ func (f *FastLog) Close() {
 		f.gracefulShutdown(closeCtx)
 
 		// 如果启用了文件写入器，则尝试关闭它。
-		if f.config.OutputToFile && f.logGer != nil {
-			if err := f.logGer.Close(); err != nil {
+		if f.config.OutputToFile && f.logger != nil {
+			if err := f.logger.Close(); err != nil {
 				f.cl.PrintErrf("关闭日志文件失败: %v\n", err)
 			}
 		}
