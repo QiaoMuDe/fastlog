@@ -47,7 +47,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		LogLevel:        INFO,                   // 日志级别 默认INFO
 		ChanIntSize:     10000,                  // 通道大小 增加到10000
 		FlushInterval:   500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
-		LogFormat:       Detailed,               // 日志格式选项
+		LogFormat:       Simple,                 // 日志格式选项
 		MaxLogFileSize:  10,                     // 最大日志文件大小, 单位为MB, 默认10MB
 		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
 		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
@@ -192,7 +192,7 @@ func (c *FastLogConfig) fixLogConfig() {
 
 	// 修正日志格式
 	if c.LogFormat < Detailed || c.LogFormat > Custom {
-		c.LogFormat = Detailed
+		c.LogFormat = Simple
 	}
 }
 

@@ -234,10 +234,8 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 	case Detailed:
 		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
 		tempBuffer.WriteString(" | ")
-
 		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
 		tempBuffer.WriteString(levelStr)
-
 		tempBuffer.WriteString(" | ")
 		tempBuffer.WriteString(logMsg.FileName) // 文件信息
 		tempBuffer.WriteByte(':')
@@ -251,10 +249,8 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 	case Simple:
 		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
 		tempBuffer.WriteString(" | ")
-
 		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
 		tempBuffer.WriteString(levelStr)
-
 		tempBuffer.WriteString(" | ")
 		tempBuffer.WriteString(logMsg.Message) // 消息
 
@@ -262,11 +258,9 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 	case Structured:
 		tempBuffer.WriteString("T:") // 时间戳
 		tempBuffer.WriteString(logMsg.Timestamp)
-		tempBuffer.WriteString("|L:") // 日志级别
-
+		tempBuffer.WriteString("|L:")                    // 日志级别
 		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
 		tempBuffer.WriteString(levelStr)
-
 		tempBuffer.WriteString("|F:") // 文件信息
 		tempBuffer.WriteString(logMsg.FileName)
 		tempBuffer.WriteByte(':')
@@ -275,6 +269,25 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 		tempBuffer.WriteString(strconv.Itoa(int(logMsg.Line)))
 		tempBuffer.WriteString("|M:") // 消息
 		tempBuffer.WriteString(logMsg.Message)
+
+	// 基础结构化格式(无文件信息)
+	case BasicStructured:
+		tempBuffer.WriteString("T:") // 时间戳
+		tempBuffer.WriteString(logMsg.Timestamp)
+		tempBuffer.WriteString("|L:")                    // 日志级别
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
+		tempBuffer.WriteString("|M:") // 消息
+		tempBuffer.WriteString(logMsg.Message)
+
+	// 简单时间格式
+	case SimpleTimestamp:
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" ")
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)                 // 日志级别
+		tempBuffer.WriteString(" ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
 
 	// 自定义格式
 	case Custom:

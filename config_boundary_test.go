@@ -172,15 +172,15 @@ func TestInvalidLogFormat(t *testing.T) {
 	// 测试无效的日志格式
 	cfg.LogFormat = LogFormatType(99)
 	cfg.fixFinalConfig()
-	if cfg.LogFormat != Detailed {
-		t.Errorf("无效日志格式应被修正为Detailed，实际为%d", cfg.LogFormat)
+	if cfg.LogFormat != Simple {
+		t.Errorf("无效日志格式应被修正为Simple，实际为%d", cfg.LogFormat)
 	}
 
 	// 测试负值日志格式
 	cfg.LogFormat = LogFormatType(-1)
 	cfg.fixFinalConfig()
-	if cfg.LogFormat != Detailed {
-		t.Errorf("负值日志格式应被修正为Detailed，实际为%d", cfg.LogFormat)
+	if cfg.LogFormat != Simple {
+		t.Errorf("负值日志格式应被修正为Simple，实际为%d", cfg.LogFormat)
 	}
 }
 

@@ -154,21 +154,24 @@ type LogFormatType int
 
 // 日志格式选项
 const (
-	Detailed   LogFormatType = iota // 详细格式
-	Json                            // json格式
-	Simple                          // 简约格式
-	Structured                      // 结构化格式
-	Custom                          // 自定义格式
+	Detailed        LogFormatType = iota // 详细格式
+	Json                                 // json格式
+	Simple                               // 简约格式
+	Structured                           // 结构化格式
+	BasicStructured                      // 基础结构化格式(无文件信息)
+	SimpleTimestamp                      // 简单时间格式
+	Custom                               // 自定义格式
 	//ExtendedStructured                      // 可扩展结构化格式
 )
 
 // 定义日志格式
 var logFormatMap = map[LogFormatType]string{
-	Json:       `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d","message":"%s"}`, // Json格式
-	Detailed:   `%s | %-7s | %s:%s:%d - %s`,                                                         // 详细格式
-	Simple:     `%s | %-7s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
-	Structured: `T:%s|L:%-7s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
-	// ExtendedStructured: `T:%s|L:%-7s|%s|M:%s`,                                                                         // 可扩展结构化格式
+	Json:            `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d","message":"%s"}`, // Json格式
+	Detailed:        `%s | %-7s | %s:%s:%d - %s`,                                                         // 详细格式
+	Simple:          `%s | %-7s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
+	Structured:      `T:%s|L:%-7s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
+	BasicStructured: `T:%s|L:%-7s|M:%s`,                                                                  // 基础结构化格式(无文件信息)
+	SimpleTimestamp: `%s %s %s`,                                                                          // 简单时间格式
 }
 
 // 文件名验证相关常量

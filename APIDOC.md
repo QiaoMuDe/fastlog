@@ -437,6 +437,8 @@ const (
     Json                            // json格式
     Simple                          // 简约格式
     Structured                      // 结构化格式
+    BasicStructured                 // 基础结构化格式(无文件信息)
+	SimpleTimestamp                 // 简单时间格式
     Custom                          // 自定义格式
 )
 ```

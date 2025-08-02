@@ -10,6 +10,13 @@ import (
 	"os"
 )
 
+/*====== 辅助函数 ======*/
+
+// needsFileInfo 判断日志格式是否需要文件信息
+func needsFileInfo(format LogFormatType) bool {
+	return format == Json || format == Detailed || format == Structured
+}
+
 /*====== 内部通用方法 ======*/
 
 // logWithLevel 通用日志记录方法
@@ -44,12 +51,22 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 		return
 	}
 
-	// 获取调用者的信息
-	filename, funcName, line, ok := getCallerInfo(skipFrames)
-	if !ok {
-		filename = "unknown"
+	// 调用者信息获取逻辑
+	var (
+		fileName = "unknown"
 		funcName = "unknown"
-		line = 0
+		line     uint16
+	)
+
+	// 仅当需要文件信息时才获取调用者信息
+	if needsFileInfo(l.config.LogFormat) {
+		var ok bool
+		fileName, funcName, line, ok = getCallerInfo(skipFrames)
+		if !ok {
+			fileName = "unknown"
+			funcName = "unknown"
+			line = 0
+		}
 	}
 
 	// 使用缓存的时间戳，减少重复的时间格式化开销
@@ -66,7 +83,7 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.Timestamp = timestamp // 时间戳
 	logMessage.Level = level         // 日志级别
 	logMessage.Message = message     // 日志消息
-	logMessage.FileName = filename   // 文件名
+	logMessage.FileName = fileName   // 文件名
 	logMessage.FuncName = funcName   // 函数名
 	logMessage.Line = line           // 行号
 

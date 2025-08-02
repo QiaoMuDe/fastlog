@@ -267,10 +267,12 @@ func generateLargeString(size int) []byte {
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
 	formats := map[LogFormatType]string{
-		Detailed:   "detailed.log",
-		Json:       "json.log",
-		Structured: "structured.log",
-		Simple:     "simple.log",
+		Detailed:        "detailed.log",
+		Json:            "json.log",
+		Structured:      "structured.log",
+		Simple:          "simple.log",
+		BasicStructured: "basic_structured.log",
+		SimpleTimestamp: "simple_timestamp.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		Custom: "custom.log",
 	}
@@ -282,7 +284,7 @@ func TestLogFormats(t *testing.T) {
 			cfg := NewFastLogConfig("logs", filename)
 			cfg.LogLevel = DEBUG
 			cfg.LogFormat = format
-			cfg.OutputToConsole = true // 禁用控制台输出，避免测试干扰
+			cfg.OutputToConsole = true
 
 			// 创建日志记录器
 			log, err := NewFastLog(cfg)
