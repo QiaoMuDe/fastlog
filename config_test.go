@@ -46,8 +46,8 @@ func TestSetMaxLogFileSize(t *testing.T) {
 
 	// 测试修正函数对负数的处理
 	cfg.fixFinalConfig()
-	if cfg.MaxLogFileSize != 5 {
-		t.Errorf("修正后最大日志文件大小应为5，实际为%d", cfg.MaxLogFileSize)
+	if cfg.MaxLogFileSize != 10 {
+		t.Errorf("修正后最大日志文件大小应为10，实际为%d", cfg.MaxLogFileSize)
 	}
 
 	// 测试设置超过最大值

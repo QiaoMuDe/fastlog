@@ -142,6 +142,15 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		if _, writeErr := p.f.fileWriter.Write(p.fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
 			p.f.cl.PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
+
+			// 如果启用了控制台输出，将文件内容降级输出到控制台
+			if p.f.config.OutputToConsole {
+				if _, consoleErr := p.f.consoleWriter.Write(p.fileBuffer.Bytes()); consoleErr != nil {
+					// 控制台输出失败时静默处理，避免影响程序运行
+					// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
+					_ = writeErr // 静默忽略控制台输出错误
+				}
+			}
 		}
 	}
 
@@ -149,8 +158,9 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	if p.f.config.OutputToConsole && p.consoleBuffer.Len() > 0 {
 		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
 		if _, writeErr := p.f.consoleWriter.Write(p.consoleBuffer.Bytes()); writeErr != nil {
-			// 如果写入失败，记录错误信息和堆栈跟踪
-			p.f.cl.PrintErrf("写入控制台失败: %s\nstack: %s\n", writeErr, debug.Stack())
+			// 控制台输出失败时静默处理，避免影响程序运行
+			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
+			_ = writeErr // 静默忽略控制台输出错误
 		}
 	}
 

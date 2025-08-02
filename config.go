@@ -51,7 +51,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		MaxLogFileSize:  10,                     // 最大日志文件大小, 单位为MB, 默认10MB
 		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
 		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:     false,                  // 是否使用本地时间 默认使用UTC时间
+		IsLocalTime:     true,                   // 是否使用本地时间 默认使用本地时间
 		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
 		NoColor:         false,                  // 是否禁用终端颜色
 		NoBold:          false,                  // 是否禁用终端字体加粗
