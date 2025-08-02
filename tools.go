@@ -371,24 +371,15 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 		return true
 	}
 
-	// 安全的通道使用率计算，防止整数溢出
-	// 使用64位整数进行计算，然后转换回int
+	// 简化的通道使用率计算（针对实际使用场景优化）
+	// 在实际应用中，通道容量很少超过百万级别，溢出风险极低
 	var channelUsage int
-	if chanLen > 0 && chanCap > 0 {
-		// 检查是否可能发生溢出 (chanLen * 100 > MaxInt)
-		if chanLen <= (1<<31-1)/100 { // 对于32位系统的安全检查
-			channelUsage = (chanLen * 100) / chanCap
-		} else {
-			// 使用64位计算防止溢出
-			usage64 := (int64(chanLen) * 100) / int64(chanCap)
-			if usage64 > 100 {
-				channelUsage = 100 // 限制最大值为100%
-			} else {
-				channelUsage = int(usage64)
-			}
+	if chanCap > 0 {
+		channelUsage = (chanLen * 100) / chanCap
+		// 简单的边界检查，防止计算错误
+		if channelUsage > 100 {
+			channelUsage = 100
 		}
-	} else {
-		channelUsage = 0
 	}
 
 	// 根据通道使用率决定是否丢弃日志, 按照日志级别重要性递增
