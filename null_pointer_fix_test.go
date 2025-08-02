@@ -1,6 +1,7 @@
 /*
-null_pointer_fix_test.go - 空指针修复验证测试
-验证对关键路径空指针检查修复的有效性，确保在各种异常情况下系统不会panic
+null_pointer_fix_test.go - 空指针修复验证测试文件
+验证对关键路径空指针检查修复的有效性，确保在各种异常情况下系统不会panic，
+包含高并发稳定性测试、资源耗尽处理测试和对象池安全性验证。
 */
 package fastlog
 

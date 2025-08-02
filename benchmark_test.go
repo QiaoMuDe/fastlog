@@ -1,3 +1,8 @@
+/*
+benchmark_test.go - FastLog性能基准测试文件
+包含对背压控制函数、数据类型性能对比等关键功能的基准测试，
+用于评估和优化FastLog在高负载场景下的性能表现。
+*/
 package fastlog
 
 import (
