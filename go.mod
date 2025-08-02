@@ -4,4 +4,4 @@ go 1.24.4
 
 require gitee.com/MM-Q/colorlib v1.2.4
 
-require gitee.com/MM-Q/logrotatex v0.0.5
+require gitee.com/MM-Q/logrotatex v1.0.0
