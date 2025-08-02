@@ -9,34 +9,8 @@ import (
 	"bytes"
 	"runtime/debug"
 	"strings"
-	"sync"
 	"time"
 )
-
-// 字符串构建器对象池，用于复用临时字符串构建器，减少内存分配
-var stringBuilderPool = sync.Pool{
-	New: func() interface{} {
-		return &strings.Builder{}
-	},
-}
-
-// getStringBuilder 从对象池获取字符串构建器，使用安全的类型断言
-func getStringBuilder() *strings.Builder {
-	// 方式1: 安全的类型断言 (推荐)
-	if builder, ok := stringBuilderPool.Get().(*strings.Builder); ok {
-		return builder
-	}
-	// 如果类型断言失败，创建新的构建器作为fallback
-	return &strings.Builder{}
-}
-
-// putStringBuilder 将字符串构建器归还到对象池
-func putStringBuilder(builder *strings.Builder) {
-	if builder != nil {
-		builder.Reset()                // 重置构建器内容
-		stringBuilderPool.Put(builder) // 归还到对象池
-	}
-}
 
 // processor 单线程日志处理器
 type processor struct {

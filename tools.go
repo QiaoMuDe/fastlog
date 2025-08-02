@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 
 	"gitee.com/MM-Q/colorlib"
 )
@@ -220,12 +221,14 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		}
 		return string(jsonBytes)
 
-	// 详细格式 - 使用 strings.Builder 优化
+	// 详细格式 - 使用 stringBuilderPool 优化
 	case Detailed:
+		// 从对象池获取字符串构建器
+		builder := getStringBuilder()
+		defer putStringBuilder(builder)
+
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
 		estimatedSize := 80 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
-
-		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
 		builder.WriteString(logMsg.Timestamp)
@@ -248,12 +251,14 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 
 		return builder.String()
 
-	// 简约格式 - 使用 strings.Builder 优化
+	// 简约格式 - 使用 stringBuilderPool 优化
 	case Simple:
+		// 从对象池获取字符串构建器
+		builder := getStringBuilder()
+		defer putStringBuilder(builder)
+
 		// 动态计算容量: 80 + 消息长度
 		estimatedSize := 80 + len(logMsg.Message)
-
-		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
 		builder.WriteString(logMsg.Timestamp)
@@ -270,11 +275,13 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 
 		return builder.String()
 
-	// 结构化格式 - 使用 strings.Builder 优化
+	// 结构化格式 - 使用 stringBuilderPool 优化
 	case Structured:
-		estimatedSize := 100 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
+		// 从对象池获取字符串构建器
+		builder := getStringBuilder()
+		defer putStringBuilder(builder)
 
-		var builder strings.Builder
+		estimatedSize := 100 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
 		builder.Grow(estimatedSize)
 
 		builder.WriteString("T:") // 时间戳
@@ -385,5 +392,30 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 		return level < INFO
 	default:
 		return false // 70%以下不丢弃任何日志
+	}
+}
+
+// 字符串构建器对象池，用于复用临时字符串构建器，减少内存分配
+var stringBuilderPool = sync.Pool{
+	New: func() any {
+		return &strings.Builder{}
+	},
+}
+
+// getStringBuilder 从对象池获取字符串构建器，使用安全的类型断言
+func getStringBuilder() *strings.Builder {
+	// 方式1: 安全的类型断言 (推荐)
+	if builder, ok := stringBuilderPool.Get().(*strings.Builder); ok {
+		return builder
+	}
+	// 如果类型断言失败，创建新的构建器作为fallback
+	return &strings.Builder{}
+}
+
+// putStringBuilder 将字符串构建器归还到对象池
+func putStringBuilder(builder *strings.Builder) {
+	if builder != nil {
+		builder.Reset()                // 重置构建器内容
+		stringBuilderPool.Put(builder) // 归还到对象池
 	}
 }
