@@ -193,24 +193,16 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	}
 }
 
-// formatLogWithDeps 使用依赖接口格式化日志消息
+// formatLogWithDeps 使用依赖接口格式化日志消息（优化版本，直接调用纯函数）
 func (p *processor) formatLogWithDeps(logMsg *logMsg) string {
-	// 创建临时的FastLog结构用于兼容现有的formatLog函数
-	tempFastLog := &FastLog{
-		config: p.deps.GetConfig(),
-		cl:     p.deps.GetColorLib(),
-	}
-	return formatLog(tempFastLog, logMsg)
+	// 直接调用纯函数版本，避免创建临时对象
+	return formatLogMessage(p.deps.GetConfig(), logMsg)
 }
 
-// addColorWithDeps 使用依赖接口添加颜色
+// addColorWithDeps 使用依赖接口添加颜色（优化版本，直接调用纯函数）
 func (p *processor) addColorWithDeps(logMsg *logMsg, formattedMsg string) string {
-	// 创建临时的FastLog结构用于兼容现有的addColor函数
-	tempFastLog := &FastLog{
-		config: p.deps.GetConfig(),
-		cl:     p.deps.GetColorLib(),
-	}
-	return addColor(tempFastLog, logMsg, formattedMsg)
+	// 直接调用纯函数版本，避免创建临时对象
+	return addColorToMessage(p.deps.GetColorLib(), logMsg.Level, formattedMsg)
 }
 
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新

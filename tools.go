@@ -12,6 +12,8 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+
+	"gitee.com/MM-Q/colorlib"
 )
 
 // checkPath 检查给定路径的信息
@@ -124,7 +126,41 @@ func logLevelToString(level LogLevel) string {
 	}
 }
 
-// addColor 根据日志级别添加颜色
+// addColorToMessage 根据日志级别为消息添加颜色（纯函数版本）
+//
+// 参数：
+//   - cl: 颜色库实例
+//   - level: 日志级别
+//   - message: 原始消息字符串
+//
+// 返回值:
+//   - string: 带有颜色的字符串
+func addColorToMessage(cl *colorlib.ColorLib, level LogLevel, message string) string {
+	// 添加空指针检查
+	if cl == nil {
+		return message
+	}
+
+	// 根据日志级别添加颜色
+	switch level {
+	case INFO:
+		return cl.Sblue(message) // Blue
+	case WARN:
+		return cl.Syellow(message) // Yellow
+	case ERROR:
+		return cl.Sred(message) // Red
+	case SUCCESS:
+		return cl.Sgreen(message) // Green
+	case DEBUG:
+		return cl.Spurple(message) // Purple
+	case FATAL:
+		return cl.Sred(message) // Red
+	default:
+		return message // 如果没有匹配到日志级别, 返回原始字符串
+	}
+}
+
+// addColor 根据日志级别添加颜色（兼容性包装器）
 //
 // 参数：
 //   - f: FastLog 实例
@@ -136,86 +172,54 @@ func logLevelToString(level LogLevel) string {
 func addColor(f *FastLog, l *logMsg, s string) string {
 	// 添加空指针检查
 	if f == nil || l == nil || f.cl == nil {
-		return s // 如果任何参数为nil, 返回原始字符串
+		return s
 	}
 
-	// 根据匹配到的日志级别添加颜色
-	switch l.Level {
-	case INFO:
-		return f.cl.Sblue(s) // Blue
-	case WARN:
-		return f.cl.Syellow(s) // Yellow
-	case ERROR:
-		return f.cl.Sred(s) // Red
-	case SUCCESS:
-		return f.cl.Sgreen(s) // Green
-	case DEBUG:
-		return f.cl.Spurple(s) // Purple
-	case FATAL:
-		return f.cl.Sred(s) // Red
-	default:
-		return s // 如果没有匹配到日志级别, 返回原始字符串
-	}
+	// 调用新的纯函数版本
+	return addColorToMessage(f.cl, l.Level, s)
 }
 
-// formatLog 格式化日志消息（优化版本, 使用 strings.Builder 提升性能）
+// formatLogMessage 格式化日志消息（纯函数版本，优化版本, 使用 strings.Builder 提升性能）
 //
 // 参数：
-//   - f: FastLog 实例
-//   - l: 日志消息
+//   - config: 日志配置
+//   - logMsg: 日志消息
 //
 // 返回值:
 //   - string: 格式化后的日志消息
-func formatLog(f *FastLog, l *logMsg) string {
-	if f == nil || l == nil {
-		return "" // 如果 FastLog 或 logMessage 为 nil, 返回空字符串
+func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
+	if config == nil || logMsg == nil {
+		return "" // 如果配置或日志消息为 nil, 返回空字符串
 	}
 
 	// 预先格式化公共部分, 避免重复计算
-	levelStr := logLevelToString(l.Level)
+	levelStr := logLevelToString(logMsg.Level)
 
 	// 根据日志格式选项, 格式化日志消息
-	switch f.config.LogFormat {
+	switch config.LogFormat {
 	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂, 解析开销可接受）
 	case Json:
-		// 构建json数据
-		logData := logMsg{
-			Timestamp: l.Timestamp, // 格式化时间
-			Level:     l.Level,     // 格式化日志级别
-			FileName:  l.FileName,  // 文件名
-			FuncName:  l.FuncName,  // 函数名
-			Line:      l.Line,      // 行号
-			Message:   l.Message,   // 日志消息
-		}
-
-		// 编码json
-		jsonBytes, err := json.Marshal(logData)
+		// 直接序列化传入的logMsg结构体
+		jsonBytes, err := json.Marshal(logMsg)
 		if err != nil {
-			// 使用字符串池处理json编码失败的情况
-			logData.Message = fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, l.Message)
-
-			// 再次尝试序列化, 如果还失败就使用最基本的格式
-			if fallbackBytes, fallbackErr := json.Marshal(logData); fallbackErr == nil {
-				return string(fallbackBytes)
-			} else {
-				// 最后的兜底方案：手动构建JSON字符串
-				return fmt.Sprintf(
-					logFormatMap[Json],
-					l.Timestamp, levelStr, "unknown", "unknown", 0, logData.Message,
-				)
-			}
+			// JSON编码失败时的兜底方案：手动构建JSON字符串
+			return fmt.Sprintf(
+				logFormatMap[Json],
+				logMsg.Timestamp, levelStr, "unknown", "unknown", 0,
+				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
+			)
 		}
 		return string(jsonBytes)
 
 	// 详细格式 - 使用 strings.Builder 优化
 	case Detailed:
 		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 80 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(logMsg.Timestamp)
 		builder.WriteString(" | ")
 
 		// 格式化日志级别, 左对齐7个字符
@@ -225,25 +229,25 @@ func formatLog(f *FastLog, l *logMsg) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.FileName)
+		builder.WriteString(logMsg.FileName)
 		builder.WriteByte(':')
-		builder.WriteString(l.FuncName)
+		builder.WriteString(logMsg.FuncName)
 		builder.WriteByte(':')
-		builder.WriteString(strconv.Itoa(int(l.Line)))
+		builder.WriteString(strconv.Itoa(int(logMsg.Line)))
 		builder.WriteString(" - ")
-		builder.WriteString(l.Message)
+		builder.WriteString(logMsg.Message)
 
 		return builder.String()
 
 	// 简约格式 - 使用 strings.Builder 优化
 	case Simple:
-		// 动态计算容量: 80 + 消息长度 + 文件名长度 + 函数名长度
-		estimatedSize := 80 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		// 动态计算容量: 80 + 消息长度
+		estimatedSize := 80 + len(logMsg.Message)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(logMsg.Timestamp)
 		builder.WriteString(" | ")
 
 		// 格式化日志级别, 左对齐7个字符
@@ -253,19 +257,19 @@ func formatLog(f *FastLog, l *logMsg) string {
 		}
 
 		builder.WriteString(" | ")
-		builder.WriteString(l.Message)
+		builder.WriteString(logMsg.Message)
 
 		return builder.String()
 
 	// 结构化格式 - 使用 strings.Builder 优化
 	case Structured:
-		estimatedSize := 100 + len(l.Message) + len(l.FileName) + len(l.FuncName)
+		estimatedSize := 100 + len(logMsg.Message) + len(logMsg.FileName) + len(logMsg.FuncName)
 
 		var builder strings.Builder
 		builder.Grow(estimatedSize)
 
 		builder.WriteString("T:") // 时间戳
-		builder.WriteString(l.Timestamp)
+		builder.WriteString(logMsg.Timestamp)
 		builder.WriteString("|L:") // 格式化日志级别, 左对齐7个字符
 
 		// 格式化日志级别, 左对齐7个字符
@@ -275,24 +279,41 @@ func formatLog(f *FastLog, l *logMsg) string {
 		}
 
 		builder.WriteString("|F:") // 文件信息
-		builder.WriteString(l.FileName)
+		builder.WriteString(logMsg.FileName)
 		builder.WriteByte(':')
-		builder.WriteString(l.FuncName)
+		builder.WriteString(logMsg.FuncName)
 		builder.WriteByte(':')
-		builder.WriteString(strconv.Itoa(int(l.Line)))
+		builder.WriteString(strconv.Itoa(int(logMsg.Line)))
 		builder.WriteString("|M:") // 消息
-		builder.WriteString(l.Message)
+		builder.WriteString(logMsg.Message)
 
 		return builder.String()
 
 	// 自定义格式
 	case Custom:
-		return l.Message
+		return logMsg.Message
 
 	// 无法识别的日志格式选项
 	default:
-		return fmt.Sprintf("无法识别的日志格式选项: %v", f.config.LogFormat)
+		return fmt.Sprintf("无法识别的日志格式选项: %v", config.LogFormat)
 	}
+}
+
+// formatLog 格式化日志消息（兼容性包装器）
+//
+// 参数：
+//   - f: FastLog 实例
+//   - l: 日志消息
+//
+// 返回值:
+//   - string: 格式化后的日志消息
+func formatLog(f *FastLog, l *logMsg) string {
+	if f == nil || l == nil {
+		return ""
+	}
+
+	// 调用新的纯函数版本
+	return formatLogMessage(f.config, l)
 }
 
 // shouldDropLogByBackpressure 根据通道背压情况判断是否应该丢弃日志
