@@ -130,22 +130,13 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		// 拼接日志文件路径
 		logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
-		// 检查日志目录是否存在, 如果不存在则创建。
-		if _, checkPathErr := checkPath(cfg.LogDirName); checkPathErr != nil {
-			if mkdirErr := os.MkdirAll(cfg.LogDirName, 0755); mkdirErr != nil {
-				return nil, fmt.Errorf("创建日志目录失败: %s", mkdirErr)
-			}
-		}
-
 		// 初始化日志文件切割器
-		logger = &logrotatex.LogRotateX{
-			Filename:   logFilePath,        // 日志文件路径,
-			MaxSize:    cfg.MaxLogFileSize, // 最大日志文件大小, 单位为MB
-			MaxAge:     cfg.MaxLogAge,      // 最大日志文件保留天数
-			MaxBackups: cfg.MaxLogBackups,  // 最大日志文件保留数量
-			LocalTime:  cfg.IsLocalTime,    // 是否使用本地时间
-			Compress:   cfg.EnableCompress, // 是否启用日志文件压缩
-		}
+		logger = logrotatex.New(logFilePath)  // 初始化日志文件切割器
+		logger.MaxSize = cfg.MaxLogFileSize   // 最大日志文件大小, 单位为MB
+		logger.MaxAge = cfg.MaxLogAge         // 最大日志文件保留天数
+		logger.MaxBackups = cfg.MaxLogBackups // 最大日志文件保留数量
+		logger.Compress = cfg.EnableCompress  // 是否启用日志文件压缩
+		logger.LocalTime = cfg.IsLocalTime    // 是否使用本地时间
 
 		fileWriter = logger // 初始化文件写入器
 	} else {
