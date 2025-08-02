@@ -35,8 +35,9 @@ func TestNullPointerProtection(t *testing.T) {
 
 	t.Run("empty format string", func(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "test.log")
-		cfg.OutputToConsole = false
+		cfg.OutputToConsole = true
 		cfg.OutputToFile = false
+		cfg.LogLevel = NONE // 设置为NONE级别，避免实际输出日志
 
 		logger, err := NewFastLog(cfg)
 		if err != nil {

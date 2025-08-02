@@ -47,7 +47,7 @@ func TestCircularDependencyFixed(t *testing.T) {
 func TestProcessorDependencyInterface(t *testing.T) {
 	// 创建配置
 	config := NewFastLogConfig("logs", "test.log")
-	config.OutputToConsole = false
+	config.OutputToConsole = true
 	config.OutputToFile = false
 
 	// 创建日志实例
@@ -100,8 +100,9 @@ func TestMemoryLeakPrevention(t *testing.T) {
 	// 创建和销毁多个日志实例
 	for i := 0; i < 10; i++ {
 		config := NewFastLogConfig("logs", "test.log")
-		config.OutputToConsole = false
+		config.OutputToConsole = true
 		config.OutputToFile = false
+		config.LogLevel = NONE // 设置为NONE级别，避免实际输出日志
 		config.ChanIntSize = 5
 
 		logger, err := NewFastLog(config)
