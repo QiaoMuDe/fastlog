@@ -20,11 +20,11 @@ import (
 
 // 测试配置常量
 const (
-	TestWan         = 10000         // 用于快捷计算的标准单位(万)
-	TestDuration    = 3             // 测试时长（秒）
-	TestRate        = 100 * TestWan // 每秒生成多少条日志
-	WorkerPoolSize  = 10            // 工作池大小（goroutine数量）
-	TaskChannelSize = 10000         // 任务通道缓冲区大小
+	TestWan         = 10000        // 用于快捷计算的标准单位(万)
+	TestDuration    = 3            // 测试时长（秒）
+	TestRate        = 30 * TestWan // 每秒生成多少条日志
+	WorkerPoolSize  = 10           // 工作池大小（goroutine数量）
+	TaskChannelSize = 10000        // 任务通道缓冲区大小
 )
 
 // TestStats 测试统计信息结构体
