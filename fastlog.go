@@ -20,10 +20,22 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// 简写实现
+// 为了提供更简洁的API调用方式，定义以下函数别名:
+// 这样用户可以使用更短的函数名来创建日志实例和配置
 var (
-	NewFlog = NewFastLog
-	NewFcfg = NewFastLogConfig
+	// New 是 NewFastLog 的简写别名
+	//
+	// 用法: logger, err := fastlog.New(config)
+	//
+	// 等价于: logger, err := fastlog.NewFastLog(config)
+	New = NewFastLog
+
+	// NewCfg 是 NewFastLogConfig 的简写别名
+	//
+	// 用法: config := fastlog.NewCfg()
+	//
+	// 等价于: config := fastlog.NewFastLogConfig()
+	NewCfg = NewFastLogConfig
 )
 
 // FastLog 日志记录器

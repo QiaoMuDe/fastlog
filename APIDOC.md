@@ -4,22 +4,12 @@ Package `fastlog` (import: `"gitee.com/MM-Q/fastlog"`)
 
 ## Module Overview
 
-- `config.go` - 日志配置管理模块  
-  定义日志配置结构体及配置项的设置与获取方法，负责管理FastLog的所有可配置参数。
-
-- `fastlog.go` - FastLog日志记录器核心实现  
-  提供日志记录器的创建、初始化、日志写入及关闭等核心功能，集成配置管理、缓冲区管理和日志处理流程。
-
-- `logger.go` - 日志记录方法实现  
-  提供不同级别日志的记录方法（带占位符和不带占位符），实现日志级别过滤和调用者信息获取功能。
-
-- `processor.go` - 单线程日志处理器实现  
-  负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理，实现日志的批量格式化和输出。
-
-- `tools.go` - 工具函数集合  
-  提供路径检查、调用者信息获取、协程ID获取、日志格式化和颜色添加等辅助功能。
-
-- `types.go` - 日志系统核心类型定义  
+- `config.go` - 日志配置管理模块定义日志配置结构体及配置项的设置与获取方法，负责管理FastLog的所有可配置参数。
+- `fastlog.go` - FastLog日志记录器核心实现提供日志记录器的创建、初始化、日志写入及关闭等核心功能，集成配置管理、缓冲区管理和日志处理流程。
+- `logger.go` - 日志记录方法实现提供不同级别日志的记录方法（带占位符和不带占位符），实现日志级别过滤和调用者信息获取功能。
+- `processor.go` - 单线程日志处理器实现负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理，实现日志的批量格式化和输出。
+- `tools.go` - 工具函数集合提供路径检查、调用者信息获取、协程ID获取、日志格式化和颜色添加等辅助功能。
+- `types.go` - 日志系统核心类型定义
   定义FastLog的核心数据结构、常量和枚举类型，包括日志级别、日志格式、路径信息和日志消息结构体等。
 
 ## Variables
@@ -54,9 +44,11 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error)
 NewFastLog 创建一个新的FastLog实例, 用于记录日志。
 
 参数:
+
 - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 
 返回值:
+
 - *FastLog: 一个指向FastLog实例的指针。
 - error: 如果创建日志记录器失败, 则返回一个错误。
 
@@ -77,6 +69,7 @@ func (l *FastLog) Debug(v ...any)
 Debug 记录调试级别的日志，不支持占位符
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Debugf
@@ -88,6 +81,7 @@ func (l *FastLog) Debugf(format string, v ...any)
 Debugf 记录调试级别的日志，支持占位符，格式化
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -100,6 +94,7 @@ func (l *FastLog) Error(v ...any)
 Error 记录错误级别的日志，不支持占位符
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Errorf
@@ -111,6 +106,7 @@ func (l *FastLog) Errorf(format string, v ...any)
 Errorf 记录错误级别的日志，支持占位符，格式化
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -123,6 +119,7 @@ func (l *FastLog) Fatal(v ...any)
 Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Fatalf
@@ -134,6 +131,7 @@ func (l *FastLog) Fatalf(format string, v ...any)
 Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -146,6 +144,7 @@ func (l *FastLog) Info(v ...any)
 Info 记录信息级别的日志，不支持占位符
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Infof
@@ -157,6 +156,7 @@ func (l *FastLog) Infof(format string, v ...any)
 Infof 记录信息级别的日志，支持占位符，格式化
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -169,6 +169,7 @@ func (l *FastLog) Success(v ...any)
 Success 记录成功级别的日志，不支持占位符
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Successf
@@ -180,6 +181,7 @@ func (l *FastLog) Successf(format string, v ...any)
 Successf 记录成功级别的日志，支持占位符，格式化
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -192,6 +194,7 @@ func (l *FastLog) Warn(v ...any)
 Warn 记录警告级别的日志，不支持占位符
 
 参数:
+
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
 #### Warnf
@@ -203,6 +206,7 @@ func (l *FastLog) Warnf(format string, v ...any)
 Warnf 记录警告级别的日志，支持占位符，格式化
 
 参数:
+
 - format: 格式字符串
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
@@ -241,10 +245,12 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig
 NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
 
 参数:
+
 - logDirName: 日志目录名称, 默认为"applogs"。
 - logFileName: 日志文件名称, 默认为"app.log"。
 
 返回值:
+
 - *FastLogConfig: 一个指向FastLogConfig实例的指针。
 
 ---
