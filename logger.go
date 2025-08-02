@@ -8,7 +8,6 @@ package fastlog
 import (
 	"fmt"
 	"os"
-	"time"
 )
 
 /*====== 内部通用方法 ======*/
@@ -53,8 +52,8 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 		line = 0
 	}
 
-	// 直接获取当前时间，避免不必要的转换
-	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	// 使用缓存的时间戳，减少重复的时间格式化开销
+	timestamp := getCachedTimestamp()
 
 	// 从对象池获取日志消息对象，增加安全检查
 	logMessage := getLogMsg()

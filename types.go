@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// 预构建的日志级别到字符串的映射表，提升查询效率
+// 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
 var logLevelStringMap = map[LogLevel]string{
 	DEBUG:   "DEBUG",
 	INFO:    "INFO",
@@ -19,6 +19,17 @@ var logLevelStringMap = map[LogLevel]string{
 	ERROR:   "ERROR",
 	FATAL:   "FATAL",
 	NONE:    "NONE",
+}
+
+// 预构建的日志级别到字符串的映射表（带填充，用于文本格式化）
+var logLevelPaddedStringMap = map[LogLevel]string{
+	DEBUG:   "DEBUG  ", // 7个字符(预填充空格)
+	INFO:    "INFO   ", // 7个字符
+	SUCCESS: "SUCCESS", // 7个字符
+	WARN:    "WARN   ", // 7个字符
+	ERROR:   "ERROR  ", // 7个字符
+	FATAL:   "FATAL  ", // 7个字符
+	NONE:    "NONE   ", // 7个字符
 }
 
 // PathInfo 是一个结构体，用于封装路径的信息

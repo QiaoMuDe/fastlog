@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"gitee.com/MM-Q/colorlib"
 )
@@ -98,7 +99,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	return
 }
 
-// logLevelToString 将 LogLevel 转换为对应的字符串, 并以大写形式返回
+// logLevelToString 将 LogLevel 转换为对应的字符串（不带填充，用于JSON序列化）
 //
 // 参数：
 //   - level: 要转换的日志级别
@@ -106,8 +107,23 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 // 返回值：
 //   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
-	// 使用预构建的映射表进行O(1)查询
+	// 使用预构建的映射表进行O(1)查询（不带填充，适用于JSON）
 	if str, exists := logLevelStringMap[level]; exists {
+		return str
+	}
+	return "UNKNOWN"
+}
+
+// logLevelToPaddedString 将 LogLevel 转换为带填充的字符串（用于文本格式化）
+//
+// 参数：
+//   - level: 要转换的日志级别
+//
+// 返回值：
+//   - string: 对应的带填充的日志级别字符串（7个字符），如果 level 无效, 则返回 "UNKNOWN"
+func logLevelToPaddedString(level LogLevel) string {
+	// 使用预构建的带填充映射表进行O(1)查询（适用于文本格式）
+	if str, exists := logLevelPaddedStringMap[level]; exists {
 		return str
 	}
 	return "UNKNOWN"
@@ -202,17 +218,15 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		logMsg.FuncName = "unknown-func"
 	}
 
-	// 预先格式化公共部分, 避免重复计算
-	levelStr := logLevelToString(logMsg.Level)
-
 	// 根据日志格式选项, 格式化日志消息
 	switch config.LogFormat {
-	// Json格式 - 保持使用 fmt.Sprintf（JSON格式复杂, 解析开销可接受）
+	// Json格式 - 直接序列化，使用不带填充的日志级别
 	case Json:
 		// 直接序列化传入的logMsg结构体
 		jsonBytes, err := json.Marshal(logMsg)
 		if err != nil {
 			// JSON编码失败时的兜底方案：手动构建JSON字符串
+			levelStr := logLevelToString(logMsg.Level) // JSON格式使用不带填充的级别字符串
 			return fmt.Sprintf(
 				logFormatMap[Json],
 				logMsg.Timestamp, levelStr, "unknown", "unknown", 0,
@@ -221,7 +235,7 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		}
 		return string(jsonBytes)
 
-	// 详细格式 - 使用 stringBuilderPool 优化
+	// 详细格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
 	case Detailed:
 		// 从对象池获取字符串构建器
 		builder := getStringBuilder()
@@ -234,11 +248,9 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		builder.WriteString(logMsg.Timestamp)
 		builder.WriteString(" | ")
 
-		// 格式化日志级别, 左对齐7个字符
+		// 使用预填充的日志级别字符串，无需手动填充空格
+		levelStr := logLevelToPaddedString(logMsg.Level)
 		builder.WriteString(levelStr)
-		for i := len(levelStr); i < 7; i++ {
-			builder.WriteByte(' ')
-		}
 
 		builder.WriteString(" | ")
 		builder.WriteString(logMsg.FileName)
@@ -251,7 +263,7 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 
 		return builder.String()
 
-	// 简约格式 - 使用 stringBuilderPool 优化
+	// 简约格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
 	case Simple:
 		// 从对象池获取字符串构建器
 		builder := getStringBuilder()
@@ -264,18 +276,16 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 		builder.WriteString(logMsg.Timestamp)
 		builder.WriteString(" | ")
 
-		// 格式化日志级别, 左对齐7个字符
+		// 使用预填充的日志级别字符串，无需手动填充空格
+		levelStr := logLevelToPaddedString(logMsg.Level)
 		builder.WriteString(levelStr)
-		for i := len(levelStr); i < 7; i++ {
-			builder.WriteByte(' ')
-		}
 
 		builder.WriteString(" | ")
 		builder.WriteString(logMsg.Message)
 
 		return builder.String()
 
-	// 结构化格式 - 使用 stringBuilderPool 优化
+	// 结构化格式 - 使用 stringBuilderPool 优化，使用带填充的日志级别
 	case Structured:
 		// 从对象池获取字符串构建器
 		builder := getStringBuilder()
@@ -286,13 +296,11 @@ func formatLogMessage(config *FastLogConfig, logMsg *logMsg) string {
 
 		builder.WriteString("T:") // 时间戳
 		builder.WriteString(logMsg.Timestamp)
-		builder.WriteString("|L:") // 格式化日志级别, 左对齐7个字符
+		builder.WriteString("|L:") // 日志级别
 
-		// 格式化日志级别, 左对齐7个字符
+		// 使用预填充的日志级别字符串，无需手动填充空格
+		levelStr := logLevelToPaddedString(logMsg.Level)
 		builder.WriteString(levelStr)
-		for i := len(levelStr); i < 7; i++ {
-			builder.WriteByte(' ')
-		}
 
 		builder.WriteString("|F:") // 文件信息
 		builder.WriteString(logMsg.FileName)
@@ -393,6 +401,67 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	default:
 		return false // 70%以下不丢弃任何日志
 	}
+}
+
+// 时间戳缓存结构，用于缓存秒级时间戳，减少重复的时间格式化开销
+type timestampCache struct {
+	lastSecond      int64        // 上次缓存的秒数（Unix时间戳）
+	cachedTimestamp string       // 缓存的格式化时间戳字符串
+	mu              sync.RWMutex // 读写锁，保证并发安全
+}
+
+// 全局时间戳缓存实例
+var globalTimestampCache = &timestampCache{}
+
+// getCachedTimestamp 获取缓存的时间戳，如果缓存过期则更新
+// 使用双重检查锁定模式，在高并发场景下提供最佳性能
+//
+// 返回值：
+//   - string: 格式化的时间戳字符串 "2006-01-02 15:04:05"
+func getCachedTimestamp() string {
+	// 步骤1：获取当前时间信息
+	// time.Now() 是系统调用，相对昂贵（约200-300ns）
+	now := time.Now()           // 获取当前完整时间对象，包含纳秒精度
+	currentSecond := now.Unix() // 提取Unix时间戳的秒数部分，用于缓存键比较
+
+	// 步骤2：快路径 - 尝试读取缓存（高并发优化）
+	// 使用读锁允许多个goroutine同时读取缓存，提高并发性能
+	// 大多数情况下（同一秒内的后续调用）会走这个快路径
+	globalTimestampCache.mu.RLock() // 获取读锁，允许并发读取
+	if currentSecond == globalTimestampCache.lastSecond {
+		// 缓存命中：当前秒数与缓存的秒数相同
+		// 这意味着我们可以复用之前格式化好的时间戳字符串
+		// 性能提升：避免了昂贵的Format()调用（约200-300ns -> 20-30ns）
+		cached := globalTimestampCache.cachedTimestamp // 复制缓存的时间戳字符串
+		globalTimestampCache.mu.RUnlock()              // 释放读锁
+		return cached                                  // 直接返回缓存结果，性能最优
+	}
+	globalTimestampCache.mu.RUnlock() // 缓存未命中，释放读锁准备进入慢路径
+
+	// 步骤3：慢路径 - 更新缓存（双重检查锁定模式）
+	// 当缓存未命中时（通常是秒数发生变化），需要更新缓存
+	// 使用写锁确保同一时间只有一个goroutine能更新缓存
+	globalTimestampCache.mu.Lock()         // 获取写锁，独占访问缓存
+	defer globalTimestampCache.mu.Unlock() // 确保函数退出时释放写锁
+
+	// 步骤4：双重检查 - 防止重复更新（重要的并发安全措施）
+	// 在等待写锁期间，可能其他goroutine已经更新了缓存
+	// 再次检查避免重复的Format()调用，提高效率
+	if currentSecond == globalTimestampCache.lastSecond {
+		// 其他goroutine已经更新了缓存，直接返回最新的缓存值
+		// 这种情况在高并发场景下经常发生
+		return globalTimestampCache.cachedTimestamp
+	}
+
+	// 步骤5：执行缓存更新 - 格式化新的时间戳
+	// 只有在确实需要更新时才执行昂贵的Format()操作
+	// 使用之前获取的now对象，保证时间一致性
+	globalTimestampCache.lastSecond = currentSecond                          // 更新缓存的秒数键
+	globalTimestampCache.cachedTimestamp = now.Format("2006-01-02 15:04:05") // 格式化时间戳并缓存
+
+	// 返回新格式化的时间戳
+	// 这个结果将被后续同一秒内的调用复用，实现性能优化
+	return globalTimestampCache.cachedTimestamp
 }
 
 // 字符串构建器对象池，用于复用临时字符串构建器，减少内存分配
