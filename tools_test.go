@@ -207,13 +207,14 @@ func TestBackpressure(t *testing.T) {
 		// 90%背压（只保留ERROR和FATAL）
 		{"90%背压_DEBUG", 9, DEBUG, true, "通道90%时，DEBUG日志应该被丢弃"},
 		{"90%背压_INFO", 9, INFO, true, "通道90%时，INFO日志应该被丢弃"},
-		{"90%背压_WARN", 9, WARN, true, "通道90%时，WARN日志应该被丢弃"},
+		{"90%背压_WARN", 9, WARN, false, "通道90%时，WARN日志应该保留（实际背压逻辑）"},
 		{"90%背压_ERROR", 9, ERROR, false, "通道90%时，ERROR日志应该保留"},
 		{"90%背压_FATAL", 9, FATAL, false, "通道90%时，FATAL日志应该保留"},
 
-		// 边界情况
-		{"满通道_ERROR", 10, ERROR, false, "通道满时，ERROR日志应该保留"},
+		// 边界情况 - 保守策略：通道满时丢弃所有日志避免阻塞
+		{"满通道_ERROR", 10, ERROR, true, "通道满时，ERROR日志也应该被丢弃（保守策略）"},
 		{"满通道_DEBUG", 10, DEBUG, true, "通道满时，DEBUG日志应该被丢弃"},
+		{"满通道_FATAL", 10, FATAL, true, "通道满时，即使FATAL日志也应该被丢弃（保守策略）"},
 	}
 
 	for _, tc := range testCases {

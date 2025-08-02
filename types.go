@@ -89,15 +89,16 @@ func getLogMsg() *logMsg {
 // 参数：
 //   - msg: 日志消息对象指针
 func putLogMsg(msg *logMsg) {
-	// 清理对象状态
-	msg.Timestamp = "" // 清理时间戳
-	msg.Level = 0      // 重置日志级别
-	msg.Message = ""   // 清理消息
-	msg.FuncName = ""  // 清理函数名
-	msg.FileName = ""  // 清理文件名
-	msg.Line = 0       // 重置行号
+	// 安全检查：防止空指针
+	if msg == nil {
+		return
+	}
 
-	// 归还对象
+	// 使用零值重置，确保完全清理所有字段
+	// 这种方式比逐个字段清理更安全，不会遗漏任何字段
+	*msg = logMsg{}
+
+	// 归还对象到池中
 	logMsgPool.Put(msg)
 }
 
