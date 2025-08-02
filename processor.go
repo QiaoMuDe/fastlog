@@ -1,7 +1,7 @@
 /*
 processor.go - 单线程日志处理器实现
 负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理，
-实现日志的批量格式化和输出。
+实现日志的批量格式化和输出。使用智能分层缓冲区池优化内存管理。
 */
 package fastlog
 
@@ -16,9 +16,8 @@ type processor struct {
 	// 依赖接口 (替代直接持有FastLog引用)
 	deps processorDependencies
 
-	// 单一缓冲区 (单线程使用，无需锁)
-	fileBuffer    *bytes.Buffer // 文件缓冲区
-	consoleBuffer *bytes.Buffer // 控制台缓冲区
+	// 智能分层缓冲区池 (替代固定缓冲区)
+	bufferPool *smartTieredBufferPool
 
 	// 批量处理配置
 	batchSize     int           // 批量处理数量
@@ -37,11 +36,10 @@ type processor struct {
 //   - *processor: 新的处理器实例
 func newProcessor(deps processorDependencies, batchSize int, flushInterval time.Duration) *processor {
 	return &processor{
-		deps:          deps,            // 依赖接口 (替代直接持有FastLog引用)
-		fileBuffer:    &bytes.Buffer{}, // 文件缓冲区
-		consoleBuffer: &bytes.Buffer{}, // 控制台缓冲区
-		batchSize:     batchSize,       // 批处理条数
-		flushInterval: flushInterval,   // 定时刷新间隔
+		deps:          deps,                  // 依赖接口 (替代直接持有FastLog引用)
+		bufferPool:    globalSmartBufferPool, // 智能分层缓冲区池
+		batchSize:     batchSize,             // 批处理条数
+		flushInterval: flushInterval,         // 定时刷新间隔
 	}
 }
 
@@ -58,11 +56,8 @@ func (p *processor) singleThreadProcessor() {
 	if p.deps.getConfig() == nil {
 		panic("processor.deps.getConfig() is nil")
 	}
-	if p.fileBuffer == nil {
-		panic("processor.fileBuffer is nil")
-	}
-	if p.consoleBuffer == nil {
-		panic("processor.consoleBuffer is nil")
+	if p.bufferPool == nil {
+		panic("processor.bufferPool is nil")
 	}
 	// 检查通道是否为nil
 	if p.deps.getLogChannel() == nil {
@@ -98,7 +93,7 @@ func (p *processor) singleThreadProcessor() {
 			batch = append(batch, logMsg)
 
 			// 只在满足条件时才处理: 批处理切片写满或者缓冲区到达90%阈值
-			shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold()
+			shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold(batch)
 
 			// 检查是否需要处理(满足条件之一)
 			if shouldFlush {
@@ -127,7 +122,7 @@ func (p *processor) singleThreadProcessor() {
 	}
 }
 
-// processAndFlushBatch 处理并刷新日志批处理缓冲区（零拷贝优化版本）,
+// processAndFlushBatch 处理并刷新日志批处理缓冲区（智能缓冲区优化版本）,
 // 该函数负责直接将日志消息格式化到缓冲区, 避免创建中间字符串,
 // 然后将缓冲区内容刷新到实际的输出目标(文件或控制台)。
 //
@@ -154,7 +149,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	if p == nil {
 		return
 	}
-	if p.fileBuffer == nil || p.consoleBuffer == nil {
+	if p.bufferPool == nil {
 		return
 	}
 	if p.deps == nil {
@@ -164,46 +159,67 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		return
 	}
 
-	// 重置缓冲区（清空原有内容，准备接收新数据）
-	p.fileBuffer.Reset()    // 重置文件缓冲区
-	p.consoleBuffer.Reset() // 重置控制台缓冲区
-
 	// 获取配置并检查
 	config := p.deps.getConfig()
 	if config == nil {
 		return
 	}
 
-	// 遍历批处理中的所有日志消息（零拷贝优化版本）
+	// 估算批次大小，用于选择合适的缓冲区
+	estimatedSize := len(batch) * 200 // 假设每条日志平均200字节
+
+	// 🎯 智能获取分层缓冲区
+	var fileBuffer, consoleBuffer *bytes.Buffer
+
+	if config.OutputToFile {
+		// 获取文件缓冲区（大容量，32KB起步）
+		fileBuffer = p.bufferPool.GetFileBuffer(estimatedSize)
+		defer p.bufferPool.PutFileBuffer(fileBuffer)
+	}
+
+	if config.OutputToConsole {
+		// 获取控制台缓冲区（小容量，8KB起步）
+		consoleBuffer = p.bufferPool.GetConsoleBuffer(estimatedSize)
+		defer p.bufferPool.PutConsoleBuffer(consoleBuffer)
+	}
+
+	// 遍历批处理中的所有日志消息（智能缓冲区优化版本）
 	for _, logMsg := range batch {
 		// 跳过空的日志消息
 		if logMsg == nil {
 			continue
 		}
 
-		// 文件输出处理：直接格式化到文件缓冲区，避免中间字符串
-		if config.OutputToFile {
-			formatLogDirectlyToBuffer(p.fileBuffer, config, logMsg, false, p.deps.getColorLib())
-			p.fileBuffer.WriteByte('\n') // 添加换行符
+		// 估算单条日志大小
+		singleLogSize := len(logMsg.Message) + 100 // 消息长度 + 格式化开销
+
+		// 文件输出处理：智能缓冲区升级 + 直接格式化
+		if config.OutputToFile && fileBuffer != nil {
+			// 🚀 智能检查并升级缓冲区（32KB -> 256KB -> 1MB）
+			fileBuffer = p.bufferPool.CheckAndUpgradeFileBuffer(fileBuffer, singleLogSize)
+			formatLogDirectlyToBuffer(fileBuffer, config, logMsg, false, p.deps.getColorLib())
+			fileBuffer.WriteByte('\n') // 添加换行符
 		}
 
-		// 控制台输出处理：直接格式化到控制台缓冲区，带颜色处理
-		if config.OutputToConsole {
-			formatLogDirectlyToBuffer(p.consoleBuffer, config, logMsg, true, p.deps.getColorLib())
-			p.consoleBuffer.WriteByte('\n') // 添加换行符
+		// 控制台输出处理：智能缓冲区升级 + 直接格式化，带颜色处理
+		if config.OutputToConsole && consoleBuffer != nil {
+			// 🚀 智能检查并升级缓冲区（8KB -> 32KB -> 64KB）
+			consoleBuffer = p.bufferPool.CheckAndUpgradeConsoleBuffer(consoleBuffer, singleLogSize)
+			formatLogDirectlyToBuffer(consoleBuffer, config, logMsg, true, p.deps.getColorLib())
+			consoleBuffer.WriteByte('\n') // 添加换行符
 		}
 	}
 
 	// 如果启用文件输出, 并且文件缓冲区有内容, 则将缓冲区内容写入文件
-	if config.OutputToFile && p.fileBuffer.Len() > 0 {
+	if config.OutputToFile && fileBuffer != nil && fileBuffer.Len() > 0 {
 		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
-		if _, writeErr := p.deps.getFileWriter().Write(p.fileBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.getFileWriter().Write(fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
 			p.deps.getColorLib().PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
-			if config.OutputToConsole {
-				if _, consoleErr := p.deps.getConsoleWriter().Write(p.fileBuffer.Bytes()); consoleErr != nil {
+			if config.OutputToConsole && consoleBuffer != nil {
+				if _, consoleErr := p.deps.getConsoleWriter().Write(fileBuffer.Bytes()); consoleErr != nil {
 					// 控制台输出失败时静默处理，避免影响程序运行
 					// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 					_ = writeErr // 静默忽略控制台输出错误
@@ -213,9 +229,9 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	}
 
 	// 如果启用控制台输出, 并且控制台缓冲区有内容, 则将缓冲区内容写入控制台
-	if config.OutputToConsole && p.consoleBuffer.Len() > 0 {
+	if config.OutputToConsole && consoleBuffer != nil && consoleBuffer.Len() > 0 {
 		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
-		if _, writeErr := p.deps.getConsoleWriter().Write(p.consoleBuffer.Bytes()); writeErr != nil {
+		if _, writeErr := p.deps.getConsoleWriter().Write(consoleBuffer.Bytes()); writeErr != nil {
 			// 控制台输出失败时静默处理，避免影响程序运行
 			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
 			_ = writeErr // 静默忽略控制台输出错误
@@ -224,22 +240,33 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 }
 
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
-// 当文件缓冲区或控制台缓冲区任一达到90%阈值时返回true
-func (p *processor) shouldFlushByThreshold() bool {
-	config := p.deps.getConfig()
-
-	// 检查文件缓冲区是否达到90%阈值
-	if config.OutputToFile {
-		if p.fileBuffer.Len() >= fileFlushThreshold {
-			return true
-		}
+// 智能版本：基于批次大小估算，而不是实际缓冲区大小
+//
+// 参数:
+//   - batch: 当前批次的日志消息
+//
+// 返回值:
+//   - bool: 是否应该刷新
+func (p *processor) shouldFlushByThreshold(batch []*logMsg) bool {
+	if len(batch) == 0 {
+		return false
 	}
 
-	// 检查控制台缓冲区是否达到90%阈值
-	if config.OutputToConsole {
-		if p.consoleBuffer.Len() >= consoleFlushThreshold {
-			return true
-		}
+	config := p.deps.getConfig()
+	if config == nil {
+		return false
+	}
+
+	// 估算当前批次的大小
+	estimatedSize := len(batch) * 200 // 每条日志约200字节
+
+	// 检查是否达到阈值
+	if config.OutputToFile && estimatedSize >= fileSmallThreshold {
+		return true
+	}
+
+	if config.OutputToConsole && estimatedSize >= consoleSmallThreshold {
+		return true
 	}
 
 	return false

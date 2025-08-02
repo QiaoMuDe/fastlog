@@ -189,11 +189,7 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 			cfg.FlushInterval, // 刷新间隔
 		)
 
-		// 预分配缓冲区以减少内存分配
-		processor.fileBuffer.Grow(fileInitialBufferCapacity)
-		processor.consoleBuffer.Grow(consoleInitialBufferCapacity)
-
-		// 启动处理器
+		// 启动处理器（智能缓冲区池已在newProcessor中初始化）
 		f.logWait.Add(1)
 		go processor.singleThreadProcessor()
 	})
