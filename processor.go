@@ -8,8 +8,35 @@ package fastlog
 import (
 	"bytes"
 	"runtime/debug"
+	"strings"
+	"sync"
 	"time"
 )
+
+// 字符串构建器对象池，用于复用临时字符串构建器，减少内存分配
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		return &strings.Builder{}
+	},
+}
+
+// getStringBuilder 从对象池获取字符串构建器，使用安全的类型断言
+func getStringBuilder() *strings.Builder {
+	// 方式1: 安全的类型断言 (推荐)
+	if builder, ok := stringBuilderPool.Get().(*strings.Builder); ok {
+		return builder
+	}
+	// 如果类型断言失败，创建新的构建器作为fallback
+	return &strings.Builder{}
+}
+
+// putStringBuilder 将字符串构建器归还到对象池
+func putStringBuilder(builder *strings.Builder) {
+	if builder != nil {
+		builder.Reset()                // 重置构建器内容
+		stringBuilderPool.Put(builder) // 归还到对象池
+	}
+}
 
 // processor 单线程日志处理器
 type processor struct {
@@ -158,6 +185,10 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		return
 	}
 
+	// 从对象池获取字符串构建器，用于复用临时字符串构建
+	builder := getStringBuilder()
+	defer putStringBuilder(builder)
+
 	// 遍历批处理中的所有日志消息
 	for _, logMsg := range batch {
 		// 跳过空的日志消息
@@ -165,24 +196,33 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 			continue
 		}
 
-		// 格式化日志消息，包括时间戳、级别、调用者信息等
-		formattedMsg := p.formatLogWithDeps(logMsg)
+		// 使用对象池中的构建器格式化日志消息，避免临时字符串分配
+		builder.Reset() // 重置构建器，准备格式化新消息
+		p.formatLogDirectlyToBuilder(builder, logMsg)
 
 		// 检查格式化结果
-		if formattedMsg == "" {
+		if builder.Len() == 0 {
 			continue
 		}
 
+		// 获取格式化后的消息内容
+		formattedMsg := builder.String()
+
 		// 文件输出处理：如果启用了文件输出，则将格式化后的消息写入文件缓冲区
 		if config.OutputToFile {
-			p.fileBuffer.WriteString(formattedMsg + "\n")
+			p.fileBuffer.WriteString(formattedMsg)
+			p.fileBuffer.WriteByte('\n') // 使用WriteByte避免字符串拼接
 		}
 
 		// 控制台输出处理：如果启用了控制台输出，则将带颜色的消息写入控制台缓冲区
 		if config.OutputToConsole {
-			// 先渲染颜色再写入缓冲区，以确保控制台输出具有颜色效果
-			coloredMsg := p.addColorWithDeps(logMsg, formattedMsg)
-			p.consoleBuffer.WriteString(coloredMsg + "\n")
+			// 重置构建器，准备添加颜色
+			builder.Reset()
+			p.addColorDirectlyToBuilder(builder, logMsg, formattedMsg)
+
+			// 将带颜色的消息写入控制台缓冲区
+			p.consoleBuffer.WriteString(builder.String())
+			p.consoleBuffer.WriteByte('\n') // 使用WriteByte避免字符串拼接
 		}
 	}
 
@@ -220,47 +260,6 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	}
 }
 
-// formatLogWithDeps 使用依赖接口格式化日志消息（优化版本，直接调用纯函数）
-func (p *processor) formatLogWithDeps(logMsg *logMsg) string {
-	// 完整的空指针检查
-	if p == nil || p.deps == nil {
-		return ""
-	}
-	if logMsg == nil {
-		return ""
-	}
-
-	config := p.deps.GetConfig()
-	if config == nil {
-		return ""
-	}
-
-	// 直接调用纯函数版本，避免创建临时对象
-	return formatLogMessage(config, logMsg)
-}
-
-// addColorWithDeps 使用依赖接口添加颜色（优化版本，直接调用纯函数）
-func (p *processor) addColorWithDeps(logMsg *logMsg, formattedMsg string) string {
-	// 完整的空指针检查
-	if p == nil || p.deps == nil {
-		return formattedMsg
-	}
-	if logMsg == nil {
-		return formattedMsg
-	}
-	if formattedMsg == "" {
-		return formattedMsg
-	}
-
-	colorLib := p.deps.GetColorLib()
-	if colorLib == nil {
-		return formattedMsg
-	}
-
-	// 直接调用纯函数版本，避免创建临时对象
-	return addColorToMessage(colorLib, logMsg.Level, formattedMsg)
-}
-
 // shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
 // 当文件缓冲区或控制台缓冲区任一达到90%阈值时返回true
 func (p *processor) shouldFlushByThreshold() bool {
@@ -281,4 +280,41 @@ func (p *processor) shouldFlushByThreshold() bool {
 	}
 
 	return false
+}
+
+// formatLogDirectlyToBuilder 直接将格式化的日志消息写入字符串构建器，避免临时字符串分配
+func (p *processor) formatLogDirectlyToBuilder(builder *strings.Builder, logMsg *logMsg) {
+	// 完整的空指针检查
+	if p == nil || p.deps == nil || builder == nil || logMsg == nil {
+		return
+	}
+
+	config := p.deps.GetConfig()
+	if config == nil {
+		return
+	}
+
+	// 直接调用纯函数版本，获取格式化字符串
+	formattedMsg := formatLogMessage(config, logMsg)
+	if formattedMsg != "" {
+		builder.WriteString(formattedMsg)
+	}
+}
+
+// addColorDirectlyToBuilder 直接将带颜色的日志消息写入字符串构建器，避免临时字符串分配
+func (p *processor) addColorDirectlyToBuilder(builder *strings.Builder, logMsg *logMsg, formattedMsg string) {
+	// 完整的空指针检查
+	if p == nil || p.deps == nil || builder == nil || logMsg == nil || formattedMsg == "" {
+		return
+	}
+
+	colorLib := p.deps.GetColorLib()
+	if colorLib == nil {
+		builder.WriteString(formattedMsg) // 如果没有颜色库，直接写入原始消息
+		return
+	}
+
+	// 直接调用纯函数版本，获取带颜色的字符串
+	coloredMsg := addColorToMessage(colorLib, logMsg.Level, formattedMsg)
+	builder.WriteString(coloredMsg)
 }

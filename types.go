@@ -87,18 +87,28 @@ var logMsgPool = sync.Pool{
 	},
 }
 
-// getLogMsg 获取日志消息对象
+// getLogMsg 获取日志消息对象，使用安全的类型断言
 //
 // 返回：
 //   - *logMsg: 日志消息对象指针
+//   - 注意：返回的对象总是可以安全地传递给putLogMsg
 func getLogMsg() *logMsg {
-	return logMsgPool.Get().(*logMsg)
+	// 使用安全的类型断言
+	if msg, ok := logMsgPool.Get().(*logMsg); ok {
+		return msg
+	}
+	// 如果类型断言失败，创建新的日志消息对象作为fallback
+	// 这个新创建的对象也可以安全地放回对象池
+	// 因为sync.Pool设计上允许放入任何类型匹配的对象
+	return &logMsg{}
 }
 
 // putLogMsg 归还日志消息对象
 //
 // 参数：
 //   - msg: 日志消息对象指针
+//   - 注意：该函数可以安全地处理任何来源的logMsg对象，
+//     包括从getLogMsg获取的对象和通过new/&logMsg{}创建的对象
 func putLogMsg(msg *logMsg) {
 	// 安全检查：防止空指针
 	if msg == nil {
@@ -110,6 +120,8 @@ func putLogMsg(msg *logMsg) {
 	*msg = logMsg{}
 
 	// 归还对象到池中
+	// 注意：sync.Pool设计上允许放入任何类型匹配的对象，
+	// 无论该对象是否最初从池中获取，都不会导致错误
 	logMsgPool.Put(msg)
 }
 
