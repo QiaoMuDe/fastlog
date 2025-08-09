@@ -83,7 +83,16 @@ func (p *processor) singleThreadProcessor() {
 	// 主循环：持续处理日志消息和定时事件
 	for {
 		select {
-		case logMsg := <-p.deps.getLogChannel(): // 从日志通道接收新日志消息
+		case logMsg, ok := <-p.deps.getLogChannel(): // 从日志通道接收新日志消息
+			if !ok { // 检查通道是否关闭
+				// 处理剩余的batch(如果有的话)
+				if len(batch) > 0 {
+					p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
+				}
+
+				return // 如果通道关闭，退出循环
+			}
+
 			// 添加消息空值检查
 			if logMsg == nil {
 				continue // 跳过 nil 消息
