@@ -68,10 +68,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg.ChanIntSize = 100000        // 增大通道容量以支持更高并发
 
 	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
+	log := NewFastLog(cfg)
 
 	// 测试参数
 	stats.ExpectedLogs = int64(TestDuration * TestRate)
@@ -348,11 +345,7 @@ func BenchmarkFastLog(b *testing.B) {
 	cfg.ChanIntSize = 100000
 
 	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		b.Fatalf("创建日志记录器失败: %v", err)
-	}
-
+	log := NewFastLog(cfg)
 	defer log.Close()
 
 	// 重置计时器

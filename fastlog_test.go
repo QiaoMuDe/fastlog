@@ -63,10 +63,7 @@ func TestCustomFormat(t *testing.T) {
 	cfg.LogFormat = Custom
 
 	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
+	log := NewFastLog(cfg)
 	defer func() { log.Close() }()
 
 	// 定义web应用程序日志格式
@@ -88,10 +85,8 @@ func TestNoColor(t *testing.T) {
 	cfg.Color = false // 禁用终端颜色
 
 	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
+	log := NewFastLog(cfg)
+
 	defer func() { log.Close() }()
 
 	// 打印测试日志
@@ -111,10 +106,8 @@ func TestNoBold(t *testing.T) {
 	cfg.Color = false
 
 	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
+	log := NewFastLog(cfg)
+
 	defer func() { log.Close() }()
 
 	// 打印测试日志
@@ -135,7 +128,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 			}
 		}()
 		// 这行代码应该会panic
-		_, _ = NewFastLog(nil)
+		_ = NewFastLog(nil)
 	})
 
 	// 测试正常初始化 - 使用临时目录避免文件冲突
@@ -144,10 +137,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 		cfg.OutputToConsole = false // 禁用控制台输出，避免测试干扰
 		cfg.OutputToFile = true     // 只测试文件输出
 
-		log, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("初始化日志失败: %v", err)
-		}
+		log := NewFastLog(cfg)
 
 		// 验证日志实例是否正确创建
 		if log == nil {
@@ -178,10 +168,8 @@ func TestFastLog_LogLevels(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "level_test.log")
 	cfg.LogLevel = WARN
 	cfg.OutputToConsole = false // 只写入文件，不输出到控制台
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
+	log := NewFastLog(cfg)
+
 	defer func() { log.Close() }()
 
 	// 不同级别日志
@@ -219,7 +207,7 @@ func TestFastLog_FileRotation(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "test.log")
 	cfg.MaxLogFileSize = 1
 	cfg.OutputToConsole = false
-	log, _ := NewFastLog(cfg)
+	log := NewFastLog(cfg)
 
 	// 生成300kb日志
 	largeData := generateLargeString(1024 * 100) // 转换写入实际为300kb
@@ -288,10 +276,7 @@ func TestLogFormats(t *testing.T) {
 			cfg.OutputToConsole = true
 
 			// 创建日志记录器
-			log, err := NewFastLog(cfg)
-			if err != nil {
-				t.Fatalf("创建日志记录器失败: %v", err)
-			}
+			log := NewFastLog(cfg)
 			defer func() { log.Close() }()
 
 			// 测试所有日志级别
@@ -327,10 +312,7 @@ func TestFatal(t *testing.T) {
 		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
 			panic(err)
 		}
-		log, err := NewFastLog(config)
-		if err != nil {
-			panic(err)
-		}
+		log := NewFastLog(config)
 		log.Fatal("fatal_test message")
 		return
 	}
@@ -380,10 +362,7 @@ func TestFatalf(t *testing.T) {
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("logs", "fatalf_test.log")
-		log, err := NewFastLog(config)
-		if err != nil {
-			panic(err)
-		}
+		log := NewFastLog(config)
 		defer log.Close()
 
 		log.Fatalf("fatalf_test %s message", "formatted")

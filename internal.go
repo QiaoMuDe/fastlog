@@ -152,12 +152,13 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 // shouldDropLogByBackpressure 根据通道背压情况判断是否应该丢弃日志
 //
 // 参数:
+//   - bp: 通道背压阈值
 //   - logChan: 日志通道
 //   - level: 日志级别
 //
 // 返回:
 //   - bool: true表示应该丢弃该日志, false表示应该保留
-func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
+func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level LogLevel) bool {
 	// 完整的空指针和边界检查
 	if logChan == nil {
 		return false // 如果通道为nil, 不丢弃日志
@@ -167,13 +168,9 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 	chanLen := len(logChan)
 	chanCap := cap(logChan)
 
-	// 边界条件检查：防止除零错误和异常情况
-	if chanCap <= 0 {
-		return false // 容量异常，不丢弃日志
-	}
-
-	if chanLen < 0 {
-		return false // 长度异常，不丢弃日志
+	// 边界条件检查: 防止除零错误和异常情况
+	if chanCap <= 0 || chanLen < 0 {
+		return false
 	}
 
 	// 当通道满了, 立即丢弃所有新日志
@@ -181,34 +178,24 @@ func shouldDropLogByBackpressure(logChan chan *logMsg, level LogLevel) bool {
 		return true
 	}
 
-	// 使用int64进行安全的通道使用率计算，防止整数溢出
-	var channelUsage int64
-	if chanCap > 0 {
-		// 直接使用int64计算，避免类型转换开销
-		channelUsage = (int64(chanLen) * 100) / int64(chanCap)
+	// 关键优化: 避免除法，使用数学等价比较
+	// 原理: chanLen/chanCap >= X% 等价于 chanLen*100 >= chanCap*X
+	chanLen100 := chanLen * 100 // 预计算，避免重复乘法
 
-		// 边界检查，确保结果在合理范围内
-		if channelUsage > 100 {
-			channelUsage = 100
-		} else if channelUsage < 0 {
-			channelUsage = 0 // 防止异常的负值
-		}
-	}
-
-	// 根据通道使用率决定是否丢弃日志, 按照日志级别重要性递增
+	// 根据通道使用率判断是否丢弃日志
 	switch {
-	case channelUsage >= 98: // 98%+ 只保留FATAL
+	case chanLen100 >= bp.threshold98: // 98%+ 只保留FATAL
 		return level < FATAL
-	case channelUsage >= 95: // 95%+ 只保留ERROR及以上
+	case chanLen100 >= bp.threshold95: // 95%+ 只保留ERROR及以上
 		return level < ERROR
-	case channelUsage >= 90: // 90%+ 只保留WARN及以上
+	case chanLen100 >= bp.threshold90: // 90%+ 只保留WARN及以上
 		return level < WARN
-	case channelUsage >= 80: // 80%+ 只保留SUCCESS及以上
+	case chanLen100 >= bp.threshold80: // 80%+ 只保留SUCCESS及以上
 		return level < SUCCESS
-	case channelUsage >= 70: // 70%+ 只保留INFO及以上(丢弃DEBUG级别)
+	case chanLen100 >= bp.threshold70: // 70%+ 只保留INFO及以上(丢弃DEBUG级别)
 		return level < INFO
-	default:
-		return false // 70%以下不丢弃任何日志
+	default: // 70%以下不丢弃任何日志
+		return false
 	}
 }
 
@@ -284,7 +271,7 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.Line = line           // 行号
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
-	if shouldDropLogByBackpressure(l.logChan, level) {
+	if shouldDropLogByBackpressure(l.bp, l.logChan, level) {
 		// 重要：如果丢弃日志，需要回收对象
 		putLogMsg(logMessage)
 		return

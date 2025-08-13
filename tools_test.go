@@ -70,64 +70,72 @@ func TestLogLevelToString(t *testing.T) {
 
 // TestBackpressure 测试背压功能
 func TestBackpressure(t *testing.T) {
-	// 创建一个小容量的通道来模拟背压情况
-	testChan := make(chan *logMsg, 10) // 容量为10的通道
-
 	// 测试用例数据
 	testCases := []struct {
 		name         string
-		channelFill  int      // 通道填充数量
+		channelLen   int      // 通道当前长度
+		channelCap   int      // 通道容量
 		level        LogLevel // 测试的日志级别
 		expectedDrop bool     // 是否应该被丢弃
 		description  string   // 测试描述
 	}{
-		// 正常情况（0-60%）
-		{"正常_DEBUG", 0, DEBUG, false, "通道空闲时，DEBUG日志应该保留"},
-		{"正常_INFO", 5, INFO, false, "通道50%时，INFO日志应该保留"},
-		{"正常_WARN", 6, WARN, false, "通道60%时，WARN日志应该保留"},
+		// 正常情况（0-69%）
+		{"正常_DEBUG", 0, 10, DEBUG, false, "通道空闲时，DEBUG日志应该保留"},
+		{"正常_INFO", 5, 10, INFO, false, "通道50%时，INFO日志应该保留"},
+		{"正常_WARN", 6, 10, WARN, false, "通道60%时，WARN日志应该保留"},
 
 		// 70%背压（丢弃DEBUG）
-		{"70%背压_DEBUG", 7, DEBUG, true, "通道70%时，DEBUG日志应该被丢弃"},
-		{"70%背压_INFO", 7, INFO, false, "通道70%时，INFO日志应该保留"},
-		{"70%背压_WARN", 7, WARN, false, "通道70%时，WARN日志应该保留"},
+		{"70%背压_DEBUG", 7, 10, DEBUG, true, "通道70%时，DEBUG日志应该被丢弃"},
+		{"70%背压_INFO", 7, 10, INFO, false, "通道70%时，INFO日志应该保留"},
+		{"70%背压_WARN", 7, 10, WARN, false, "通道70%时，WARN日志应该保留"},
 
-		// 80%背压（只保留WARN及以上）
-		{"80%背压_DEBUG", 8, DEBUG, true, "通道80%时，DEBUG日志应该被丢弃"},
-		{"80%背压_INFO", 8, INFO, true, "通道80%时，INFO日志应该被丢弃"},
-		{"80%背压_WARN", 8, WARN, false, "通道80%时，WARN日志应该保留"},
-		{"80%背压_ERROR", 8, ERROR, false, "通道80%时，ERROR日志应该保留"},
+		// 80%背压（只保留SUCCESS及以上）
+		{"80%背压_DEBUG", 8, 10, DEBUG, true, "通道80%时，DEBUG日志应该被丢弃"},
+		{"80%背压_INFO", 8, 10, INFO, true, "通道80%时，INFO日志应该被丢弃"},
+		{"80%背压_SUCCESS", 8, 10, SUCCESS, false, "通道80%时，SUCCESS日志应该保留"},
+		{"80%背压_WARN", 8, 10, WARN, false, "通道80%时，WARN日志应该保留"},
+		{"80%背压_ERROR", 8, 10, ERROR, false, "通道80%时，ERROR日志应该保留"},
 
-		// 90%背压（只保留ERROR和FATAL）
-		{"90%背压_DEBUG", 9, DEBUG, true, "通道90%时，DEBUG日志应该被丢弃"},
-		{"90%背压_INFO", 9, INFO, true, "通道90%时，INFO日志应该被丢弃"},
-		{"90%背压_WARN", 9, WARN, false, "通道90%时，WARN日志应该保留（实际背压逻辑）"},
-		{"90%背压_ERROR", 9, ERROR, false, "通道90%时，ERROR日志应该保留"},
-		{"90%背压_FATAL", 9, FATAL, false, "通道90%时，FATAL日志应该保留"},
+		// 90%背压（只保留WARN及以上）
+		{"90%背压_DEBUG", 9, 10, DEBUG, true, "通道90%时，DEBUG日志应该被丢弃"},
+		{"90%背压_INFO", 9, 10, INFO, true, "通道90%时，INFO日志应该被丢弃"},
+		{"90%背压_SUCCESS", 9, 10, SUCCESS, true, "通道90%时，SUCCESS日志应该被丢弃"},
+		{"90%背压_WARN", 9, 10, WARN, false, "通道90%时，WARN日志应该保留"},
+		{"90%背压_ERROR", 9, 10, ERROR, false, "通道90%时，ERROR日志应该保留"},
+		{"90%背压_FATAL", 9, 10, FATAL, false, "通道90%时，FATAL日志应该保留"},
 
 		// 边界情况 - 保守策略：通道满时丢弃所有日志避免阻塞
-		{"满通道_ERROR", 10, ERROR, true, "通道满时，ERROR日志也应该被丢弃（保守策略）"},
-		{"满通道_DEBUG", 10, DEBUG, true, "通道满时，DEBUG日志应该被丢弃"},
-		{"满通道_FATAL", 10, FATAL, true, "通道满时，即使FATAL日志也应该被丢弃（保守策略）"},
+		{"满通道_ERROR", 10, 10, ERROR, true, "通道满时，ERROR日志也应该被丢弃（保守策略）"},
+		{"满通道_DEBUG", 10, 10, DEBUG, true, "通道满时，DEBUG日志应该被丢弃"},
+		{"满通道_FATAL", 10, 10, FATAL, true, "通道满时，即使FATAL日志也应该被丢弃（保守策略）"},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			// 清空通道
-			for len(testChan) > 0 {
-				<-testChan
+			// 创建预计算的背压阈值
+			bp := &bpThresholds{
+				threshold70: tc.channelCap * 70,
+				threshold80: tc.channelCap * 80,
+				threshold90: tc.channelCap * 90,
+				threshold95: tc.channelCap * 95,
+				threshold98: tc.channelCap * 98,
 			}
 
-			msg := "填充消息"
+			// 创建测试通道
+			logChan := make(chan *logMsg, tc.channelCap)
 
-			// 填充通道到指定数量
-			for i := 0; i < tc.channelFill; i++ {
-				testChan <- &logMsg{Level: INFO, Message: msg}
+			// 填充通道到指定长度
+			for i := 0; i < tc.channelLen; i++ {
+				logChan <- &logMsg{Level: INFO, Message: "test"}
 			}
 
-			// 测试背压函数
-			shouldDrop := shouldDropLogByBackpressure(testChan, tc.level)
+			// 测试背压函数（使用新的函数签名）
+			shouldDrop := shouldDropLogByBackpressure(bp, logChan, tc.level)
 
 			// 验证结果
+			actualLen := len(logChan)
+			actualCap := cap(logChan)
+
 			if shouldDrop != tc.expectedDrop {
 				t.Errorf("测试失败: %s\n"+
 					"通道使用率: %d/%d (%.0f%%)\n"+
@@ -135,17 +143,20 @@ func TestBackpressure(t *testing.T) {
 					"预期丢弃: %v, 实际丢弃: %v\n"+
 					"描述: %s",
 					tc.name,
-					len(testChan), cap(testChan), float64(len(testChan))*100/float64(cap(testChan)),
+					actualLen, actualCap, float64(actualLen)*100/float64(actualCap),
 					logLevelToString(tc.level),
 					tc.expectedDrop, shouldDrop,
 					tc.description)
 			} else {
 				t.Logf("✓ %s - 通道使用率: %d%%, 级别: %s, 丢弃: %v",
 					tc.name,
-					len(testChan)*100/cap(testChan),
+					actualLen*100/actualCap,
 					logLevelToString(tc.level),
 					shouldDrop)
 			}
+
+			// 清理通道
+			close(logChan)
 		})
 	}
 }
@@ -158,10 +169,7 @@ func TestBackpressureIntegration(t *testing.T) {
 	cfg.OutputToConsole = true
 	cfg.LogLevel = DEBUG
 
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志失败: %v", err)
-	}
+	log := NewFastLog(cfg)
 	defer log.Close()
 
 	// 快速发送大量日志，触发背压
@@ -181,16 +189,23 @@ func TestBackpressureIntegration(t *testing.T) {
 
 // BenchmarkBackpressureFunction 性能测试：测试背压函数的性能
 func BenchmarkBackpressureFunction(b *testing.B) {
-	testChan := make(chan *logMsg, 1000)
+	logChan := make(chan *logMsg, 1000)
+	bp := &bpThresholds{
+		threshold70: 70,
+		threshold80: 80,
+		threshold90: 90,
+		threshold95: 95,
+		threshold98: 98,
+	}
 
 	// 填充通道到80%
 	for i := 0; i < 800; i++ {
-		testChan <- &logMsg{Level: INFO}
+		logChan <- &logMsg{Level: INFO}
 	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(testChan, WARN)
+		shouldDropLogByBackpressure(bp, logChan, WARN)
 	}
 }

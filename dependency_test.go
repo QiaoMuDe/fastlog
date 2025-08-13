@@ -20,10 +20,7 @@ func TestCircularDependencyFixed(t *testing.T) {
 	config.ChanIntSize = 10
 
 	// 创建日志实例
-	logger, err := NewFastLog(config)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(config)
 
 	// 记录一些日志
 	logger.Info("测试循环依赖修复")
@@ -51,10 +48,7 @@ func TestProcessorDependencyInterface(t *testing.T) {
 	config.OutputToFile = false
 
 	// 创建日志实例
-	logger, err := NewFastLog(config)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(config)
 	defer logger.Close()
 
 	// 验证FastLog实现了ProcessorDependencies接口
@@ -105,10 +99,7 @@ func TestMemoryLeakPrevention(t *testing.T) {
 		config.LogLevel = NONE // 设置为NONE级别，避免实际输出日志
 		config.ChanIntSize = 5
 
-		logger, err := NewFastLog(config)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(config)
 
 		// 写入一些日志
 		logger.Infof("测试消息 %d", i)

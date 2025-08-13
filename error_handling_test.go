@@ -36,11 +36,14 @@ func TestFilePermissionErrors(t *testing.T) {
 		cfg := NewFastLogConfig(filepath.Join(readOnlyDir, "sublogs"), "test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Logf("预期的权限错误: %v", err)
-			return
-		}
+		// 使用defer捕获可能的panic
+		defer func() {
+			if r := recover(); r != nil {
+				t.Logf("预期的权限错误panic: %v", r)
+			}
+		}()
+
+		logger := NewFastLog(cfg)
 
 		// 如果创建成功，尝试写入日志
 		logger.Info("测试权限错误处理")
@@ -71,11 +74,14 @@ func TestFilePermissionErrors(t *testing.T) {
 		cfg := NewFastLogConfig(testDir, "readonly.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Logf("预期的文件权限错误: %v", err)
-			return
-		}
+		// 使用defer捕获可能的panic
+		defer func() {
+			if r := recover(); r != nil {
+				t.Logf("预期的文件权限错误panic: %v", r)
+			}
+		}()
+
+		logger := NewFastLog(cfg)
 
 		// 写入日志，应该会在内部处理错误
 		logger.Info("测试写入只读文件")
@@ -92,14 +98,17 @@ func TestDirectoryCreationErrors(t *testing.T) {
 		cfg := NewFastLogConfig(deepPath, "test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Logf("深层目录创建可能失败: %v", err)
-		} else {
-			logger.Info("测试深层目录创建")
-			time.Sleep(100 * time.Millisecond)
-			logger.Close()
-		}
+		// 使用defer捕获可能的panic
+		defer func() {
+			if r := recover(); r != nil {
+				t.Logf("深层目录创建可能失败panic: %v", r)
+			}
+		}()
+
+		logger := NewFastLog(cfg)
+		logger.Info("测试深层目录创建")
+		time.Sleep(100 * time.Millisecond)
+		logger.Close()
 
 		// 清理创建的目录
 		_ = os.RemoveAll(strings.Split(deepPath, "/")[0])
@@ -111,12 +120,15 @@ func TestDirectoryCreationErrors(t *testing.T) {
 			cfg := NewFastLogConfig("test\x00invalid", "test.log")
 			cfg.OutputToConsole = false
 
-			logger, err := NewFastLog(cfg)
-			if err != nil {
-				t.Logf("预期的无效路径错误: %v", err)
-			} else {
-				logger.Close()
-			}
+			// 使用defer捕获可能的panic
+			defer func() {
+				if r := recover(); r != nil {
+					t.Logf("预期的无效路径错误panic: %v", r)
+				}
+			}()
+
+			logger := NewFastLog(cfg)
+			logger.Close()
 		}
 	})
 }
@@ -128,10 +140,7 @@ func TestFileSystemSpaceHandling(t *testing.T) {
 		cfg.OutputToConsole = false
 		cfg.MaxLogFileSize = 1 // 1MB限制，触发轮转
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 写入大量日志数据
@@ -156,10 +165,7 @@ func TestConcurrentFileAccess(t *testing.T) {
 			cfg := NewFastLogConfig("logs", "concurrent_test.log")
 			cfg.OutputToConsole = false
 
-			logger, err := NewFastLog(cfg)
-			if err != nil {
-				t.Fatalf("创建日志实例 %d 失败: %v", i, err)
-			}
+			logger := NewFastLog(cfg)
 			loggers = append(loggers, logger)
 		}
 
@@ -198,10 +204,7 @@ func TestFileRotationErrors(t *testing.T) {
 		cfg.OutputToConsole = false
 		cfg.MaxLogFileSize = 1 // 1MB，容易触发轮转
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 快速写入大量数据，触发轮转
@@ -237,12 +240,19 @@ func TestResourceExhaustion(t *testing.T) {
 			cfg := NewFastLogConfig("logs", filename)
 			cfg.OutputToConsole = false
 
-			logger, err := NewFastLog(cfg)
-			if err != nil {
-				t.Logf("创建第 %d 个实例时失败: %v", i, err)
+			// 使用defer捕获可能的panic
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						t.Logf("创建第 %d 个实例时panic: %v", i, r)
+					}
+				}()
+				logger := NewFastLog(cfg)
+				loggers = append(loggers, logger)
+			}()
+			if len(loggers) <= i {
 				break
 			}
-			loggers = append(loggers, logger)
 		}
 
 		// 写入一些日志
@@ -268,10 +278,7 @@ func TestErrorRecovery(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "recovery_test.log")
 		cfg.OutputToConsole = true // 启用控制台输出作为备用
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 正常写入
@@ -292,10 +299,7 @@ func BenchmarkFileSystemOperations(b *testing.B) {
 	cfg := NewFastLogConfig("logs", "benchmark_fs.log")
 	cfg.OutputToConsole = false
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		b.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 	defer logger.Close()
 
 	b.ResetTimer()
@@ -337,10 +341,7 @@ func TestNullPointerProtection(t *testing.T) {
 		cfg.OutputToFile = false
 		cfg.LogLevel = NONE // 设置为NONE级别，避免实际输出日志
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 测试空格式字符串的处理
@@ -415,10 +416,7 @@ func TestHighConcurrencyStability(t *testing.T) {
 	cfg.OutputToFile = true
 	cfg.ChanIntSize = 1000 // 较小的通道容量，更容易触发背压
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 	defer logger.Close()
 
 	const goroutineCount = 50
@@ -466,10 +464,7 @@ func TestResourceExhaustionHandling(t *testing.T) {
 	cfg.OutputToFile = true
 	cfg.ChanIntSize = 10 // 非常小的通道容量
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 	defer logger.Close()
 
 	// 快速发送大量日志，触发背压和通道满的情况
@@ -489,10 +484,7 @@ func BenchmarkNullPointerCheck(b *testing.B) {
 	cfg.OutputToConsole = false
 	cfg.OutputToFile = false // 禁用所有输出，只测试检查逻辑
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		b.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 	defer logger.Close()
 
 	b.ResetTimer()

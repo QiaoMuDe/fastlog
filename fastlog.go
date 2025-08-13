@@ -24,10 +24,10 @@ var (
 	// New 是 NewFastLog 的简写别名
 	//
 	// 用法:
-	//  - logger, err := fastlog.New(config)
+	//  - logger := fastlog.New(config)
 	//
 	// 等价于:
-	//  - logger, err := fastlog.NewFastLog(config)
+	//  - logger := fastlog.NewFastLog(config)
 	New = NewFastLog
 
 	// NewCfg 是 NewFastLogConfig 的简写别名
@@ -42,38 +42,27 @@ var (
 
 // FastLog 日志记录器
 type FastLog struct {
-	// 日志通道  用于异步写入日志文件
-	logChan chan *logMsg
+	fileWriter    io.Writer              // 文件写入器
+	consoleWriter io.Writer              // 控制台写入器
+	ctx           context.Context        // 用于控制全局日志记录器的生命周期
+	cancel        context.CancelFunc     // 用于取消全局日志记录器的生命周期
+	cl            *colorlib.ColorLib     // 提供终端颜色输出的库
+	closeOnce     sync.Once              // 用于确保日志处理器只关闭一次
+	startOnce     sync.Once              // 用于确保日志处理器只启动一次
+	logChan       chan *logMsg           // 日志通道  用于异步写入日志文件
+	logWait       sync.WaitGroup         // 等待组 用于等待所有goroutine完成
+	logger        *logrotatex.LogRotateX // logrotatex 日志文件切割
+	config        *FastLogConfig         // 嵌入的配置结构体
+	bp            *bpThresholds          // 预计算背压阈值
+}
 
-	// 等待组 用于等待所有goroutine完成
-	logWait sync.WaitGroup
-
-	// 文件写入器
-	fileWriter io.Writer
-
-	// 控制台写入器
-	consoleWriter io.Writer
-
-	// 用于确保日志处理器只启动一次
-	startOnce sync.Once
-
-	// 用于控制全局日志记录器的生命周期
-	ctx context.Context
-
-	// 用于取消全局日志记录器的生命周期
-	cancel context.CancelFunc
-
-	// 提供终端颜色输出的库
-	cl *colorlib.ColorLib
-
-	// 用于确保日志处理器只关闭一次
-	closeOnce sync.Once
-
-	// logrotatex 日志文件切割
-	logger *logrotatex.LogRotateX
-
-	// 嵌入的配置结构体
-	config *FastLogConfig
+// bpThresholds 预计算的背压阈值, 避免运行时频繁计算
+type bpThresholds struct {
+	threshold70 int // 70% 阈值
+	threshold80 int // 80% 阈值
+	threshold90 int // 90% 阈值
+	threshold95 int // 95% 阈值
+	threshold98 int // 98% 阈值
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
@@ -83,8 +72,7 @@ type FastLog struct {
 //
 // 返回值:
 //   - *FastLog: 一个指向FastLog实例的指针。
-//   - error: 如果创建日志记录器失败, 则返回一个错误。
-func NewFastLog(config *FastLogConfig) (*FastLog, error) {
+func NewFastLog(config *FastLogConfig) *FastLog {
 	// 检查配置结构体是否为nil
 	if config == nil {
 		panic("FastLogConfig cannot be nil")
@@ -172,6 +160,16 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		f.cl.SetBold(false)
 	}
 
+	// 预计算背压阈值
+	logChanCap := cap(f.logChan) // 日志通道容量
+	f.bp = &bpThresholds{
+		threshold70: logChanCap * 70, // 70%阈值
+		threshold80: logChanCap * 80, // 80%阈值
+		threshold90: logChanCap * 90, // 90%阈值
+		threshold95: logChanCap * 95, // 95%阈值
+		threshold98: logChanCap * 98, // 98%阈值
+	}
+
 	// 使用 sync.Once 确保日志处理器只启动一次
 	var startErr error
 	f.startOnce.Do(func() {
@@ -182,25 +180,25 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 			}
 		}()
 
-		// 创建处理器（使用依赖注入避免循环依赖）
+		// 创建处理器(使用依赖注入避免循环依赖)
 		processor := newProcessor(
 			f,                 // 传入FastLog作为依赖接口
 			defaultBatchSize,  // 批量处理大小
 			cfg.FlushInterval, // 刷新间隔
 		)
 
-		// 启动处理器（智能缓冲区池已在newProcessor中初始化）
+		// 启动处理器(智能缓冲区池已在newProcessor中初始化)
 		f.logWait.Add(1)
 		go processor.singleThreadProcessor()
 	})
 
 	// 检查启动是否成功
 	if startErr != nil {
-		return nil, startErr
+		panic(startErr)
 	}
 
-	// 返回FastLog实例和nil错误
-	return f, nil
+	// 返回FastLog实例
+	return f
 }
 
 // Close 安全关闭日志记录器

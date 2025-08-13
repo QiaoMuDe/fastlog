@@ -187,9 +187,9 @@ sequenceDiagram
 var (
     // New 是 NewFastLog 的简写别名
     //
-    // 用法: logger, err := fastlog.New(config)
+    // 用法: logger := fastlog.New(config)
     //
-    // 等价于: logger, err := fastlog.NewFastLog(config)
+    // 等价于: logger := fastlog.NewFastLog(config)
     New = NewFastLog
 
     // NewCfg 是 NewFastLogConfig 的简写别名
@@ -220,7 +220,7 @@ FastLog 日志记录器
 ##### NewFastLog
 
 ```go
-func NewFastLog(config *FastLogConfig) (*FastLog, error)
+func NewFastLog(config *FastLogConfig) *FastLog
 ```
 
 NewFastLog 创建一个新的FastLog实例，用于记录日志。
@@ -230,7 +230,6 @@ NewFastLog 创建一个新的FastLog实例，用于记录日志。
 
 **返回值:**
 - `*FastLog`: 一个指向FastLog实例的指针。
-- `error`: 如果创建日志记录器失败，则返回一个错误。
 
 #### 方法
 
@@ -507,10 +506,7 @@ WriterPair 写入器对，用于批量传递写入器
 config := fastlog.NewCfg("logs", "app.log")
 
 // 创建日志实例
-logger, err := fastlog.New(config)
-if err != nil {
-    panic(err)
-}
+logger := fastlog.New(config)
 defer logger.Close()
 
 // 记录日志
@@ -537,10 +533,7 @@ func main() {
     config.FlushInterval = time.Second * 5
 
     // 创建日志记录器
-    logger, err := fastlog.New(config)
-    if err != nil {
-        panic(err)
-    }
+    logger := fastlog.New(config)
     defer logger.Close()
 
     // 记录日志
@@ -555,5 +548,5 @@ func main() {
 ```go
 // 使用别名函数
 config := fastlog.NewCfg("logs", "app.log")
-logger, err := fastlog.New(config)
+logger := fastlog.New(config)
 ```

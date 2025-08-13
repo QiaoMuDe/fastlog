@@ -66,10 +66,7 @@ func main() {
     config := fastlog.NewFastLogConfig("logs", "app.log")
 
     // 创建日志实例
-    logger, err := fastlog.NewFastLog(config)
-    if err != nil {
-        panic(err)
-    }
+    logger := fastlog.NewFastLog(config)
     defer logger.Close()
 
     // 记录不同级别的日志
@@ -95,10 +92,7 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 使用简写函数创建
     config := fastlog.NewCfg("logs", "app.log")  // NewCfg 是 NewFastLogConfig 的简写
-    logger, err := fastlog.New(config)           // New 是 NewFastLog 的简写
-    if err != nil {
-        panic(err)
-    }
+    logger := fastlog.New(config)           // New 是 NewFastLog 的简写
     defer logger.Close()
 
     logger.Info("使用简写函数创建的日志")
@@ -143,10 +137,7 @@ func main() {
     config.Bold = true                                   // 启用加粗
   
     // 创建日志实例
-    logger, err := fastlog.NewFastLog(config)
-    if err != nil {
-        panic(err)
-    }
+    logger := fastlog.NewFastLog(config)
     defer logger.Close()
   
     // 记录各种级别的日志
@@ -380,10 +371,7 @@ logger.Infof("用户 %s 执行操作 %s", username, action)  // 推荐
 ```go
 // 推荐：在关键位置使用 defer 确保日志记录器正确关闭
 func main() {
-    logger, err := fastlog.NewFastLog(config)
-    if err != nil {
-        panic(err)
-    }
+    logger := fastlog.NewFastLog(config)
     defer func() {
         logger.Info("程序正在关闭...")
         logger.Close()

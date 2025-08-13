@@ -12,7 +12,14 @@ import (
 // BenchmarkShouldDropLogByBackpressure 测试背压函数的性能
 func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
 	// 创建一个测试通道
-	logChan := make(chan *logMsg, 10000)
+	logChan := make(chan *logMsg, 1000)
+	bp := &bpThresholds{
+		threshold70: 70,
+		threshold80: 80,
+		threshold90: 90,
+		threshold95: 95,
+		threshold98: 98,
+	}
 
 	// 填充一些数据模拟实际使用
 	for i := 0; i < 5000; i++ {
@@ -23,14 +30,21 @@ func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
 
 	// 基准测试
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(logChan, INFO)
+		shouldDropLogByBackpressure(bp, logChan, INFO)
 	}
 }
 
 // BenchmarkShouldDropLogByBackpressure_HighLoad 测试高负载场景
 func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
 	// 创建一个接近满载的通道
-	logChan := make(chan *logMsg, 10000)
+	logChan := make(chan *logMsg, 1000)
+	bp := &bpThresholds{
+		threshold70: 70,
+		threshold80: 80,
+		threshold90: 90,
+		threshold95: 95,
+		threshold98: 98,
+	}
 
 	// 填充95%的数据
 	for i := 0; i < 9500; i++ {
@@ -40,18 +54,25 @@ func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(logChan, DEBUG)
+		shouldDropLogByBackpressure(bp, logChan, DEBUG)
 	}
 }
 
 // BenchmarkShouldDropLogByBackpressure_EmptyChannel 测试空通道场景
 func BenchmarkShouldDropLogByBackpressure_EmptyChannel(b *testing.B) {
-	logChan := make(chan *logMsg, 10000)
+	logChan := make(chan *logMsg, 1000)
+	bp := &bpThresholds{
+		threshold70: 70,
+		threshold80: 80,
+		threshold90: 90,
+		threshold95: 95,
+		threshold98: 98,
+	}
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(logChan, INFO)
+		shouldDropLogByBackpressure(bp, logChan, INFO)
 	}
 }
 

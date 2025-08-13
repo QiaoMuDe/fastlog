@@ -458,10 +458,7 @@ func TestConfigConsistency(t *testing.T) {
 		cfg.MaxLogFileSize = 100 // 设置了文件相关配置但禁用了文件输出
 
 		// 应该能正常创建，文件相关配置被忽略
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("正常配置应该能正常处理：%v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 记录日志不应该出错
@@ -489,10 +486,7 @@ func TestConfigConsistency(t *testing.T) {
 			cfg.ChanIntSize, cfg.FlushInterval, cfg.MaxLogFileSize, cfg.MaxLogAge, cfg.MaxLogBackups)
 
 		// 应该能正常创建，配置被自动修正
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("配置自动修正应该成功：%v", err)
-		}
+		logger := NewFastLog(cfg)
 		defer logger.Close()
 
 		// 记录修正后的值

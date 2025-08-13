@@ -20,10 +20,7 @@ func TestGracefulShutdown(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "shutdown_test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		// 写入一些日志
 		for i := 0; i < 100; i++ {
@@ -54,10 +51,7 @@ func TestGracefulShutdown(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "repeat_close_test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		logger.Info("重复关闭测试")
 
@@ -76,10 +70,7 @@ func TestGracefulShutdown(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "concurrent_close_test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		logger.Info("并发关闭测试")
 
@@ -104,10 +95,7 @@ func TestShutdownWithActiveWriting(t *testing.T) {
 	cfg.OutputToConsole = false
 	cfg.ChanIntSize = 1000
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 
 	// 启动后台写入
 	var wg sync.WaitGroup
@@ -147,10 +135,7 @@ func TestShutdownTimeout(t *testing.T) {
 	cfg.ChanIntSize = 10000              // 大通道容量
 	cfg.FlushInterval = 10 * time.Second // 长刷新间隔
 
-	logger, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志实例失败: %v", err)
-	}
+	logger := NewFastLog(cfg)
 
 	// 填充大量日志到通道中
 	for i := 0; i < 5000; i++ {
@@ -178,10 +163,7 @@ func TestResourceCleanup(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "cleanup_test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		logger.Info("资源清理测试")
 		time.Sleep(100 * time.Millisecond)
@@ -201,10 +183,7 @@ func TestResourceCleanup(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "handle_cleanup_test.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			t.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		logger.Info("文件句柄清理测试")
 		time.Sleep(100 * time.Millisecond)
@@ -215,7 +194,7 @@ func TestResourceCleanup(t *testing.T) {
 		logFile := filepath.Join("logs", "handle_cleanup_test.log")
 		time.Sleep(100 * time.Millisecond) // 等待文件句柄释放
 
-		err = os.Remove(logFile)
+		err := os.Remove(logFile)
 		if err != nil {
 			t.Errorf("无法删除日志文件，可能存在文件句柄泄漏: %v", err)
 		}
@@ -228,10 +207,7 @@ func BenchmarkShutdownPerformance(b *testing.B) {
 		cfg := NewFastLogConfig("logs", "shutdown_bench.log")
 		cfg.OutputToConsole = false
 
-		logger, err := NewFastLog(cfg)
-		if err != nil {
-			b.Fatalf("创建日志实例失败: %v", err)
-		}
+		logger := NewFastLog(cfg)
 
 		// 写入一些日志
 		for j := 0; j < 10; j++ {
