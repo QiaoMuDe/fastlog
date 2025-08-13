@@ -380,18 +380,15 @@ func TestConfigConsistency(t *testing.T) {
 			if r := recover(); r == nil {
 				t.Errorf("禁用所有输出的配置应该触发panic")
 			} else {
-				expectedMsg := "必须启用至少一种输出方式"
+				expectedMsg := "At least one output method must be enabled"
 				if !strings.Contains(r.(string), expectedMsg) {
 					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
 				}
 			}
 		}()
 
-		// 这里应该panic
-		_, err := NewFastLog(cfg)
-		if err == nil {
-			t.Error("预期会返回错误，但没有错误")
-		}
+		// 直接调用fixFinalConfig来触发panic
+		cfg.fixFinalConfig()
 	})
 
 	t.Run("文件输出时目录名和文件名都为空应该panic", func(t *testing.T) {
@@ -400,19 +397,18 @@ func TestConfigConsistency(t *testing.T) {
 		cfg.OutputToFile = true
 
 		// 这种配置应该触发panic
-		// 直接调用validateCriticalConfig进行验证，而不是通过NewFastLog
 		defer func() {
 			if r := recover(); r == nil {
 				t.Errorf("文件输出时目录名和文件名都为空应该触发panic")
 			} else {
-				expectedMsg := "启用文件输出时，日志目录名(LogDirName)和文件名(LogFileName)不能同时为空"
+				expectedMsg := "When file output is enabled, log directory name"
 				if !strings.Contains(r.(string), expectedMsg) {
 					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
 				}
 			}
 		}()
 
-		// 这里应该panic
+		// 直接调用validateCriticalConfig来触发panic
 		cfg.validateCriticalConfig()
 	})
 
@@ -425,18 +421,15 @@ func TestConfigConsistency(t *testing.T) {
 			if r := recover(); r == nil {
 				t.Errorf("超大通道大小应该触发panic")
 			} else {
-				expectedMsg := "通道大小过大"
+				expectedMsg := "channel size too large"
 				if !strings.Contains(r.(string), expectedMsg) {
 					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
 				}
 			}
 		}()
 
-		// 这里应该panic
-		_, err := NewFastLog(cfg)
-		if err == nil {
-			t.Error("预期会返回错误，但没有错误")
-		}
+		// 直接调用fixFinalConfig来触发panic
+		cfg.fixFinalConfig()
 	})
 
 	t.Run("超大文件大小应该panic", func(t *testing.T) {
@@ -448,18 +441,15 @@ func TestConfigConsistency(t *testing.T) {
 			if r := recover(); r == nil {
 				t.Errorf("超大文件大小应该触发panic")
 			} else {
-				expectedMsg := "单个日志文件大小过大"
+				expectedMsg := "single log file size too large"
 				if !strings.Contains(r.(string), expectedMsg) {
 					t.Errorf("panic消息不正确，期望包含%q，实际为%q", expectedMsg, r)
 				}
 			}
 		}()
 
-		// 这里应该panic
-		_, err := NewFastLog(cfg)
-		if err == nil {
-			t.Error("预期会返回错误，但没有错误")
-		}
+		// 直接调用fixFinalConfig来触发panic
+		cfg.fixFinalConfig()
 	})
 
 	t.Run("正常配置应该成功", func(t *testing.T) {

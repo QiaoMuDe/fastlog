@@ -82,7 +82,7 @@ func (p *processor) singleThreadProcessor() {
 
 		// 捕获panic
 		if r := recover(); r != nil {
-			p.deps.getColorLib().PrintErrorf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
+			p.deps.getColorLib().PrintErrorf("Log handler panic: %s\nstack: %s\n", r, debug.Stack())
 		}
 
 		// 减少等待组中的计数器。
@@ -92,9 +92,9 @@ func (p *processor) singleThreadProcessor() {
 	// 主循环：持续处理日志消息和定时事件
 	for {
 		select {
-		case logMsg, ok := <-p.deps.getLogChannel(): // 从日志通道接收新日志消息
-			if !ok { // 检查通道是否关闭
-				// 通道关闭，但不直接退出，让 defer 处理剩余消息
+		// 从日志通道接收新日志消息
+		case logMsg, ok := <-p.deps.getLogChannel():
+			if !ok { // 检查日志通道是否关闭
 				return
 			}
 
@@ -115,14 +115,16 @@ func (p *processor) singleThreadProcessor() {
 				batch = batch[:0]             // 重置批处理缓冲区，准备接收新消息
 			}
 
-		case <-ticker.C: // 定时刷新事件
+		// 定时刷新事件
+		case <-ticker.C:
 			// 定时刷新：处理剩余消息并刷新缓冲区
 			if len(batch) > 0 {
 				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
 				batch = batch[:0]             // 重置batch
 			}
 
-		case <-p.deps.getContext().Done(): // 上下文取消信号，表示应停止处理
+		// 上下文取消信号，表示应停止处理
+		case <-p.deps.getContext().Done():
 			return
 		}
 	}
@@ -162,7 +164,7 @@ func (p *processor) drainRemainingMessages(batch []*logMsg) {
 			}
 
 		default:
-			// 通道中没有更多消息, 处理最后的 batch
+			// 通道中没有更多消息,处理最后的 batch
 			if len(batch) > 0 {
 				p.processAndFlushBatch(batch)
 			}
@@ -176,7 +178,7 @@ func (p *processor) drainRemainingMessages(batch []*logMsg) {
 // 然后将缓冲区内容刷新到实际的输出目标(文件或控制台)。
 //
 // 参数:
-// - batch []*logMsg: 日志批处理缓冲区，包含一批待处理的日志消息。
+//   - batch []*logMsg: 日志批处理缓冲区，包含一批待处理的日志消息。
 func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	// 🛡️ 使用defer确保对象一定会被回收
 	defer func() {
@@ -189,8 +191,8 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 
 		// 如果发生panic，记录但不重新抛出
 		if r := recover(); r != nil {
-			p.deps.getColorLib().PrintErrorf("批处理时发生panic: %v\n", r)
-			// 不重新panic，保证处理器继续运行
+			p.deps.getColorLib().PrintErrorf("panic occurred during batch processing: %v\n", r)
+			// Don't re-panic to keep processor running
 		}
 	}()
 
@@ -221,13 +223,13 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	var fileBuffer, consoleBuffer *bytes.Buffer
 
 	if config.OutputToFile {
-		// 获取文件缓冲区（大容量，32KB起步）
+		// 获取文件缓冲区(大容量，32KB起步)
 		fileBuffer = p.bufferPool.GetFileBuffer(estimatedSize)
 		defer p.bufferPool.PutFileBuffer(fileBuffer)
 	}
 
 	if config.OutputToConsole {
-		// 获取控制台缓冲区（小容量，8KB起步）
+		// 获取控制台缓冲区(小容量，8KB起步)
 		consoleBuffer = p.bufferPool.GetConsoleBuffer(estimatedSize)
 		defer p.bufferPool.PutConsoleBuffer(consoleBuffer)
 	}
@@ -252,7 +254,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 
 		// 控制台输出处理：智能缓冲区升级 + 直接格式化，带颜色处理
 		if config.OutputToConsole && consoleBuffer != nil {
-			// 🚀 智能检查并升级缓冲区（8KB -> 32KB -> 64KB）
+			// 🚀 智能检查并升级缓冲区(8KB -> 32KB -> 64KB)
 			consoleBuffer = p.bufferPool.CheckAndUpgradeConsoleBuffer(consoleBuffer, singleLogSize)
 			formatLogDirectlyToBuffer(consoleBuffer, config, logMsg, true, p.deps.getColorLib())
 			consoleBuffer.WriteByte('\n') // 添加换行符
@@ -264,14 +266,13 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
 		if _, writeErr := p.deps.getFileWriter().Write(fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
-			p.deps.getColorLib().PrintErrorf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
+			p.deps.getColorLib().PrintErrorf("Failed to write file: %s\nstack: %s\n", writeErr, debug.Stack())
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
 			if config.OutputToConsole && consoleBuffer != nil {
 				if _, consoleErr := p.deps.getConsoleWriter().Write(fileBuffer.Bytes()); consoleErr != nil {
 					// 控制台输出失败时静默处理，避免影响程序运行
-					// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
-					_ = writeErr // 静默忽略控制台输出错误
+					_ = writeErr
 				}
 			}
 		}
@@ -282,8 +283,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
 		if _, writeErr := p.deps.getConsoleWriter().Write(consoleBuffer.Bytes()); writeErr != nil {
 			// 控制台输出失败时静默处理，避免影响程序运行
-			// 只在调试模式下输出错误信息（如果有其他可用的错误输出渠道）
-			_ = writeErr // 静默忽略控制台输出错误
+			_ = writeErr
 		}
 	}
 }
@@ -323,7 +323,7 @@ func (p *processor) shouldFlushByThreshold(batch []*logMsg) bool {
 
 // formatLogDirectlyToBuffer 直接将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
 //
-// 参数：
+// 参数:
 //   - buffer: 目标缓冲区
 //   - config: 日志配置
 //   - logMsg: 日志消息
@@ -367,7 +367,7 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 			fmt.Fprintf(tempBuffer,
 				logFormatMap[Json],
 				logMsg.Timestamp, logLevelToString(logMsg.Level), "unknown", "unknown", 0,
-				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
+				fmt.Sprintf("Failed to serialize original message: %v | Original content: %s", err, logMsg.Message),
 			)
 		}
 
@@ -436,7 +436,7 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 
 	// 默认情况
 	default:
-		tempBuffer.WriteString("无法识别的日志格式选项: ")
+		tempBuffer.WriteString("Unrecognized log format option: ")
 		fmt.Fprintf(tempBuffer, "%v", config.LogFormat)
 	}
 
@@ -483,7 +483,7 @@ func addColorToBuffer(buffer *bytes.Buffer, cl *colorlib.ColorLib, level LogLeve
 		return
 	}
 
-	// 获取源缓冲区的内容（避免String()调用的内存分配）
+	// 获取源缓冲区的内容(避免String()调用的内存分配)
 	sourceBytes := sourceBuffer.Bytes()
 	sourceString := string(sourceBytes) // 这里仍需要一次转换，但比多次String()调用更高效
 

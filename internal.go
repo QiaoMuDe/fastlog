@@ -393,9 +393,6 @@ func (f *FastLog) gracefulShutdown(ctx context.Context) {
 	// 2. 等待一小段时间，让正在进行的操作完成
 	time.Sleep(10 * time.Millisecond)
 
-	// 3. 关闭日志通道，停止接收新日志
-	close(f.logChan)
-
 	// 3. 等待处理器完成剩余工作
 	shutdownComplete := make(chan struct{})
 	go func() {
@@ -407,9 +404,10 @@ func (f *FastLog) gracefulShutdown(ctx context.Context) {
 	select {
 	case <-shutdownComplete:
 		// 正常关闭完成
-		return
 	case <-ctx.Done():
-		// 超时，但不打印警告（因为会强制清理）
-		return
+		// 超时，但不打印警告(因为会强制清理)
 	}
+
+	// 5. 关闭日志通道，停止接收新日志
+	close(f.logChan)
 }

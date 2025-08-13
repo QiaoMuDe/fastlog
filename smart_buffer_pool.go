@@ -274,36 +274,3 @@ func (stp *smartTieredBufferPool) PutConsoleBuffer(buffer *bytes.Buffer) {
 		// 这样避免池中积累过大的缓冲区
 	}
 }
-
-// GetBufferPoolStats 获取缓冲区池的统计信息（用于调试和监控）
-//
-// 返回值：
-//   - map[string]interface{}: 包含各个池的统计信息
-func (stp *smartTieredBufferPool) GetBufferPoolStats() map[string]interface{} {
-	// 注意：sync.Pool没有提供获取当前对象数量的方法
-	// 这里返回配置信息，实际使用中可以添加自定义计数器
-	return map[string]interface{}{
-		"file_buffer_capacities": map[string]int{
-			"small":  fileSmallBufferCapacity,
-			"medium": fileMediumBufferCapacity,
-			"large":  fileLargeBufferCapacity,
-		},
-		"console_buffer_capacities": map[string]int{
-			"small":  consoleSmallBufferCapacity,
-			"medium": consoleMediumBufferCapacity,
-			"large":  consoleLargeBufferCapacity,
-		},
-		"thresholds": map[string]interface{}{
-			"file": map[string]int{
-				"small":  fileSmallThreshold,
-				"medium": fileMediumThreshold,
-				"large":  fileLargeThreshold,
-			},
-			"console": map[string]int{
-				"small":  consoleSmallThreshold,
-				"medium": consoleMediumThreshold,
-				"large":  consoleLargeThreshold,
-			},
-		},
-	}
-}

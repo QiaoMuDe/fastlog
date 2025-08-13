@@ -81,18 +81,18 @@ func (c *FastLogConfig) fixFinalConfig() {
 func (c *FastLogConfig) validateCriticalConfig() {
 	// 配置对象不能为nil
 	if c == nil {
-		panic("FastLogConfig配置对象不能为nil")
+		panic("FastLogConfig configuration object cannot be nil")
 	}
 
 	// 必须启用至少一种输出方式
 	if !c.OutputToConsole && !c.OutputToFile {
-		panic("必须启用至少一种输出方式：控制台输出(OutputToConsole)或文件输出(OutputToFile)")
+		panic("At least one output method must be enabled: console output (OutputToConsole) or file output (OutputToFile)")
 	}
 
 	// 如果启用文件输出，目录名和文件名不能同时为空
 	if c.OutputToFile {
 		if strings.TrimSpace(c.LogDirName) == "" && strings.TrimSpace(c.LogFileName) == "" {
-			panic("启用文件输出时，日志目录名(LogDirName)和文件名(LogFileName)不能同时为空")
+			panic("When file output is enabled, log directory name (LogDirName) and file name (LogFileName) cannot both be empty")
 		}
 	}
 }
@@ -101,17 +101,17 @@ func (c *FastLogConfig) validateCriticalConfig() {
 func (c *FastLogConfig) checkSystemResources() {
 	// 检查通道大小是否会占用过多内存
 	if c.ChanIntSize > 1000000 { // 超过100万条消息
-		panic("通道大小过大，可能导致内存溢出。建议设置在100万条以内")
+		panic("channel size too large, may cause memory overflow. Recommend setting within 1 million entries")
 	}
 
 	// 检查刷新间隔是否过小导致CPU占用过高
 	if c.FlushInterval > 0 && c.FlushInterval < time.Microsecond {
-		panic("刷新间隔过小(小于1微秒)，会导致CPU占用过高")
+		panic("refresh interval too small (less than 1 microsecond), will cause high CPU usage")
 	}
 
 	// 检查文件大小配置是否合理
 	if c.MaxLogFileSize > 10000 { // 超过10GB
-		panic("单个日志文件大小过大(超过10GB)，可能导致磁盘空间不足")
+		panic("single log file size too large (exceeds 10GB), may cause insufficient disk space")
 	}
 }
 

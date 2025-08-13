@@ -87,10 +87,10 @@ type FastLog struct {
 func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 检查配置结构体是否为nil
 	if config == nil {
-		panic("FastLogConfig 不能为 nil")
+		panic("FastLogConfig cannot be nil")
 	}
 
-	// 最终配置修正 - 直接在原始配置上修正所有不合理的值
+	// 最终配置修正: 直接在原始配置上修正所有不合理的值
 	config.fixFinalConfig()
 
 	// 克隆配置结构体防止原配置被意外修改
@@ -209,22 +209,22 @@ func (f *FastLog) Close() {
 	f.closeOnce.Do(func() {
 		// 记录关闭日志
 		f.Info("stop logging...")
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 
-		// 统一的关闭超时时间
+		// 获取合适的超时时间
 		closeTimeout := f.getCloseTimeout()
 
 		// 创建关闭上下文
 		closeCtx, closeCancel := context.WithTimeout(context.Background(), closeTimeout)
 		defer closeCancel()
 
-		// 优雅关闭：先停止接收新日志，再等待处理完成
+		// 优雅关闭: 先通知各组件关闭, 再等待处理完成
 		f.gracefulShutdown(closeCtx)
 
 		// 如果启用了文件写入器，则尝试关闭它。
 		if f.config.OutputToFile && f.logger != nil {
 			if err := f.logger.Close(); err != nil {
-				f.cl.PrintErrorf("关闭日志文件失败: %v\n", err)
+				f.cl.PrintErrorf("Failed to close log file: %v\n", err)
 			}
 		}
 	})
