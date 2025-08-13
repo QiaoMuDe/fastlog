@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"gitee.com/MM-Q/colorlib"
@@ -58,10 +57,10 @@ type FastLog struct {
 	// 用于确保日志处理器只启动一次
 	startOnce sync.Once
 
-	// 控制刷新器的上下文
+	// 用于控制全局日志记录器的生命周期
 	ctx context.Context
 
-	// 控制刷新器的取消函数
+	// 用于取消全局日志记录器的生命周期
 	cancel context.CancelFunc
 
 	// 提供终端颜色输出的库
@@ -75,9 +74,6 @@ type FastLog struct {
 
 	// 嵌入的配置结构体
 	config *FastLogConfig
-
-	// 用于判断日志通道是否关闭
-	isLogChanClosed atomic.Bool
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
@@ -151,20 +147,16 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		logger:          logger,                              // 日志文件切割器
-		fileWriter:      fileWriter,                          // 文件写入器, 用于将日志写入文件
-		consoleWriter:   consoleWriter,                       // 控制台写入器, 用于将日志写入控制台
-		cl:              colorlib.NewColorLib(),              // 颜色库实例, 用于在终端中显示颜色
-		config:          cfg,                                 // 配置结构体
-		logChan:         make(chan *logMsg, cfg.ChanIntSize), // 日志消息通道
-		closeOnce:       sync.Once{},                         // 用于在结束时确保只执行一次
-		cancel:          cancel,                              // 用于取消上下文的函数
-		ctx:             ctx,                                 // 上下文, 用于控制协程退出
-		isLogChanClosed: atomic.Bool{},                       // 用于判断日志通道是否关闭
+		logger:        logger,                              // 日志文件切割器
+		fileWriter:    fileWriter,                          // 文件写入器, 用于将日志写入文件
+		consoleWriter: consoleWriter,                       // 控制台写入器, 用于将日志写入控制台
+		cl:            colorlib.NewColorLib(),              // 颜色库实例, 用于在终端中显示颜色
+		config:        cfg,                                 // 配置结构体
+		logChan:       make(chan *logMsg, cfg.ChanIntSize), // 日志消息通道
+		closeOnce:     sync.Once{},                         // 用于在结束时确保只执行一次
+		cancel:        cancel,                              // 用于控制全局日志记录器的生命周期
+		ctx:           ctx,                                 // 用于控制全局日志记录器的生命周期
 	}
-
-	// 默认为false, 表示日志通道未关闭
-	f.isLogChanClosed.Store(false)
 
 	// 根据Color的值, 设置颜色库的颜色选项
 	if f.config.Color {
@@ -217,10 +209,6 @@ func (f *FastLog) Close() {
 	f.closeOnce.Do(func() {
 		// 记录关闭日志
 		f.Info("stop logging...")
-		time.Sleep(50 * time.Millisecond)
-
-		// 设置关闭标识
-		f.isLogChanClosed.Store(true)
 		time.Sleep(50 * time.Millisecond)
 
 		// 统一的关闭超时时间

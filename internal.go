@@ -27,6 +27,7 @@ type safeTimestampCache struct {
 var globalSafeCache = &safeTimestampCache{}
 
 // getCachedTimestamp 获取缓存的时间戳，优化版本（原子操作 + 轻量级锁）
+//
 // 性能特点：
 //   - 快路径完全无锁，使用原子读取
 //   - 慢路径使用轻量级Mutex，避免读写锁的开销
@@ -39,6 +40,10 @@ func getCachedTimestamp() string {
 	now := time.Now()           // 获取当前完整时间对象
 	currentSecond := now.Unix() // 提取Unix时间戳的秒数部分
 
+	// 获取锁
+	globalSafeCache.mu.Lock()
+	defer globalSafeCache.mu.Unlock()
+
 	// 步骤2：快路径 - 原子读取，完全无锁（🚀 性能关键优化）
 	// 使用原子操作读取上次缓存的秒数，避免锁竞争
 	lastSecond := atomic.LoadInt64(&globalSafeCache.lastSecond)
@@ -48,18 +53,13 @@ func getCachedTimestamp() string {
 		return globalSafeCache.cachedString // 🚀 无锁读取，性能最优
 	}
 
-	// 步骤3：慢路径 - 需要更新缓存
-	// 使用轻量级Mutex而不是RWMutex，减少锁开销
-	globalSafeCache.mu.Lock()
-	defer globalSafeCache.mu.Unlock()
-
-	// 步骤4：双重检查 - 防止重复更新
+	// 步骤3：慢路径 - 快路径失败，需要更新缓存
 	// 在等待锁期间，可能其他goroutine已经更新了缓存
 	if currentSecond == atomic.LoadInt64(&globalSafeCache.lastSecond) {
 		return globalSafeCache.cachedString
 	}
 
-	// 步骤5：执行缓存更新
+	// 步骤4：执行缓存更新
 	// 先更新字符串，再原子更新秒数（确保一致性）
 	newTimestamp := now.Format("2006-01-02 15:04:05")
 	globalSafeCache.cachedString = newTimestamp
@@ -229,9 +229,12 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 		return
 	}
 
-	// 检查日志通道是否已关闭
-	if l.isLogChanClosed.Load() {
-		return
+	// 检查日志通道是否已关闭 - 复用现有的协调机制
+	select {
+	case <-l.ctx.Done():
+		return // 上下文已取消，直接返回
+	default:
+		// 继续执行
 	}
 
 	// 检查日志级别，如果当前级别高于指定级别则不记录
@@ -289,10 +292,10 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 
 	// 安全发送日志 - 使用select避免阻塞
 	select {
-	case l.logChan <- logMessage:
-		// 成功发送
-	default:
-		// 通道满，回收对象并丢弃日志
+	case <-l.ctx.Done(): // 上下文已取消，回收对象
+		putLogMsg(logMessage)
+	case l.logChan <- logMessage: // 成功发送
+	default: // 通道满，回收对象并丢弃日志
 		putLogMsg(logMessage)
 	}
 }
@@ -384,11 +387,14 @@ func (f *FastLog) getCloseTimeout() time.Duration {
 // 参数:
 //   - ctx: 上下文对象，用于控制关闭过程
 func (f *FastLog) gracefulShutdown(ctx context.Context) {
-	// 1. 关闭日志通道，停止接收新日志
-	close(f.logChan)
-
-	// 2. 取消处理器上下文，通知处理器准备退出
+	// 1. 先取消处理器上下文，通知所有组件停止工作
 	f.cancel()
+
+	// 2. 等待一小段时间，让正在进行的操作完成
+	time.Sleep(10 * time.Millisecond)
+
+	// 3. 关闭日志通道，停止接收新日志
+	close(f.logChan)
 
 	// 3. 等待处理器完成剩余工作
 	shutdownComplete := make(chan struct{})
