@@ -438,7 +438,7 @@ const (
     Simple                          // 简约格式
     Structured                      // 结构化格式
     BasicStructured                 // 基础结构化格式(无文件信息)
-	SimpleTimestamp                 // 简单时间格式
+    SimpleTimestamp                 // 简单时间格式
     Custom                          // 自定义格式
 )
 ```
@@ -478,22 +478,6 @@ func (l LogLevel) MarshalJSON() ([]byte, error)
 ```
 
 将日志级别转换为字符串
-
-### PathInfo
-
-```go
-type PathInfo struct {
-    Path    string      // 路径
-    Exists  bool        // 是否存在
-    IsFile  bool        // 是否为文件
-    IsDir   bool        // 是否为目录
-    Size    int64       // 文件大小（字节）
-    Mode    os.FileMode // 文件权限
-    ModTime time.Time   // 文件修改时间
-}
-```
-
-PathInfo 是一个结构体，用于封装路径的信息
 
 ### ProcessorConfig
 

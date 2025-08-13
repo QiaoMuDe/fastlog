@@ -357,3 +357,53 @@ func (f *FastLog) getLogChannel() <-chan *logMsg {
 func (f *FastLog) notifyProcessorDone() {
 	f.logWait.Done()
 }
+
+// getCloseTimeout 计算并返回日志记录器关闭时的合理超时时间
+//
+// 返回值:
+//   - time.Duration: 计算后的关闭超时时间，范围在3-10秒之间
+//
+// 实现逻辑:
+//  1. 基于配置的刷新间隔(FlushInterval)乘以10作为基础超时时间
+//  2. 确保最小超时为3秒，避免过短的超时导致日志丢失
+//  3. 确保最大超时为10秒，避免过长的等待影响程序退出
+func (f *FastLog) getCloseTimeout() time.Duration {
+	// 基于刷新间隔计算合理的超时时间
+	baseTimeout := time.Duration(f.config.FlushInterval) * time.Millisecond * 10
+	if baseTimeout < 3*time.Second {
+		baseTimeout = 3 * time.Second
+	}
+	if baseTimeout > 10*time.Second {
+		baseTimeout = 10 * time.Second
+	}
+	return baseTimeout
+}
+
+// gracefulShutdown 优雅关闭日志记录器
+//
+// 参数:
+//   - ctx: 上下文对象，用于控制关闭过程
+func (f *FastLog) gracefulShutdown(ctx context.Context) {
+	// 1. 关闭日志通道，停止接收新日志
+	close(f.logChan)
+
+	// 2. 取消处理器上下文，通知处理器准备退出
+	f.cancel()
+
+	// 3. 等待处理器完成剩余工作
+	shutdownComplete := make(chan struct{})
+	go func() {
+		defer close(shutdownComplete)
+		f.logWait.Wait()
+	}()
+
+	// 4. 等待完成或超时
+	select {
+	case <-shutdownComplete:
+		// 正常关闭完成
+		return
+	case <-ctx.Done():
+		// 超时，但不打印警告（因为会强制清理）
+		return
+	}
+}

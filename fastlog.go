@@ -24,16 +24,20 @@ import (
 var (
 	// New 是 NewFastLog 的简写别名
 	//
-	// 用法: logger, err := fastlog.New(config)
+	// 用法:
+	//  - logger, err := fastlog.New(config)
 	//
-	// 等价于: logger, err := fastlog.NewFastLog(config)
+	// 等价于:
+	//  - logger, err := fastlog.NewFastLog(config)
 	New = NewFastLog
 
 	// NewCfg 是 NewFastLogConfig 的简写别名
 	//
-	// 用法: config := fastlog.NewCfg()
+	// 用法:
+	//  - config := fastlog.NewCfg()
 	//
-	// 等价于: config := fastlog.NewFastLogConfig()
+	// 等价于:
+	//  - config := fastlog.NewFastLogConfig()
 	NewCfg = NewFastLogConfig
 )
 
@@ -238,49 +242,229 @@ func (f *FastLog) Close() {
 	})
 }
 
-// getCloseTimeout 计算并返回日志记录器关闭时的合理超时时间
+/* ====== 不带占位符方法 ======*/
+
+// Info 记录信息级别的日志，不支持占位符
 //
-// 返回值:
-//   - time.Duration: 计算后的关闭超时时间，范围在3-10秒之间
-//
-// 实现逻辑:
-//  1. 基于配置的刷新间隔(FlushInterval)乘以10作为基础超时时间
-//  2. 确保最小超时为3秒，避免过短的超时导致日志丢失
-//  3. 确保最大超时为10秒，避免过长的等待影响程序退出
-func (f *FastLog) getCloseTimeout() time.Duration {
-	// 基于刷新间隔计算合理的超时时间
-	baseTimeout := time.Duration(f.config.FlushInterval) * time.Millisecond * 10
-	if baseTimeout < 3*time.Second {
-		baseTimeout = 3 * time.Second
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Info(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
+		return
 	}
-	if baseTimeout > 10*time.Second {
-		baseTimeout = 10 * time.Second
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
 	}
-	return baseTimeout
+
+	// 调用logWithLevel方法记录日志
+	l.logWithLevel(INFO, fmt.Sprint(v...), 3)
 }
 
-// gracefulShutdown 优雅关闭日志记录器
-func (f *FastLog) gracefulShutdown(ctx context.Context) {
-	// 1. 关闭日志通道，停止接收新日志
-	close(f.logChan)
-
-	// 2. 取消处理器上下文，通知处理器准备退出
-	f.cancel()
-
-	// 3. 等待处理器完成剩余工作
-	shutdownComplete := make(chan struct{})
-	go func() {
-		defer close(shutdownComplete)
-		f.logWait.Wait()
-	}()
-
-	// 4. 等待完成或超时
-	select {
-	case <-shutdownComplete:
-		// 正常关闭完成
-		return
-	case <-ctx.Done():
-		// 超时，但不打印警告（因为会强制清理）
+// Debug 记录调试级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Debug(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
 		return
 	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(DEBUG, fmt.Sprint(v...), 3)
+}
+
+// Warn 记录警告级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Warn(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(WARN, fmt.Sprint(v...), 3)
+}
+
+// Error 记录错误级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Error(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(ERROR, fmt.Sprint(v...), 3)
+}
+
+// Success 记录成功级别的日志，不支持占位符
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Success(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(SUCCESS, fmt.Sprint(v...), 3)
+}
+
+// Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
+//
+// 参数:
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Fatal(v ...any) {
+	// 公共API入口参数验证
+	if l == nil {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logFatal(fmt.Sprint(v...), 3)
+}
+
+/*====== 占位符方法 ======*/
+
+// Infof 记录信息级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Infof(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(INFO, fmt.Sprintf(format, v...), 3)
+}
+
+// Debugf 记录调试级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Debugf(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(DEBUG, fmt.Sprintf(format, v...), 3)
+}
+
+// Warnf 记录警告级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Warnf(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(WARN, fmt.Sprintf(format, v...), 3)
+}
+
+// Errorf 记录错误级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Errorf(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(ERROR, fmt.Sprintf(format, v...), 3)
+}
+
+// Successf 记录成功级别的日志，支持占位符，格式化
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Successf(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logWithLevel(SUCCESS, fmt.Sprintf(format, v...), 3)
+}
+
+// Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
+//
+// 参数:
+//   - format: 格式字符串
+//   - v: 可变参数，可以是任意类型，会被转换为字符串
+func (l *FastLog) Fatalf(format string, v ...any) {
+	// 公共API入口参数验证
+	if l == nil || format == "" {
+		return
+	}
+
+	// 检查参数是否为空
+	if len(v) == 0 {
+		return
+	}
+
+	l.logFatal(fmt.Sprintf(format, v...), 3)
 }
