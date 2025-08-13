@@ -108,8 +108,8 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 		MaxLogBackups:   config.MaxLogBackups,   // 最大日志文件保留数量(默认为0, 表示不清理)
 		IsLocalTime:     config.IsLocalTime,     // 是否使用本地时间
 		EnableCompress:  config.EnableCompress,  // 是否启用日志文件压缩
-		NoColor:         config.NoColor,         // 是否禁用终端颜色
-		NoBold:          config.NoBold,          // 是否禁用终端字体加粗
+		Color:           config.Color,           // 是否启用终端颜色
+		Bold:            config.Bold,            // 是否启用终端字体加粗
 	}
 
 	// 初始化写入器
@@ -162,14 +162,18 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	// 默认为false, 表示日志通道未关闭
 	f.isLogChanClosed.Store(false)
 
-	// 根据noColor的值, 设置颜色库的颜色选项
-	if f.config.NoColor {
-		f.cl.NoColor.Store(true) // 设置颜色库的颜色选项为禁用
+	// 根据Color的值, 设置颜色库的颜色选项
+	if f.config.Color {
+		f.cl.SetColor(true)
+	} else {
+		f.cl.SetColor(false)
 	}
 
-	// 根据noBold的值, 设置颜色库的字体加粗选项
-	if f.config.NoBold {
-		f.cl.NoBold.Store(true) // 设置颜色库的字体加粗选项为禁用
+	// 根据Bold的值, 设置颜色库的字体加粗选项
+	if f.config.Bold {
+		f.cl.SetBold(true)
+	} else {
+		f.cl.SetBold(false)
 	}
 
 	// 使用 sync.Once 确保日志处理器只启动一次
@@ -265,7 +269,7 @@ func (f *FastLog) Close() {
 		// 如果启用了文件写入器，则尝试关闭它。
 		if f.config.OutputToFile && f.logger != nil {
 			if err := f.logger.Close(); err != nil {
-				f.cl.PrintErrf("关闭日志文件失败: %v\n", err)
+				f.cl.PrintErrorf("关闭日志文件失败: %v\n", err)
 			}
 		}
 	})

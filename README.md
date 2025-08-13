@@ -139,8 +139,8 @@ func main() {
     // 配置输出选项
     config.OutputToConsole = true                        // 启用控制台输出
     config.OutputToFile = true                           // 启用文件输出
-    config.NoColor = false                               // 启用颜色
-    config.NoBold = false                                // 启用加粗
+    config.Color = true                                  // 启用颜色
+    config.Bold = true                                   // 启用加粗
   
     // 创建日志实例
     logger, err := fastlog.NewFastLog(config)

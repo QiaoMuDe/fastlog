@@ -84,7 +84,7 @@ func TestNoColor(t *testing.T) {
 	// 创建日志配置
 	cfg := NewFastLogConfig("logs", "nocolor.log")
 	cfg.LogLevel = DEBUG
-	cfg.NoColor = true // 禁用终端颜色
+	cfg.Color = false // 禁用终端颜色
 
 	// 创建日志记录器
 	log, err := NewFastLog(cfg)
@@ -106,8 +106,8 @@ func TestNoBold(t *testing.T) {
 	// 创建日志配置
 	cfg := NewFastLogConfig("logs", "nobold.log")
 	cfg.LogLevel = DEBUG
-	cfg.NoBold = true // 禁用终端字体加粗
-	cfg.NoColor = false
+	cfg.Bold = false // 禁用终端字体加粗
+	cfg.Color = false
 
 	// 创建日志记录器
 	log, err := NewFastLog(cfg)

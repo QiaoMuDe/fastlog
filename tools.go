@@ -171,7 +171,7 @@ func addColorToBuffer(buffer *bytes.Buffer, cl *colorlib.ColorLib, level LogLeve
 	case SUCCESS:
 		buffer.WriteString(cl.Sgreen(sourceString)) // Green
 	case DEBUG:
-		buffer.WriteString(cl.Spurple(sourceString)) // Purple
+		buffer.WriteString(cl.Smagenta(sourceString)) // Magenta
 	case FATAL:
 		buffer.WriteString(cl.Sred(sourceString)) // Red
 	default:

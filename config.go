@@ -20,8 +20,8 @@ type FastLogConfig struct {
 	LogLevel        LogLevel      // 日志级别
 	ChanIntSize     int           // 通道大小 默认10000
 	LogFormat       LogFormatType // 日志格式选项
-	NoColor         bool          // 是否禁用终端颜色
-	NoBold          bool          // 是否禁用终端字体加粗
+	Color           bool          // 是否启用终端颜色
+	Bold            bool          // 是否启用终端字体加粗
 	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认10MB
 	MaxLogAge       int           // 最大日志文件保留天数, 默认为0, 表示不做限制
 	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
@@ -53,8 +53,8 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
 		IsLocalTime:     true,                   // 是否使用本地时间 默认使用本地时间
 		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
-		NoColor:         false,                  // 是否禁用终端颜色
-		NoBold:          false,                  // 是否禁用终端字体加粗
+		Color:           true,                   // 是否启用终端颜色
+		Bold:            true,                   // 是否启用终端字体加粗
 	}
 }
 

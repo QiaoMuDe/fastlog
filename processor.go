@@ -73,7 +73,7 @@ func (p *processor) singleThreadProcessor() {
 	defer func() {
 		// 捕获panic
 		if r := recover(); r != nil {
-			p.deps.getColorLib().PrintErrf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
+			p.deps.getColorLib().PrintErrorf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
 		}
 
 		// 减少等待组中的计数器。
@@ -149,7 +149,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 
 		// 如果发生panic，记录但不重新抛出
 		if r := recover(); r != nil {
-			p.deps.getColorLib().PrintErrf("批处理时发生panic: %v\n", r)
+			p.deps.getColorLib().PrintErrorf("批处理时发生panic: %v\n", r)
 			// 不重新panic，保证处理器继续运行
 		}
 	}()
@@ -224,7 +224,7 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		// 将文件缓冲区的内容一次性写入文件, 提高I/O效率
 		if _, writeErr := p.deps.getFileWriter().Write(fileBuffer.Bytes()); writeErr != nil {
 			// 如果写入失败，记录错误信息和堆栈跟踪
-			p.deps.getColorLib().PrintErrf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
+			p.deps.getColorLib().PrintErrorf("写入文件失败: %s\nstack: %s\n", writeErr, debug.Stack())
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
 			if config.OutputToConsole && consoleBuffer != nil {
