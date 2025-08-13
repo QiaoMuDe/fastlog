@@ -74,8 +74,12 @@ func (p *processor) singleThreadProcessor() {
 
 	// 创建定时刷新器，间隔由flushInterval指定
 	ticker := time.NewTicker(p.flushInterval)
+	defer ticker.Stop() // 确保定时器在函数退出时停止
 
 	defer func() {
+		// 处理剩余消息
+		p.drainRemainingMessages(batch)
+
 		// 捕获panic
 		if r := recover(); r != nil {
 			p.deps.getColorLib().PrintErrorf("日志处理器发生panic: %s\nstack: %s\n", r, debug.Stack())
@@ -90,12 +94,8 @@ func (p *processor) singleThreadProcessor() {
 		select {
 		case logMsg, ok := <-p.deps.getLogChannel(): // 从日志通道接收新日志消息
 			if !ok { // 检查通道是否关闭
-				// 处理剩余的batch(如果有的话)
-				if len(batch) > 0 {
-					p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
-				}
-
-				return // 如果通道关闭，退出循环
+				// 通道关闭，但不直接退出，让 defer 处理剩余消息
+				return
 			}
 
 			// 添加消息空值检查
@@ -106,7 +106,7 @@ func (p *processor) singleThreadProcessor() {
 			// 将日志消息添加到批处理缓冲区
 			batch = append(batch, logMsg)
 
-			// 只在满足条件时才处理: 批处理切片写满或者缓冲区到达90%阈值
+			// 只在满足条件时才处理: 批处理切片写满 || 缓冲区到达90%阈值
 			shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold(batch)
 
 			// 检查是否需要处理(满足条件之一)
@@ -123,20 +123,55 @@ func (p *processor) singleThreadProcessor() {
 			}
 
 		case <-p.deps.getContext().Done(): // 上下文取消信号，表示应停止处理
-			// 关闭定时器
-			ticker.Stop()
-
-			// 处理剩余的batch(如果有的话)
-			if len(batch) > 0 {
-				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
-			}
-
 			return
 		}
 	}
 }
 
-// processAndFlushBatch 处理并刷新日志批处理缓冲区（智能缓冲区优化版本）,
+// drainRemainingMessages 用于在返回之前处理日志通道中剩余的日志消息
+//
+// 参数:
+//   - batch: 待处理的日志消息批次
+func (p *processor) drainRemainingMessages(batch []*logMsg) {
+	// 先处理当前 batch
+	if len(batch) > 0 {
+		p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
+		batch = batch[:0]             // 重置batch
+	}
+
+	// 非阻塞地读取通道中的剩余消息
+	for {
+		select {
+		case logMsg, ok := <-p.deps.getLogChannel():
+			if !ok {
+				return // 通道已关闭且清空
+			}
+
+			if logMsg != nil {
+				// 添加到批处理切片
+				batch = append(batch, logMsg)
+
+				// 只在满足条件时才处理: 批处理切片写满 || 缓冲区到达90%阈值
+				shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold(batch)
+
+				// 检查是否需要处理(满足条件之一)
+				if shouldFlush {
+					p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
+					batch = batch[:0]             // 重置批处理缓冲区，准备接收新消息
+				}
+			}
+
+		default:
+			// 通道中没有更多消息, 处理最后的 batch
+			if len(batch) > 0 {
+				p.processAndFlushBatch(batch)
+			}
+			return
+		}
+	}
+}
+
+// processAndFlushBatch 处理并刷新日志批处理缓冲区(智能缓冲区优化版本),
 // 该函数负责直接将日志消息格式化到缓冲区, 避免创建中间字符串,
 // 然后将缓冲区内容刷新到实际的输出目标(文件或控制台)。
 //

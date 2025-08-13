@@ -46,6 +46,73 @@ type TestStats struct {
 	ThroughputPerSec float64          // 实际吞吐量（条/秒）
 }
 
+// TestConcurrentFastLog 测试并发场景下的多个日志记录器（优化版本）
+func TestConcurrentFastLog(t *testing.T) {
+	// 初始化测试统计信息
+	stats := &TestStats{
+		StartTime: time.Now(),
+	}
+
+	// 强制垃圾回收，获取干净的初始内存状态
+	runtime.GC()
+	runtime.GC() // 执行两次确保彻底回收
+	time.Sleep(50 * time.Millisecond)
+	runtime.ReadMemStats(&stats.StartMemStats)
+
+	// 创建日志配置
+	cfg := NewFastLogConfig("logs", "test.log")
+	cfg.OutputToConsole = false     // 开启控制台输出
+	cfg.OutputToFile = true         // 开启文件输出
+	cfg.MaxLogFileSize = 5          // 设置日志文件最大大小为5MB
+	cfg.LogFormat = BasicStructured // 设置自定义日志格式
+	cfg.ChanIntSize = 100000        // 增大通道容量以支持更高并发
+
+	// 创建日志记录器
+	log, err := NewFastLog(cfg)
+	if err != nil {
+		t.Fatalf("创建日志记录器失败: %v", err)
+	}
+
+	// 测试参数
+	stats.ExpectedLogs = int64(TestDuration * TestRate)
+	stats.GoroutineCount = WorkerPoolSize // 使用实际的工作池大小
+
+	// 启动内存监控goroutine
+	stopMonitoring := make(chan bool)
+	go monitorMemoryUsage(stats, stopMonitoring)
+
+	defer func() {
+		// 停止内存监控
+		close(stopMonitoring)
+
+		// 关闭日志器并等待处理完成
+		log.Close()
+		time.Sleep(200 * time.Millisecond) // 等待日志处理完成
+
+		// 记录结束时间和内存状态
+		stats.EndTime = time.Now()
+		stats.Duration = stats.EndTime.Sub(stats.StartTime)
+
+		// 强制垃圾回收后获取最终内存状态
+		runtime.GC()
+		runtime.GC()
+		time.Sleep(50 * time.Millisecond)
+		runtime.ReadMemStats(&stats.EndMemStats)
+
+		// 计算统计数据
+		stats.ActualLogs = stats.ExpectedLogs // 在实际测试中会被更新
+		stats.SuccessRate = float64(stats.ValidLogLines) / float64(stats.ExpectedLogs) * 100
+		stats.ThroughputPerSec = float64(stats.ActualLogs) / stats.Duration.Seconds()
+
+		// 打印详细统计结果
+		stats.PrintDetailedStats()
+	}()
+
+	// 启动高并发随机日志函数
+	actualLogs := highConcurrencyRandomLogWithStats(log, TestDuration, TestRate, stats, t)
+	stats.ActualLogs = actualLogs
+}
+
 // PrintDetailedStats 打印详细的测试统计结果
 func (s *TestStats) PrintDetailedStats() {
 	separator := strings.Repeat("=", 60)
@@ -142,73 +209,6 @@ func formatBytes(bytes uint64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
-}
-
-// TestConcurrentFastLog 测试并发场景下的多个日志记录器（优化版本）
-func TestConcurrentFastLog(t *testing.T) {
-	// 初始化测试统计信息
-	stats := &TestStats{
-		StartTime: time.Now(),
-	}
-
-	// 强制垃圾回收，获取干净的初始内存状态
-	runtime.GC()
-	runtime.GC() // 执行两次确保彻底回收
-	time.Sleep(50 * time.Millisecond)
-	runtime.ReadMemStats(&stats.StartMemStats)
-
-	// 创建日志配置
-	cfg := NewFastLogConfig("logs", "test.log")
-	cfg.OutputToConsole = false     // 开启控制台输出
-	cfg.OutputToFile = true         // 开启文件输出
-	cfg.MaxLogFileSize = 5          // 设置日志文件最大大小为5MB
-	cfg.LogFormat = BasicStructured // 设置自定义日志格式
-	cfg.ChanIntSize = 100000        // 增大通道容量以支持更高并发
-
-	// 创建日志记录器
-	log, err := NewFastLog(cfg)
-	if err != nil {
-		t.Fatalf("创建日志记录器失败: %v", err)
-	}
-
-	// 测试参数
-	stats.ExpectedLogs = int64(TestDuration * TestRate)
-	stats.GoroutineCount = WorkerPoolSize // 使用实际的工作池大小
-
-	// 启动内存监控goroutine
-	stopMonitoring := make(chan bool)
-	go monitorMemoryUsage(stats, stopMonitoring)
-
-	defer func() {
-		// 停止内存监控
-		close(stopMonitoring)
-
-		// 关闭日志器并等待处理完成
-		log.Close()
-		time.Sleep(200 * time.Millisecond) // 等待日志处理完成
-
-		// 记录结束时间和内存状态
-		stats.EndTime = time.Now()
-		stats.Duration = stats.EndTime.Sub(stats.StartTime)
-
-		// 强制垃圾回收后获取最终内存状态
-		runtime.GC()
-		runtime.GC()
-		time.Sleep(50 * time.Millisecond)
-		runtime.ReadMemStats(&stats.EndMemStats)
-
-		// 计算统计数据
-		stats.ActualLogs = stats.ExpectedLogs // 在实际测试中会被更新
-		stats.SuccessRate = float64(stats.ValidLogLines) / float64(stats.ExpectedLogs) * 100
-		stats.ThroughputPerSec = float64(stats.ActualLogs) / stats.Duration.Seconds()
-
-		// 打印详细统计结果
-		stats.PrintDetailedStats()
-	}()
-
-	// 启动高并发随机日志函数
-	actualLogs := highConcurrencyRandomLogWithStats(log, TestDuration, TestRate, stats, t)
-	stats.ActualLogs = actualLogs
 }
 
 // monitorMemoryUsage 监控内存使用情况，记录峰值
