@@ -207,43 +207,6 @@ func NewFastLog(config *FastLogConfig) (*FastLog, error) {
 	return f, nil
 }
 
-// ===== 实现 processorDependencies 接口 =====
-
-// getConfig 获取日志配置
-func (f *FastLog) getConfig() *FastLogConfig {
-	return f.config
-}
-
-// getFileWriter 获取文件写入器
-func (f *FastLog) getFileWriter() io.Writer {
-	return f.fileWriter
-}
-
-// getConsoleWriter 获取控制台写入器
-func (f *FastLog) getConsoleWriter() io.Writer {
-	return f.consoleWriter
-}
-
-// getColorLib 获取颜色库实例
-func (f *FastLog) getColorLib() *colorlib.ColorLib {
-	return f.cl
-}
-
-// getContext 获取上下文
-func (f *FastLog) getContext() context.Context {
-	return f.ctx
-}
-
-// getLogChannel 获取日志消息通道（只读）
-func (f *FastLog) getLogChannel() <-chan *logMsg {
-	return f.logChan
-}
-
-// notifyProcessorDone 通知处理器完成工作
-func (f *FastLog) notifyProcessorDone() {
-	f.logWait.Done()
-}
-
 // Close 安全关闭日志记录器
 func (f *FastLog) Close() {
 	// 使用 sync.Once 确保关闭操作只执行一次

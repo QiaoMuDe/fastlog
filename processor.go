@@ -7,8 +7,13 @@ package fastlog
 
 import (
 	"bytes"
+	"encoding/json"
+	"fmt"
 	"runtime/debug"
+	"strconv"
 	"time"
+
+	"gitee.com/MM-Q/colorlib"
 )
 
 // processor 单线程日志处理器
@@ -279,4 +284,190 @@ func (p *processor) shouldFlushByThreshold(batch []*logMsg) bool {
 	}
 
 	return false
+}
+
+// formatLogDirectlyToBuffer 直接将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
+//
+// 参数：
+//   - buffer: 目标缓冲区
+//   - config: 日志配置
+//   - logMsg: 日志消息
+//   - withColor: 是否添加颜色（用于控制台输出）
+//   - colorLib: 颜色库实例（当withColor为true时使用）
+func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logMsg *logMsg, withColor bool, colorLib *colorlib.ColorLib) {
+	// 检查参数有效性
+	if buffer == nil || config == nil || logMsg == nil || colorLib == nil {
+		return
+	}
+
+	// 如果时间戳为空，使用缓存的时间戳
+	if logMsg.Timestamp == "" {
+		logMsg.Timestamp = getCachedTimestamp()
+	}
+
+	// 检查关键字段是否为空，设置默认值
+	if logMsg.Message == "" {
+		return // 消息为空直接返回
+	}
+	if logMsg.FileName == "" {
+		logMsg.FileName = "unknown-file"
+	}
+	if logMsg.FuncName == "" {
+		logMsg.FuncName = "unknown-func"
+	}
+
+	// 文本格式处理：先格式化到临时缓冲区，然后根据需要添加颜色
+	tempBuffer := getTempBuffer()
+	defer putTempBuffer(tempBuffer)
+
+	// 根据日志格式格式化到临时缓冲区
+	switch config.LogFormat {
+	// JSON格式
+	case Json:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(logMsg); err == nil {
+			tempBuffer.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(tempBuffer,
+				logFormatMap[Json],
+				logMsg.Timestamp, logLevelToString(logMsg.Level), "unknown", "unknown", 0,
+				fmt.Sprintf("原始消息序列化失败: %v | 原始内容: %s", err, logMsg.Message),
+			)
+		}
+
+	// 详细格式
+	case Detailed:
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" | ")
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
+		tempBuffer.WriteString(" | ")
+		tempBuffer.WriteString(logMsg.FileName) // 文件信息
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(logMsg.FuncName) // 函数
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(strconv.Itoa(int(logMsg.Line))) // 行号
+		tempBuffer.WriteString(" - ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
+
+	// 简约格式
+	case Simple:
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" | ")
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
+		tempBuffer.WriteString(" | ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
+
+	// 结构化格式
+	case Structured:
+		tempBuffer.WriteString("T:") // 时间戳
+		tempBuffer.WriteString(logMsg.Timestamp)
+		tempBuffer.WriteString("|L:")                    // 日志级别
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
+		tempBuffer.WriteString("|F:") // 文件信息
+		tempBuffer.WriteString(logMsg.FileName)
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(logMsg.FuncName)
+		tempBuffer.WriteByte(':')
+		tempBuffer.WriteString(strconv.Itoa(int(logMsg.Line)))
+		tempBuffer.WriteString("|M:") // 消息
+		tempBuffer.WriteString(logMsg.Message)
+
+	// 基础结构化格式(无文件信息)
+	case BasicStructured:
+		tempBuffer.WriteString("T:") // 时间戳
+		tempBuffer.WriteString(logMsg.Timestamp)
+		tempBuffer.WriteString("|L:")                    // 日志级别
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)
+		tempBuffer.WriteString("|M:") // 消息
+		tempBuffer.WriteString(logMsg.Message)
+
+	// 简单时间格式
+	case SimpleTimestamp:
+		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
+		tempBuffer.WriteString(" ")
+		levelStr := logLevelToPaddedString(logMsg.Level) // 使用预填充的日志级别字符串
+		tempBuffer.WriteString(levelStr)                 // 日志级别
+		tempBuffer.WriteString(" ")
+		tempBuffer.WriteString(logMsg.Message) // 消息
+
+	// 自定义格式
+	case Custom:
+		tempBuffer.WriteString(logMsg.Message)
+
+	// 默认情况
+	default:
+		tempBuffer.WriteString("无法识别的日志格式选项: ")
+		fmt.Fprintf(tempBuffer, "%v", config.LogFormat)
+	}
+
+	// 根据withColor参数决定是否添加颜色
+	if withColor {
+		// 使用零拷贝版本：直接将带颜色的内容写入目标缓冲区(控制台)
+		addColorToBuffer(buffer, colorLib, logMsg.Level, tempBuffer)
+	} else {
+		// 直接写入原始内容(文件)
+		buffer.Write(tempBuffer.Bytes())
+	}
+}
+
+// logLevelToPaddedString 将 LogLevel 转换为带填充的字符串（用于文本格式化）
+//
+// 参数：
+//   - level: 要转换的日志级别
+//
+// 返回值：
+//   - string: 对应的带填充的日志级别字符串（7个字符），如果 level 无效, 则返回 "UNKNOWN"
+func logLevelToPaddedString(level LogLevel) string {
+	// 使用预构建的带填充映射表进行O(1)查询（适用于文本格式）
+	if str, exists := logLevelPaddedStringMap[level]; exists {
+		return str
+	}
+	return "UNKNOWN"
+}
+
+// addColorToBuffer 直接将带颜色的消息写入缓冲区，避免创建中间字符串（零拷贝优化版本）
+//
+// 参数：
+//   - buffer: 目标缓冲区
+//   - cl: 颜色库实例
+//   - level: 日志级别
+//   - sourceBuffer: 源缓冲区（包含原始消息内容）
+func addColorToBuffer(buffer *bytes.Buffer, cl *colorlib.ColorLib, level LogLevel, sourceBuffer *bytes.Buffer) {
+	// 完整的空指针和参数检查
+	if buffer == nil || cl == nil || sourceBuffer == nil {
+		return
+	}
+
+	// 检查源缓冲区是否为空
+	if sourceBuffer.Len() == 0 {
+		return
+	}
+
+	// 获取源缓冲区的内容（避免String()调用的内存分配）
+	sourceBytes := sourceBuffer.Bytes()
+	sourceString := string(sourceBytes) // 这里仍需要一次转换，但比多次String()调用更高效
+
+	// 根据日志级别添加颜色并直接写入目标缓冲区
+	switch level {
+	case INFO:
+		buffer.WriteString(cl.Sblue(sourceString)) // Blue
+	case WARN:
+		buffer.WriteString(cl.Syellow(sourceString)) // Yellow
+	case ERROR:
+		buffer.WriteString(cl.Sred(sourceString)) // Red
+	case SUCCESS:
+		buffer.WriteString(cl.Sgreen(sourceString)) // Green
+	case DEBUG:
+		buffer.WriteString(cl.Smagenta(sourceString)) // Magenta
+	case FATAL:
+		buffer.WriteString(cl.Sred(sourceString)) // Red
+	default:
+		// 如果没有匹配到日志级别，直接写入原始内容
+		buffer.Write(sourceBytes)
+	}
 }

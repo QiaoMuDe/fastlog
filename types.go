@@ -5,9 +5,12 @@ types.go - 日志系统核心类型定义
 package fastlog
 
 import (
-	"os"
+	"context"
+	"io"
 	"sync"
 	"time"
+
+	"gitee.com/MM-Q/colorlib"
 )
 
 // 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
@@ -30,17 +33,6 @@ var logLevelPaddedStringMap = map[LogLevel]string{
 	ERROR:   "ERROR  ", // 7个字符
 	FATAL:   "FATAL  ", // 7个字符
 	NONE:    "NONE   ", // 7个字符
-}
-
-// PathInfo 是一个结构体，用于封装路径的信息
-type PathInfo struct {
-	Path    string      // 路径
-	Exists  bool        // 是否存在
-	IsFile  bool        // 是否为文件
-	IsDir   bool        // 是否为目录
-	Size    int64       // 文件大小（字节）
-	Mode    os.FileMode // 文件权限
-	ModTime time.Time   // 文件修改时间
 }
 
 // 定义缓冲区相关常量
@@ -77,6 +69,21 @@ type LogLevel uint8
 // 将日志级别转换为字符串
 func (l LogLevel) MarshalJSON() ([]byte, error) {
 	return []byte(`"` + logLevelToString(l) + `"`), nil
+}
+
+// logLevelToString 将 LogLevel 转换为对应的字符串（不带填充，用于JSON序列化）
+//
+// 参数：
+//   - level: 要转换的日志级别
+//
+// 返回值：
+//   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
+func logLevelToString(level LogLevel) string {
+	// 使用预构建的映射表进行O(1)查询（不带填充，适用于JSON）
+	if str, exists := logLevelStringMap[level]; exists {
+		return str
+	}
+	return "UNKNOWN"
 }
 
 // 定义日志级别
@@ -187,3 +194,40 @@ var (
 	maxFileNameLength = 255  // 大多数文件系统的文件名长度限制
 	maxPathLength     = 4096 // 大多数系统的路径长度限制
 )
+
+// processorDependencies 定义处理器所需的最小依赖接口
+// 通过接口隔离原则，processor 只能访问必要的功能，避免持有完整的 FastLog 引用
+type processorDependencies interface {
+	// getConfig 获取日志配置
+	getConfig() *FastLogConfig
+
+	// getFileWriter 获取文件写入器
+	getFileWriter() io.Writer
+
+	// getConsoleWriter 获取控制台写入器
+	getConsoleWriter() io.Writer
+
+	// getColorLib 获取颜色库实例
+	getColorLib() *colorlib.ColorLib
+
+	// getContext 获取上下文，用于控制处理器生命周期
+	getContext() context.Context
+
+	// getLogChannel 获取日志消息通道
+	getLogChannel() <-chan *logMsg
+
+	// notifyProcessorDone 通知处理器完成工作
+	notifyProcessorDone()
+}
+
+// WriterPair 写入器对，用于批量传递写入器
+type WriterPair struct {
+	FileWriter    io.Writer
+	ConsoleWriter io.Writer
+}
+
+// ProcessorConfig 处理器配置结构
+type ProcessorConfig struct {
+	BatchSize     int           // 批量处理大小
+	FlushInterval time.Duration // 刷新间隔
+}

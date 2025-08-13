@@ -7,45 +7,10 @@ package fastlog
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
-
-// TestCheckPath 测试路径检查功能
-func TestCheckPath(t *testing.T) {
-	// 创建临时目录
-	filePath := filepath.Join("logs", "test.txt")
-
-	// 创建测试文件
-	_ = os.WriteFile(filePath, []byte("test"), 0644)
-
-	// 测试存在的文件
-	info, err := checkPath(filePath)
-	if err != nil {
-		t.Errorf("检查存在的文件失败: %v", err)
-	}
-	if !info.Exists || !info.IsFile || info.IsDir {
-		t.Error("存在的文件属性判断错误")
-	}
-
-	// 测试存在的目录
-	info, err = checkPath("logs")
-	if err != nil {
-		t.Errorf("检查存在的目录失败: %v", err)
-	}
-	if !info.Exists || !info.IsDir || info.IsFile {
-		t.Error("存在的目录属性判断错误")
-	}
-
-	// 测试不存在的路径
-	info, err = checkPath(filepath.Join("logs", "nonexistent"))
-	if err == nil || info.Exists {
-		t.Error("检查不存在的路径时应返回错误")
-	}
-}
 
 // TestGetCallerInfo 测试调用者信息获取
 func TestGetCallerInfo(t *testing.T) {
