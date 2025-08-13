@@ -103,3 +103,21 @@ func BenchmarkInt64VsInt(b *testing.B) {
 		}
 	})
 }
+
+// BenchmarkShutdownPerformance 关闭性能基准测试
+func BenchmarkShutdownPerformance(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		cfg := NewFastLogConfig("logs", "shutdown_bench.log")
+		cfg.OutputToConsole = false
+
+		logger := NewFastLog(cfg)
+
+		// 写入一些日志
+		for j := 0; j < 10; j++ {
+			logger.Infof("基准测试消息 %d", j)
+		}
+
+		// 测量关闭时间
+		logger.Close()
+	}
+}
