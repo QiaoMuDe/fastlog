@@ -58,6 +58,186 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	}
 }
 
+// WithLogDirName 设置日志目录路径
+//
+// 参数:
+//   - logDirName: 日志目录路径
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithLogDirName(logDirName string) *FastLogConfig {
+	c.LogDirName = logDirName
+	return c
+}
+
+// WithLogFileName 设置日志文件名
+//
+// 参数:
+//   - logFileName: 日志文件名
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithLogFileName(logFileName string) *FastLogConfig {
+	c.LogFileName = logFileName
+	return c
+}
+
+// WithOutputToConsole 设置是否将日志输出到控制台
+//
+// 参数:
+//   - outputToConsole: 是否输出到控制台，true为输出，false为不输出
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithOutputToConsole(outputToConsole bool) *FastLogConfig {
+	c.OutputToConsole = outputToConsole
+	return c
+}
+
+// WithOutputToFile 设置是否将日志输出到文件
+//
+// 参数:
+//   - outputToFile: 是否输出到文件，true为输出，false为不输出
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithOutputToFile(outputToFile bool) *FastLogConfig {
+	c.OutputToFile = outputToFile
+	return c
+}
+
+// WithFlushInterval 设置日志刷新间隔
+//
+// 参数:
+//   - flushInterval: 刷新间隔时间，建议不小于10毫秒
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithFlushInterval(flushInterval time.Duration) *FastLogConfig {
+	c.FlushInterval = flushInterval
+	return c
+}
+
+// WithLogLevel 设置日志级别
+//
+// 参数:
+//   - logLevel: 日志级别，可选值：DEBUG, INFO, WARN, ERROR, NONE
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithLogLevel(logLevel LogLevel) *FastLogConfig {
+	c.LogLevel = logLevel
+	return c
+}
+
+// WithChanIntSize 设置通道缓冲区大小
+//
+// 参数:
+//   - chanIntSize: 通道缓冲区大小，建议设置为1000-100000之间
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithChanIntSize(chanIntSize int) *FastLogConfig {
+	c.ChanIntSize = chanIntSize
+	return c
+}
+
+// WithLogFormat 设置日志格式类型
+//
+// 参数:
+//   - logFormat: 日志格式类型，可选值：Detailed, Simple, JSON, Custom
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithLogFormat(logFormat LogFormatType) *FastLogConfig {
+	c.LogFormat = logFormat
+	return c
+}
+
+// WithColor 设置是否启用终端颜色输出
+//
+// 参数:
+//   - color: 是否启用颜色，true为启用，false为禁用
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithColor(color bool) *FastLogConfig {
+	c.Color = color
+	return c
+}
+
+// WithBold 设置是否启用终端字体加粗
+//
+// 参数:
+//   - bold: 是否启用加粗，true为启用，false为禁用
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithBold(bold bool) *FastLogConfig {
+	c.Bold = bold
+	return c
+}
+
+// WithMaxLogFileSize 设置单个日志文件的最大大小
+//
+// 参数:
+//   - maxLogFileSize: 最大文件大小，单位为MB，建议设置为1-1000之间
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithMaxLogFileSize(maxLogFileSize int) *FastLogConfig {
+	c.MaxLogFileSize = maxLogFileSize
+	return c
+}
+
+// WithMaxLogAge 设置日志文件最大保留天数
+//
+// 参数:
+//   - maxLogAge: 最大保留天数，0表示不限制，建议设置为7-3650之间
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithMaxLogAge(maxLogAge int) *FastLogConfig {
+	c.MaxLogAge = maxLogAge
+	return c
+}
+
+// WithMaxLogBackups 设置日志文件最大保留数量
+//
+// 参数:
+//   - maxLogBackups: 最大保留文件数量，0表示不限制，建议设置为5-1000之间
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithMaxLogBackups(maxLogBackups int) *FastLogConfig {
+	c.MaxLogBackups = maxLogBackups
+	return c
+}
+
+// WithIsLocalTime 设置是否使用本地时间
+//
+// 参数:
+//   - isLocalTime: 是否使用本地时间，true为本地时间，false为UTC时间
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithIsLocalTime(isLocalTime bool) *FastLogConfig {
+	c.IsLocalTime = isLocalTime
+	return c
+}
+
+// WithEnableCompress 设置是否启用日志文件压缩
+//
+// 参数:
+//   - enableCompress: 是否启用压缩，true为启用，false为禁用
+//
+// 返回值:
+//   - *FastLogConfig: 返回配置实例本身，支持链式调用
+func (c *FastLogConfig) WithEnableCompress(enableCompress bool) *FastLogConfig {
+	c.EnableCompress = enableCompress
+	return c
+}
+
 // fixFinalConfig 最终配置修正函数 - 在NewFastLog开始时调用
 // 负责修正所有不合理的配置值, 确保系统稳定运行
 // 对于无法修正的关键错误会panic

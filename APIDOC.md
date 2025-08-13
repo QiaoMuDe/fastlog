@@ -244,7 +244,7 @@ Close 安全关闭日志记录器
 ##### Debug
 
 ```go
-func (l *FastLog) Debug(v ...any)
+func (f *FastLog) Debug(v ...any)
 ```
 
 Debug 记录调试级别的日志，不支持占位符
@@ -255,7 +255,7 @@ Debug 记录调试级别的日志，不支持占位符
 ##### Debugf
 
 ```go
-func (l *FastLog) Debugf(format string, v ...any)
+func (f *FastLog) Debugf(format string, v ...any)
 ```
 
 Debugf 记录调试级别的日志，支持占位符，格式化
@@ -267,7 +267,7 @@ Debugf 记录调试级别的日志，支持占位符，格式化
 ##### Error
 
 ```go
-func (l *FastLog) Error(v ...any)
+func (f *FastLog) Error(v ...any)
 ```
 
 Error 记录错误级别的日志，不支持占位符
@@ -278,7 +278,7 @@ Error 记录错误级别的日志，不支持占位符
 ##### Errorf
 
 ```go
-func (l *FastLog) Errorf(format string, v ...any)
+func (f *FastLog) Errorf(format string, v ...any)
 ```
 
 Errorf 记录错误级别的日志，支持占位符，格式化
@@ -290,7 +290,7 @@ Errorf 记录错误级别的日志，支持占位符，格式化
 ##### Fatal
 
 ```go
-func (l *FastLog) Fatal(v ...any)
+func (f *FastLog) Fatal(v ...any)
 ```
 
 Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
@@ -301,7 +301,7 @@ Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志�
 ##### Fatalf
 
 ```go
-func (l *FastLog) Fatalf(format string, v ...any)
+func (f *FastLog) Fatalf(format string, v ...any)
 ```
 
 Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
@@ -313,7 +313,7 @@ Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记�
 ##### Info
 
 ```go
-func (l *FastLog) Info(v ...any)
+func (f *FastLog) Info(v ...any)
 ```
 
 Info 记录信息级别的日志，不支持占位符
@@ -324,7 +324,7 @@ Info 记录信息级别的日志，不支持占位符
 ##### Infof
 
 ```go
-func (l *FastLog) Infof(format string, v ...any)
+func (f *FastLog) Infof(format string, v ...any)
 ```
 
 Infof 记录信息级别的日志，支持占位符，格式化
@@ -336,7 +336,7 @@ Infof 记录信息级别的日志，支持占位符，格式化
 ##### Success
 
 ```go
-func (l *FastLog) Success(v ...any)
+func (f *FastLog) Success(v ...any)
 ```
 
 Success 记录成功级别的日志，不支持占位符
@@ -347,7 +347,7 @@ Success 记录成功级别的日志，不支持占位符
 ##### Successf
 
 ```go
-func (l *FastLog) Successf(format string, v ...any)
+func (f *FastLog) Successf(format string, v ...any)
 ```
 
 Successf 记录成功级别的日志，支持占位符，格式化
@@ -359,7 +359,7 @@ Successf 记录成功级别的日志，支持占位符，格式化
 ##### Warn
 
 ```go
-func (l *FastLog) Warn(v ...any)
+func (f *FastLog) Warn(v ...any)
 ```
 
 Warn 记录警告级别的日志，不支持占位符
@@ -370,7 +370,7 @@ Warn 记录警告级别的日志，不支持占位符
 ##### Warnf
 
 ```go
-func (l *FastLog) Warnf(format string, v ...any)
+func (f *FastLog) Warnf(format string, v ...any)
 ```
 
 Warnf 记录警告级别的日志，支持占位符，格式化
@@ -419,6 +419,247 @@ NewFastLogConfig 创建一个新的FastLogConfig实例，用于配置日志记�
 
 **返回值:**
 - `*FastLogConfig`: 一个指向FastLogConfig实例的指针。
+
+#### 链式配置方法
+
+FastLogConfig 提供了一系列链式配置方法，支持流畅的配置语法：
+
+##### WithLogDirName
+
+```go
+func (c *FastLogConfig) WithLogDirName(logDirName string) *FastLogConfig
+```
+
+设置日志目录路径
+
+**参数:**
+- `logDirName`: 日志目录路径
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithLogFileName
+
+```go
+func (c *FastLogConfig) WithLogFileName(logFileName string) *FastLogConfig
+```
+
+设置日志文件名
+
+**参数:**
+- `logFileName`: 日志文件名
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithOutputToConsole
+
+```go
+func (c *FastLogConfig) WithOutputToConsole(outputToConsole bool) *FastLogConfig
+```
+
+设置是否将日志输出到控制台
+
+**参数:**
+- `outputToConsole`: 是否输出到控制台，true为输出，false为不输出
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithOutputToFile
+
+```go
+func (c *FastLogConfig) WithOutputToFile(outputToFile bool) *FastLogConfig
+```
+
+设置是否将日志输出到文件
+
+**参数:**
+- `outputToFile`: 是否输出到文件，true为输出，false为不输出
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithFlushInterval
+
+```go
+func (c *FastLogConfig) WithFlushInterval(flushInterval time.Duration) *FastLogConfig
+```
+
+设置日志刷新间隔
+
+**参数:**
+- `flushInterval`: 刷新间隔时间，建议不小于10毫秒
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithLogLevel
+
+```go
+func (c *FastLogConfig) WithLogLevel(logLevel LogLevel) *FastLogConfig
+```
+
+设置日志级别
+
+**参数:**
+- `logLevel`: 日志级别，可选值：DEBUG, INFO, WARN, ERROR, NONE
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithChanIntSize
+
+```go
+func (c *FastLogConfig) WithChanIntSize(chanIntSize int) *FastLogConfig
+```
+
+设置通道缓冲区大小
+
+**参数:**
+- `chanIntSize`: 通道缓冲区大小，建议设置为1000-100000之间
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithLogFormat
+
+```go
+func (c *FastLogConfig) WithLogFormat(logFormat LogFormatType) *FastLogConfig
+```
+
+设置日志格式类型
+
+**参数:**
+- `logFormat`: 日志格式类型，可选值：Detailed, Simple, JSON, Custom
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithColor
+
+```go
+func (c *FastLogConfig) WithColor(color bool) *FastLogConfig
+```
+
+设置是否启用终端颜色输出
+
+**参数:**
+- `color`: 是否启用颜色，true为启用，false为禁用
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithBold
+
+```go
+func (c *FastLogConfig) WithBold(bold bool) *FastLogConfig
+```
+
+设置是否启用终端字体加粗
+
+**参数:**
+- `bold`: 是否启用加粗，true为启用，false为禁用
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithMaxLogFileSize
+
+```go
+func (c *FastLogConfig) WithMaxLogFileSize(maxLogFileSize int) *FastLogConfig
+```
+
+设置单个日志文件的最大大小
+
+**参数:**
+- `maxLogFileSize`: 最大文件大小，单位为MB，建议设置为1-1000之间
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithMaxLogAge
+
+```go
+func (c *FastLogConfig) WithMaxLogAge(maxLogAge int) *FastLogConfig
+```
+
+设置日志文件最大保留天数
+
+**参数:**
+- `maxLogAge`: 最大保留天数，0表示不限制，建议设置为7-3650之间
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithMaxLogBackups
+
+```go
+func (c *FastLogConfig) WithMaxLogBackups(maxLogBackups int) *FastLogConfig
+```
+
+设置日志文件最大保留数量
+
+**参数:**
+- `maxLogBackups`: 最大保留文件数量，0表示不限制，建议设置为5-1000之间
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithIsLocalTime
+
+```go
+func (c *FastLogConfig) WithIsLocalTime(isLocalTime bool) *FastLogConfig
+```
+
+设置是否使用本地时间
+
+**参数:**
+- `isLocalTime`: 是否使用本地时间，true为本地时间，false为UTC时间
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+##### WithEnableCompress
+
+```go
+func (c *FastLogConfig) WithEnableCompress(enableCompress bool) *FastLogConfig
+```
+
+设置是否启用日志文件压缩
+
+**参数:**
+- `enableCompress`: 是否启用压缩，true为启用，false为禁用
+
+**返回值:**
+- `*FastLogConfig`: 返回配置实例本身，支持链式调用
+
+#### 链式配置示例
+
+```go
+// 使用链式配置方法
+config := fastlog.NewFastLogConfig("logs", "app.log").
+    WithLogLevel(fastlog.DEBUG).
+    WithOutputToConsole(true).
+    WithOutputToFile(true).
+    WithFlushInterval(100 * time.Millisecond).
+    WithMaxLogFileSize(50).
+    WithMaxLogAge(30).
+    WithMaxLogBackups(10).
+    WithColor(true).
+    WithBold(false).
+    WithEnableCompress(true)
+
+// 创建日志记录器
+logger := fastlog.New(config)
+defer logger.Close()
+
+// 部分链式配置
+config2 := fastlog.NewFastLogConfig("logs", "debug.log").
+    WithLogLevel(fastlog.DEBUG).
+    WithOutputToConsole(false).
+    WithMaxLogFileSize(25)
+```
 
 ### LogFormatType
 

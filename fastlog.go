@@ -234,9 +234,9 @@ func (f *FastLog) Close() {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Info(v ...any) {
+func (f *FastLog) Info(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -246,16 +246,16 @@ func (l *FastLog) Info(v ...any) {
 	}
 
 	// 调用logWithLevel方法记录日志
-	l.logWithLevel(INFO, fmt.Sprint(v...), 3)
+	f.logWithLevel(INFO, fmt.Sprint(v...), 3)
 }
 
 // Debug 记录调试级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Debug(v ...any) {
+func (f *FastLog) Debug(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -264,16 +264,16 @@ func (l *FastLog) Debug(v ...any) {
 		return
 	}
 
-	l.logWithLevel(DEBUG, fmt.Sprint(v...), 3)
+	f.logWithLevel(DEBUG, fmt.Sprint(v...), 3)
 }
 
 // Warn 记录警告级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Warn(v ...any) {
+func (f *FastLog) Warn(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -282,16 +282,16 @@ func (l *FastLog) Warn(v ...any) {
 		return
 	}
 
-	l.logWithLevel(WARN, fmt.Sprint(v...), 3)
+	f.logWithLevel(WARN, fmt.Sprint(v...), 3)
 }
 
 // Error 记录错误级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Error(v ...any) {
+func (f *FastLog) Error(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -300,16 +300,16 @@ func (l *FastLog) Error(v ...any) {
 		return
 	}
 
-	l.logWithLevel(ERROR, fmt.Sprint(v...), 3)
+	f.logWithLevel(ERROR, fmt.Sprint(v...), 3)
 }
 
 // Success 记录成功级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Success(v ...any) {
+func (f *FastLog) Success(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -318,16 +318,16 @@ func (l *FastLog) Success(v ...any) {
 		return
 	}
 
-	l.logWithLevel(SUCCESS, fmt.Sprint(v...), 3)
+	f.logWithLevel(SUCCESS, fmt.Sprint(v...), 3)
 }
 
 // Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Fatal(v ...any) {
+func (f *FastLog) Fatal(v ...any) {
 	// 公共API入口参数验证
-	if l == nil {
+	if f == nil {
 		return
 	}
 
@@ -336,7 +336,7 @@ func (l *FastLog) Fatal(v ...any) {
 		return
 	}
 
-	l.logFatal(fmt.Sprint(v...), 3)
+	f.logFatal(fmt.Sprint(v...), 3)
 }
 
 /*====== 占位符方法 ======*/
@@ -346,9 +346,9 @@ func (l *FastLog) Fatal(v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Infof(format string, v ...any) {
+func (f *FastLog) Infof(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -357,7 +357,7 @@ func (l *FastLog) Infof(format string, v ...any) {
 		return
 	}
 
-	l.logWithLevel(INFO, fmt.Sprintf(format, v...), 3)
+	f.logWithLevel(INFO, fmt.Sprintf(format, v...), 3)
 }
 
 // Debugf 记录调试级别的日志，支持占位符，格式化
@@ -365,9 +365,9 @@ func (l *FastLog) Infof(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Debugf(format string, v ...any) {
+func (f *FastLog) Debugf(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -376,7 +376,7 @@ func (l *FastLog) Debugf(format string, v ...any) {
 		return
 	}
 
-	l.logWithLevel(DEBUG, fmt.Sprintf(format, v...), 3)
+	f.logWithLevel(DEBUG, fmt.Sprintf(format, v...), 3)
 }
 
 // Warnf 记录警告级别的日志，支持占位符，格式化
@@ -384,9 +384,9 @@ func (l *FastLog) Debugf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Warnf(format string, v ...any) {
+func (f *FastLog) Warnf(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -395,7 +395,7 @@ func (l *FastLog) Warnf(format string, v ...any) {
 		return
 	}
 
-	l.logWithLevel(WARN, fmt.Sprintf(format, v...), 3)
+	f.logWithLevel(WARN, fmt.Sprintf(format, v...), 3)
 }
 
 // Errorf 记录错误级别的日志，支持占位符，格式化
@@ -403,9 +403,9 @@ func (l *FastLog) Warnf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Errorf(format string, v ...any) {
+func (f *FastLog) Errorf(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -414,7 +414,7 @@ func (l *FastLog) Errorf(format string, v ...any) {
 		return
 	}
 
-	l.logWithLevel(ERROR, fmt.Sprintf(format, v...), 3)
+	f.logWithLevel(ERROR, fmt.Sprintf(format, v...), 3)
 }
 
 // Successf 记录成功级别的日志，支持占位符，格式化
@@ -422,9 +422,9 @@ func (l *FastLog) Errorf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Successf(format string, v ...any) {
+func (f *FastLog) Successf(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -433,7 +433,7 @@ func (l *FastLog) Successf(format string, v ...any) {
 		return
 	}
 
-	l.logWithLevel(SUCCESS, fmt.Sprintf(format, v...), 3)
+	f.logWithLevel(SUCCESS, fmt.Sprintf(format, v...), 3)
 }
 
 // Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
@@ -441,9 +441,9 @@ func (l *FastLog) Successf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (l *FastLog) Fatalf(format string, v ...any) {
+func (f *FastLog) Fatalf(format string, v ...any) {
 	// 公共API入口参数验证
-	if l == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
@@ -452,5 +452,5 @@ func (l *FastLog) Fatalf(format string, v ...any) {
 		return
 	}
 
-	l.logFatal(fmt.Sprintf(format, v...), 3)
+	f.logFatal(fmt.Sprintf(format, v...), 3)
 }

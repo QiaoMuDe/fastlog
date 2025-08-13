@@ -172,10 +172,10 @@ func TestConcurrentFileAccess(t *testing.T) {
 		// 并发写入日志
 		done := make(chan bool, len(loggers))
 		for i, logger := range loggers {
-			go func(id int, l *FastLog) {
+			go func(id int, f *FastLog) {
 				defer func() { done <- true }()
 				for j := 0; j < 100; j++ {
-					l.Infof("实例 %d 消息 %d", id, j)
+					f.Infof("实例 %d 消息 %d", id, j)
 				}
 			}(i, logger)
 		}

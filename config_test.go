@@ -545,3 +545,209 @@ func BenchmarkConfigFixing(b *testing.B) {
 		cfg.fixFinalConfig()
 	}
 }
+
+// TestFastLogConfigChainMethods 测试FastLogConfig的链式调用方法
+func TestFastLogConfigChainMethods(t *testing.T) {
+	// 测试完整的链式调用
+	config := NewFastLogConfig("test_logs", "test.log").
+		WithLogDirName("custom_logs").
+		WithLogFileName("custom.log").
+		WithOutputToConsole(false).
+		WithOutputToFile(true).
+		WithFlushInterval(200 * time.Millisecond).
+		WithLogLevel(DEBUG).
+		WithChanIntSize(5000).
+		WithLogFormat(Json).
+		WithColor(false).
+		WithBold(false).
+		WithMaxLogFileSize(50).
+		WithMaxLogAge(30).
+		WithMaxLogBackups(10).
+		WithIsLocalTime(false).
+		WithEnableCompress(true)
+
+	// 验证所有配置值是否正确设置
+	tests := []struct {
+		name     string
+		expected interface{}
+		actual   interface{}
+	}{
+		{"LogDirName", "custom_logs", config.LogDirName},
+		{"LogFileName", "custom.log", config.LogFileName},
+		{"OutputToConsole", false, config.OutputToConsole},
+		{"OutputToFile", true, config.OutputToFile},
+		{"FlushInterval", 200 * time.Millisecond, config.FlushInterval},
+		{"LogLevel", DEBUG, config.LogLevel},
+		{"ChanIntSize", 5000, config.ChanIntSize},
+		{"LogFormat", Json, config.LogFormat},
+		{"Color", false, config.Color},
+		{"Bold", false, config.Bold},
+		{"MaxLogFileSize", 50, config.MaxLogFileSize},
+		{"MaxLogAge", 30, config.MaxLogAge},
+		{"MaxLogBackups", 10, config.MaxLogBackups},
+		{"IsLocalTime", false, config.IsLocalTime},
+		{"EnableCompress", true, config.EnableCompress},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.actual != tt.expected {
+				t.Errorf("%s = %v, want %v", tt.name, tt.actual, tt.expected)
+			}
+		})
+	}
+}
+
+// TestFastLogConfigIndividualMethods 测试每个方法的单独功能
+func TestFastLogConfigIndividualMethods(t *testing.T) {
+	config := NewFastLogConfig("logs", "app.log")
+
+	// 测试 WithLogDirName
+	result := config.WithLogDirName("new_logs")
+	if result != config {
+		t.Error("WithLogDirName should return the same config instance")
+	}
+	if config.LogDirName != "new_logs" {
+		t.Errorf("LogDirName = %v, want %v", config.LogDirName, "new_logs")
+	}
+
+	// 测试 WithLogFileName
+	config.WithLogFileName("new_app.log")
+	if config.LogFileName != "new_app.log" {
+		t.Errorf("LogFileName = %v, want %v", config.LogFileName, "new_app.log")
+	}
+
+	// 测试 WithOutputToConsole
+	config.WithOutputToConsole(false)
+	if config.OutputToConsole != false {
+		t.Errorf("OutputToConsole = %v, want %v", config.OutputToConsole, false)
+	}
+
+	// 测试 WithOutputToFile
+	config.WithOutputToFile(false)
+	if config.OutputToFile != false {
+		t.Errorf("OutputToFile = %v, want %v", config.OutputToFile, false)
+	}
+
+	// 测试 WithFlushInterval
+	interval := 100 * time.Millisecond
+	config.WithFlushInterval(interval)
+	if config.FlushInterval != interval {
+		t.Errorf("FlushInterval = %v, want %v", config.FlushInterval, interval)
+	}
+
+	// 测试 WithLogLevel
+	config.WithLogLevel(ERROR)
+	if config.LogLevel != ERROR {
+		t.Errorf("LogLevel = %v, want %v", config.LogLevel, ERROR)
+	}
+
+	// 测试 WithChanIntSize
+	config.WithChanIntSize(8000)
+	if config.ChanIntSize != 8000 {
+		t.Errorf("ChanIntSize = %v, want %v", config.ChanIntSize, 8000)
+	}
+
+	// 测试 WithLogFormat
+	config.WithLogFormat(Detailed)
+	if config.LogFormat != Detailed {
+		t.Errorf("LogFormat = %v, want %v", config.LogFormat, Detailed)
+	}
+
+	// 测试 WithColor
+	config.WithColor(false)
+	if config.Color != false {
+		t.Errorf("Color = %v, want %v", config.Color, false)
+	}
+
+	// 测试 WithBold
+	config.WithBold(false)
+	if config.Bold != false {
+		t.Errorf("Bold = %v, want %v", config.Bold, false)
+	}
+
+	// 测试 WithMaxLogFileSize
+	config.WithMaxLogFileSize(100)
+	if config.MaxLogFileSize != 100 {
+		t.Errorf("MaxLogFileSize = %v, want %v", config.MaxLogFileSize, 100)
+	}
+
+	// 测试 WithMaxLogAge
+	config.WithMaxLogAge(60)
+	if config.MaxLogAge != 60 {
+		t.Errorf("MaxLogAge = %v, want %v", config.MaxLogAge, 60)
+	}
+
+	// 测试 WithMaxLogBackups
+	config.WithMaxLogBackups(20)
+	if config.MaxLogBackups != 20 {
+		t.Errorf("MaxLogBackups = %v, want %v", config.MaxLogBackups, 20)
+	}
+
+	// 测试 WithIsLocalTime
+	config.WithIsLocalTime(false)
+	if config.IsLocalTime != false {
+		t.Errorf("IsLocalTime = %v, want %v", config.IsLocalTime, false)
+	}
+
+	// 测试 WithEnableCompress
+	config.WithEnableCompress(true)
+	if config.EnableCompress != true {
+		t.Errorf("EnableCompress = %v, want %v", config.EnableCompress, true)
+	}
+}
+
+// TestFastLogConfigPartialChaining 测试部分链式调用
+func TestFastLogConfigPartialChaining(t *testing.T) {
+	// 测试部分链式调用
+	config := NewFastLogConfig("logs", "app.log").
+		WithLogLevel(WARN).
+		WithOutputToConsole(false).
+		WithMaxLogFileSize(25)
+
+	if config.LogLevel != WARN {
+		t.Errorf("LogLevel = %v, want %v", config.LogLevel, WARN)
+	}
+	if config.OutputToConsole != false {
+		t.Errorf("OutputToConsole = %v, want %v", config.OutputToConsole, false)
+	}
+	if config.MaxLogFileSize != 25 {
+		t.Errorf("MaxLogFileSize = %v, want %v", config.MaxLogFileSize, 25)
+	}
+
+	// 验证未修改的配置保持默认值
+	if config.LogDirName != "logs" {
+		t.Errorf("LogDirName should remain default value 'logs', got %v", config.LogDirName)
+	}
+	if config.LogFileName != "app.log" {
+		t.Errorf("LogFileName should remain default value 'app.log', got %v", config.LogFileName)
+	}
+}
+
+// TestFastLogConfigNilSafety 测试空指针安全性
+func TestFastLogConfigNilSafety(t *testing.T) {
+	var config *FastLogConfig = nil
+
+	// 测试在nil配置上调用方法是否会panic
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected panic when calling method on nil config")
+		}
+	}()
+
+	config.WithLogLevel(DEBUG)
+}
+
+// BenchmarkFastLogConfigChaining 性能基准测试
+func BenchmarkFastLogConfigChaining(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = NewFastLogConfig("logs", "app.log").
+			WithLogLevel(DEBUG).
+			WithOutputToConsole(true).
+			WithOutputToFile(true).
+			WithFlushInterval(100 * time.Millisecond).
+			WithMaxLogFileSize(50).
+			WithColor(true).
+			WithBold(true)
+	}
+}

@@ -82,6 +82,60 @@ func main() {
 }
 ```
 
+### 链式配置（推荐）
+
+FastLog 支持流畅的链式配置语法，让配置更加简洁优雅：
+
+```go
+package main
+
+import (
+    "time"
+    "gitee.com/MM-Q/fastlog"
+)
+
+func main() {
+    // 使用链式配置创建日志记录器
+    logger := fastlog.NewFastLog(
+        fastlog.NewFastLogConfig("logs", "app.log").
+            WithLogLevel(fastlog.DEBUG).
+            WithOutputToConsole(true).
+            WithOutputToFile(true).
+            WithFlushInterval(100 * time.Millisecond).
+            WithMaxLogFileSize(50).
+            WithMaxLogAge(30).
+            WithColor(true).
+            WithEnableCompress(true),
+    )
+    defer logger.Close()
+
+    // 记录日志
+    logger.Info("应用程序启动")
+    logger.Debugf("用户ID: %d, 操作: %s", 12345, "登录")
+    logger.Success("操作成功完成")
+    logger.Warn("内存使用率较高: 85%")
+    logger.Error("数据库连接失败")
+}
+```
+
+#### 可用的链式配置方法
+
+- `WithLogDirName(string)` - 设置日志目录
+- `WithLogFileName(string)` - 设置日志文件名
+- `WithLogLevel(LogLevel)` - 设置日志级别
+- `WithOutputToConsole(bool)` - 设置控制台输出
+- `WithOutputToFile(bool)` - 设置文件输出
+- `WithFlushInterval(time.Duration)` - 设置刷新间隔
+- `WithChanIntSize(int)` - 设置通道缓冲区大小
+- `WithLogFormat(LogFormatType)` - 设置日志格式
+- `WithColor(bool)` - 设置终端颜色
+- `WithBold(bool)` - 设置字体加粗
+- `WithMaxLogFileSize(int)` - 设置最大文件大小(MB)
+- `WithMaxLogAge(int)` - 设置文件保留天数
+- `WithMaxLogBackups(int)` - 设置文件保留数量
+- `WithIsLocalTime(bool)` - 设置时间格式
+- `WithEnableCompress(bool)` - 设置文件压缩
+
 ### 简化创建方式
 
 ```go
@@ -275,8 +329,8 @@ config.EnableCompress = true    // 启用压缩功能
 | 函数名称 | 参数 | 返回值 | 说明 |
 |---------|------|--------|------|
 | `NewFastLogConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建日志配置实例 |
-| `NewFastLog` | `cfg *FastLogConfig` | `(*FastLog, error)` | 根据配置创建日志记录器实例 |
-| `New` | `cfg *FastLogConfig` | `(*FastLog, error)` | `NewFastLog` 的简写形式 |
+| `NewFastLog` | `cfg *FastLogConfig` | `*FastLog` | 根据配置创建日志记录器实例 |
+| `New` | `cfg *FastLogConfig` | `*FastLog` | `NewFastLog` 的简写形式 |
 | `NewCfg` | `logDirPath string, logFileName string` | `*FastLogConfig` | `NewFastLogConfig` 的简写形式 |
 
 ### 配置字段

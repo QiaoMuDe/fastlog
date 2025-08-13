@@ -205,27 +205,27 @@ func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level L
 //   - level: 日志级别
 //   - message: 格式化后的消息
 //   - skipFrames: 跳过的调用栈帧数（用于获取正确的调用者信息）
-func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
+func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	// 关键路径空指针检查 - 防止panic
-	if l == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查核心组件是否已初始化
-	if l.config == nil || l.logChan == nil {
+	if f.config == nil || f.logChan == nil {
 		return
 	}
 
 	// 检查日志通道是否已关闭 - 复用现有的协调机制
 	select {
-	case <-l.ctx.Done():
+	case <-f.ctx.Done():
 		return // 上下文已取消，直接返回
 	default:
 		// 继续执行
 	}
 
 	// 检查日志级别，如果当前级别高于指定级别则不记录
-	if level < l.config.LogLevel {
+	if level < f.config.LogLevel {
 		return
 	}
 
@@ -242,7 +242,7 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	)
 
 	// 仅当需要文件信息时才获取调用者信息
-	if needsFileInfo(l.config.LogFormat) {
+	if needsFileInfo(f.config.LogFormat) {
 		var ok bool
 		fileName, funcName, line, ok = getCallerInfo(skipFrames)
 		if !ok {
@@ -271,7 +271,7 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.Line = line           // 行号
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
-	if shouldDropLogByBackpressure(l.bp, l.logChan, level) {
+	if shouldDropLogByBackpressure(f.bp, f.logChan, level) {
 		// 重要：如果丢弃日志，需要回收对象
 		putLogMsg(logMessage)
 		return
@@ -279,10 +279,16 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 
 	// 安全发送日志 - 使用select避免阻塞
 	select {
-	case <-l.ctx.Done(): // 上下文已取消，回收对象
+	// 上下文已取消，回收对象
+	case <-f.ctx.Done():
 		putLogMsg(logMessage)
-	case l.logChan <- logMessage: // 成功发送
-	default: // 通道满，回收对象并丢弃日志
+
+	// 成功发送
+	case f.logChan <- logMessage:
+		// 无操作
+
+	// 通道满，回收对象并丢弃日志
+	default:
 		putLogMsg(logMessage)
 	}
 }
@@ -292,9 +298,9 @@ func (l *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 // 参数:
 //   - message: 格式化后的消息
 //   - skipFrames: 跳过的调用栈帧数
-func (l *FastLog) logFatal(message string, skipFrames int) {
+func (f *FastLog) logFatal(message string, skipFrames int) {
 	// Fatal方法的特殊处理 - 即使FastLog为nil也要记录错误并退出
-	if l == nil {
+	if f == nil {
 		// 如果日志器为nil，直接输出到stderr并退出
 		fmt.Fprintf(os.Stderr, "FATAL: %s\n", message)
 		os.Exit(1)
@@ -302,10 +308,10 @@ func (l *FastLog) logFatal(message string, skipFrames int) {
 	}
 
 	// 先记录日志
-	l.logWithLevel(FATAL, message, skipFrames)
+	f.logWithLevel(FATAL, message, skipFrames)
 
 	// 关闭日志记录器
-	l.Close()
+	f.Close()
 
 	// 终止程序（非0退出码表示错误）
 	os.Exit(1)
