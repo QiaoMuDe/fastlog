@@ -58,6 +58,10 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	}
 }
 
+// =============================================================
+// 链式配置方法
+// =============================================================
+
 // WithLogDirName 设置日志目录路径
 //
 // 参数:
@@ -237,6 +241,10 @@ func (c *FastLogConfig) WithEnableCompress(enableCompress bool) *FastLogConfig {
 	c.EnableCompress = enableCompress
 	return c
 }
+
+// ========================================================================
+// 内部辅助函数
+// ========================================================================
 
 // fixFinalConfig 最终配置修正函数 - 在NewFastLog开始时调用
 // 负责修正所有不合理的配置值, 确保系统稳定运行
