@@ -27,7 +27,7 @@ const (
 )
 
 var (
-	WorkerPoolSize = runtime.NumCPU() // 工作池大小（goroutine数量）
+	WorkerPoolSize = 12 // 工作池大小（goroutine数量）
 )
 
 // TestStats 测试统计信息结构体
