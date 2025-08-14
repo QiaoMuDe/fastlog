@@ -228,7 +228,7 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 		// 继续执行
 	}
 
-	// 检查日志级别，如果当前级别高于指定级别则不记录
+	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
 	if level < f.config.LogLevel {
 		return
 	}
