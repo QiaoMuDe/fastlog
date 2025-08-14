@@ -245,7 +245,6 @@ func highConcurrencyRandomLogWithStats(log *FastLog, duration int, rate int, sta
 		log.Warn,
 		log.Error,
 		log.Debug,
-		log.Success,
 	}
 	// 定义格式化日志方法的切片
 	logMethodsWithFormat := []func(format string, v ...interface{}){
@@ -253,7 +252,6 @@ func highConcurrencyRandomLogWithStats(log *FastLog, duration int, rate int, sta
 		log.Warnf,
 		log.Errorf,
 		log.Debugf,
-		log.Successf,
 	}
 
 	// 计算总任务数

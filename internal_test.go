@@ -1,8 +1,3 @@
-/*
-tools_test.go - 工具函数测试文件
-包含对路径检查、调用者信息获取、日志格式化和背压处理等工具函数的单元测试，
-验证各种辅助功能在不同场景下的正确性和性能表现。
-*/
 package fastlog
 
 import (
@@ -47,8 +42,6 @@ func TestLogLevelToString(t *testing.T) {
 	}, {
 		level: INFO, expected: "INFO",
 	}, {
-		level: SUCCESS, expected: "SUCCESS",
-	}, {
 		level: WARN, expected: "WARN",
 	}, {
 		level: ERROR, expected: "ERROR",
@@ -79,30 +72,37 @@ func TestBackpressure(t *testing.T) {
 		expectedDrop bool     // 是否应该被丢弃
 		description  string   // 测试描述
 	}{
-		// 正常情况（0-69%）
+		// 正常情况（0-79%）
 		{"正常_DEBUG", 0, 10, DEBUG, false, "通道空闲时，DEBUG日志应该保留"},
 		{"正常_INFO", 5, 10, INFO, false, "通道50%时，INFO日志应该保留"},
-		{"正常_WARN", 6, 10, WARN, false, "通道60%时，WARN日志应该保留"},
+		{"正常_WARN", 7, 10, WARN, false, "通道70%时，WARN日志应该保留"},
 
-		// 70%背压（丢弃DEBUG）
-		{"70%背压_DEBUG", 7, 10, DEBUG, true, "通道70%时，DEBUG日志应该被丢弃"},
-		{"70%背压_INFO", 7, 10, INFO, false, "通道70%时，INFO日志应该保留"},
-		{"70%背压_WARN", 7, 10, WARN, false, "通道70%时，WARN日志应该保留"},
-
-		// 80%背压（只保留SUCCESS及以上）
+		// 80%背压（只保留INFO及以上）
 		{"80%背压_DEBUG", 8, 10, DEBUG, true, "通道80%时，DEBUG日志应该被丢弃"},
-		{"80%背压_INFO", 8, 10, INFO, true, "通道80%时，INFO日志应该被丢弃"},
-		{"80%背压_SUCCESS", 8, 10, SUCCESS, false, "通道80%时，SUCCESS日志应该保留"},
+		{"80%背压_INFO", 8, 10, INFO, false, "通道80%时，INFO日志应该保留"},
 		{"80%背压_WARN", 8, 10, WARN, false, "通道80%时，WARN日志应该保留"},
 		{"80%背压_ERROR", 8, 10, ERROR, false, "通道80%时，ERROR日志应该保留"},
 
 		// 90%背压（只保留WARN及以上）
 		{"90%背压_DEBUG", 9, 10, DEBUG, true, "通道90%时，DEBUG日志应该被丢弃"},
 		{"90%背压_INFO", 9, 10, INFO, true, "通道90%时，INFO日志应该被丢弃"},
-		{"90%背压_SUCCESS", 9, 10, SUCCESS, true, "通道90%时，SUCCESS日志应该被丢弃"},
 		{"90%背压_WARN", 9, 10, WARN, false, "通道90%时，WARN日志应该保留"},
 		{"90%背压_ERROR", 9, 10, ERROR, false, "通道90%时，ERROR日志应该保留"},
 		{"90%背压_FATAL", 9, 10, FATAL, false, "通道90%时，FATAL日志应该保留"},
+
+		// 95%背压（只保留ERROR及以上）
+		{"95%背压_DEBUG", 95, 100, DEBUG, true, "通道95%时，DEBUG日志应该被丢弃"},
+		{"95%背压_INFO", 95, 100, INFO, true, "通道95%时，INFO日志应该被丢弃"},
+		{"95%背压_WARN", 95, 100, WARN, true, "通道95%时，WARN日志应该被丢弃"},
+		{"95%背压_ERROR", 95, 100, ERROR, false, "通道95%时，ERROR日志应该保留"},
+		{"95%背压_FATAL", 95, 100, FATAL, false, "通道95%时，FATAL日志应该保留"},
+
+		// 98%背压（只保留FATAL）
+		{"98%背压_DEBUG", 98, 100, DEBUG, true, "通道98%时，DEBUG日志应该被丢弃"},
+		{"98%背压_INFO", 98, 100, INFO, true, "通道98%时，INFO日志应该被丢弃"},
+		{"98%背压_WARN", 98, 100, WARN, true, "通道98%时，WARN日志应该被丢弃"},
+		{"98%背压_ERROR", 98, 100, ERROR, true, "通道98%时，ERROR日志应该被丢弃"},
+		{"98%背压_FATAL", 98, 100, FATAL, false, "通道98%时，FATAL日志应该保留"},
 
 		// 边界情况 - 保守策略：通道满时丢弃所有日志避免阻塞
 		{"满通道_ERROR", 10, 10, ERROR, true, "通道满时，ERROR日志也应该被丢弃（保守策略）"},
@@ -114,7 +114,6 @@ func TestBackpressure(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// 创建预计算的背压阈值
 			bp := &bpThresholds{
-				threshold70: tc.channelCap * 70,
 				threshold80: tc.channelCap * 80,
 				threshold90: tc.channelCap * 90,
 				threshold95: tc.channelCap * 95,
@@ -191,7 +190,6 @@ func TestBackpressureIntegration(t *testing.T) {
 func BenchmarkBackpressureFunction(b *testing.B) {
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
-		threshold70: 70,
 		threshold80: 80,
 		threshold90: 90,
 		threshold95: 95,

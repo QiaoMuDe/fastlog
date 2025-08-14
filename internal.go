@@ -196,11 +196,9 @@ func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level L
 		return level < ERROR
 	case chanLen100 >= bp.threshold90: // 90%+ 只保留WARN及以上
 		return level < WARN
-	case chanLen100 >= bp.threshold80: // 80%+ 只保留SUCCESS及以上
-		return level < SUCCESS
-	case chanLen100 >= bp.threshold70: // 70%+ 只保留INFO及以上(丢弃DEBUG级别)
+	case chanLen100 >= bp.threshold80: // 80%+ 只保留INFO及以上
 		return level < INFO
-	default: // 70%以下不丢弃任何日志
+	default: // 80%以下不丢弃任何日志
 		return false
 	}
 }

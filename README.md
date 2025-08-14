@@ -23,7 +23,7 @@ FastLog 是一个企业级高性能 Go 日志库，专为高并发场景设计�
 - **配置自动修正** - 智能验证和修正不合理配置，确保系统稳定运行
 
 ### 📊 **丰富的功能特性**
-- **六级日志系统** - DEBUG/INFO/SUCCESS/WARN/ERROR/FATAL，支持动态级别调整
+- **五级日志系统** - DEBUG/INFO/WARN/ERROR/FATAL，支持动态级别调整
 - **五种输出格式** - Detailed/Json/Simple/Structured/Custom，满足不同场景需求
 - **双输出通道** - 文件和控制台独立缓冲区，分别优化性能
 - **智能日志轮转** - 基于大小(MB)、时间(天)、数量的轮转策略，支持压缩和本地时间
@@ -72,7 +72,6 @@ func main() {
     // 记录不同级别的日志
     logger.Debug("这是调试信息")
     logger.Info("这是一条信息日志")
-    logger.Success("操作成功完成")
     logger.Warn("这是一个警告")
     logger.Error("发生了一个错误")
   
@@ -112,7 +111,6 @@ func main() {
     // 记录日志
     logger.Info("应用程序启动")
     logger.Debugf("用户ID: %d, 操作: %s", 12345, "登录")
-    logger.Success("操作成功完成")
     logger.Warn("内存使用率较高: 85%")
     logger.Error("数据库连接失败")
 }
@@ -197,7 +195,6 @@ func main() {
     // 记录各种级别的日志
     logger.Debug("调试信息：程序启动")
     logger.Info("应用程序已启动")
-    logger.Success("数据库连接成功")
     logger.Warn("配置文件使用默认值")
     logger.Error("网络连接超时")
 }
@@ -368,7 +365,6 @@ config.EnableCompress = true    // 启用压缩功能
 |---------|------|----------|------|
 | `Debug` | `v ...any` | DEBUG | 记录调试信息 |
 | `Info` | `v ...any` | INFO | 记录一般信息 |
-| `Success` | `v ...any` | SUCCESS | 记录成功信息 |
 | `Warn` | `v ...any` | WARN | 记录警告信息 |
 | `Error` | `v ...any` | ERROR | 记录错误信息 |
 | `Fatal` | `v ...any` | FATAL | 记录致命错误，程序将退出 |
@@ -379,7 +375,6 @@ config.EnableCompress = true    // 启用压缩功能
 |---------|------|----------|------|
 | `Debugf` | `format string, v ...any` | DEBUG | 格式化记录调试信息 |
 | `Infof` | `format string, v ...any` | INFO | 格式化记录一般信息 |
-| `Successf` | `format string, v ...any` | SUCCESS | 格式化记录成功信息 |
 | `Warnf` | `format string, v ...any` | WARN | 格式化记录警告信息 |
 | `Errorf` | `format string, v ...any` | ERROR | 格式化记录错误信息 |
 | `Fatalf` | `format string, v ...any` | FATAL | 格式化记录致命错误，程序将退出 |
@@ -396,7 +391,6 @@ config.EnableCompress = true    // 启用压缩功能
 |---------|------|------|
 | `DEBUG` | 10 | 调试级别，用于开发调试 |
 | `INFO` | 20 | 信息级别，记录一般信息 |
-| `SUCCESS` | 30 | 成功级别，记录成功操作 |
 | `WARN` | 40 | 警告级别，记录警告信息 |
 | `ERROR` | 50 | 错误级别，记录错误信息 |
 | `FATAL` | 60 | 致命级别，记录致命错误 |
@@ -408,7 +402,6 @@ config.EnableCompress = true    // 启用压缩功能
 
 - **DEBUG**: 仅在开发和调试时使用，包含详细的程序执行信息
 - **INFO**: 记录程序的正常运行信息，如启动、关闭、重要操作等
-- **SUCCESS**: 记录成功完成的重要操作，如用户登录、订单完成等
 - **WARN**: 记录警告信息，程序可以继续运行但需要注意
 - **ERROR**: 记录错误信息，程序遇到问题但可以恢复
 - **FATAL**: 记录致命错误，程序无法继续运行

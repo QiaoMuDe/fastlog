@@ -58,7 +58,6 @@ type FastLog struct {
 
 // bpThresholds 预计算的背压阈值, 避免运行时频繁计算
 type bpThresholds struct {
-	threshold70 int // 70% 阈值
 	threshold80 int // 80% 阈值
 	threshold90 int // 90% 阈值
 	threshold95 int // 95% 阈值
@@ -163,7 +162,6 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 	// 预计算背压阈值
 	logChanCap := cap(f.logChan) // 日志通道容量
 	f.bp = &bpThresholds{
-		threshold70: logChanCap * 70, // 70%阈值
 		threshold80: logChanCap * 80, // 80%阈值
 		threshold90: logChanCap * 90, // 90%阈值
 		threshold95: logChanCap * 95, // 95%阈值
@@ -303,24 +301,6 @@ func (f *FastLog) Error(v ...any) {
 	f.logWithLevel(ERROR, fmt.Sprint(v...), 3)
 }
 
-// Success 记录成功级别的日志，不支持占位符
-//
-// 参数:
-//   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Success(v ...any) {
-	// 公共API入口参数验证
-	if f == nil {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
-	f.logWithLevel(SUCCESS, fmt.Sprint(v...), 3)
-}
-
 // Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
 //
 // 参数:
@@ -415,25 +395,6 @@ func (f *FastLog) Errorf(format string, v ...any) {
 	}
 
 	f.logWithLevel(ERROR, fmt.Sprintf(format, v...), 3)
-}
-
-// Successf 记录成功级别的日志，支持占位符，格式化
-//
-// 参数:
-//   - format: 格式字符串
-//   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Successf(format string, v ...any) {
-	// 公共API入口参数验证
-	if f == nil || format == "" {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
-	f.logWithLevel(SUCCESS, fmt.Sprintf(format, v...), 3)
 }
 
 // Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器

@@ -72,7 +72,6 @@ func TestCustomFormat(t *testing.T) {
 	// 模拟web应用程序日志记录
 	log.Errorf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:00", "GET", "/index.html", "HTTP/1.1", 200, 1234, "Mozilla/5.0", "en-US", 100)
 	log.Infof(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:01", "POST", "/login", "HTTP/1.1", 401, 0, "Mozilla/5.0", "en-US", 200)
-	log.Successf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:02", "GET", "/profile", "HTTP/1.1", 200, 5678, "Mozilla/5.0", "en-US", 300)
 	log.Warnf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:03", "PUT", "/settings", "HTTP/1.1", 500, 0, "Mozilla/5.0", "en-US", 500)
 	log.Debugf(webAppLogFormat, "127.0.0.1", "2023-10-01 12:00:04", "DELETE", "/logout", "HTTP/1.1", 200, 0, "Mozilla/5.0", "en-US", 50)
 }
@@ -94,7 +93,6 @@ func TestNoColor(t *testing.T) {
 	log.Warn("测试无颜色日志")
 	log.Error("测试无颜色日志")
 	log.Debug("测试无颜色日志")
-	log.Success("测试无颜色日志")
 }
 
 // TestNoBold 测试无加粗日志
@@ -115,7 +113,6 @@ func TestNoBold(t *testing.T) {
 	log.Warn("测试无加粗日志")
 	log.Error("测试无加粗日志")
 	log.Debug("测试无加粗日志")
-	log.Success("测试无加粗日志")
 }
 
 // TestNewFastLog_Initialization 测试日志记录器初始化
@@ -285,13 +282,11 @@ func TestLogFormats(t *testing.T) {
 			if format == Custom {
 				log.Debugf("[自定义格式] [%s] %s", "DEBUG", "这是一条调试日志")
 				log.Infof("[自定义格式] [%s] %s", "INFO", "这是一条信息日志")
-				log.Successf("[自定义格式] [%s] %s", "SUCCESS", "这是一条成功日志")
 				log.Warnf("[自定义格式] [%s] %s", "WARN", "这是一条警告日志")
 				log.Errorf("[自定义格式] [%s] %s", "ERROR", "这是一条错误日志")
 			} else {
 				log.Debug("这是一条调试日志")
 				log.Info("这是一条信息日志")
-				log.Success("这是一条成功日志")
 				log.Warn("这是一条警告日志")
 				log.Error("这是一条错误日志")
 			}

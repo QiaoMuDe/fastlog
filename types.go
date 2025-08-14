@@ -15,24 +15,22 @@ import (
 
 // 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
 var logLevelStringMap = map[LogLevel]string{
-	DEBUG:   "DEBUG",
-	INFO:    "INFO",
-	SUCCESS: "SUCCESS",
-	WARN:    "WARN",
-	ERROR:   "ERROR",
-	FATAL:   "FATAL",
-	NONE:    "NONE",
+	DEBUG: "DEBUG",
+	INFO:  "INFO",
+	WARN:  "WARN",
+	ERROR: "ERROR",
+	FATAL: "FATAL",
+	NONE:  "NONE",
 }
 
 // 预构建的日志级别到字符串的映射表（带填充，用于文本格式化）
 var logLevelPaddedStringMap = map[LogLevel]string{
-	DEBUG:   "DEBUG  ", // 7个字符(预填充空格)
-	INFO:    "INFO   ", // 7个字符
-	SUCCESS: "SUCCESS", // 7个字符
-	WARN:    "WARN   ", // 7个字符
-	ERROR:   "ERROR  ", // 7个字符
-	FATAL:   "FATAL  ", // 7个字符
-	NONE:    "NONE   ", // 7个字符
+	DEBUG: "DEBUG ", // 6个字符(预填充空格)
+	INFO:  "INFO  ", // 6个字符
+	WARN:  "WARN  ", // 6个字符
+	ERROR: "ERROR ", // 6个字符
+	FATAL: "FATAL ", // 6个字符
+	NONE:  "NONE  ", // 6个字符
 }
 
 // 定义缓冲区相关常量
@@ -79,7 +77,7 @@ func (l LogLevel) MarshalJSON() ([]byte, error) {
 // 返回值：
 //   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
 func logLevelToString(level LogLevel) string {
-	// 使用预构建的映射表进行O(1)查询（不带填充，适用于JSON）
+	// 使用预构建的映射表进行O(1)查询(不带填充，适用于JSON)
 	if str, exists := logLevelStringMap[level]; exists {
 		return str
 	}
@@ -88,13 +86,12 @@ func logLevelToString(level LogLevel) string {
 
 // 定义日志级别
 const (
-	DEBUG   LogLevel = 10  // 调试级别
-	INFO    LogLevel = 20  // 信息级别
-	SUCCESS LogLevel = 30  // 成功级别
-	WARN    LogLevel = 40  // 警告级别
-	ERROR   LogLevel = 50  // 错误级别
-	FATAL   LogLevel = 60  // 致命级别
-	NONE    LogLevel = 255 // 无日志级别
+	DEBUG LogLevel = 10  // 调试级别
+	INFO  LogLevel = 20  // 信息级别
+	WARN  LogLevel = 30  // 警告级别
+	ERROR LogLevel = 40  // 错误级别
+	FATAL LogLevel = 50  // 致命级别
+	NONE  LogLevel = 255 // 无日志级别
 )
 
 // logMsg 结构体用于封装日志消息
@@ -176,7 +173,6 @@ const (
 	BasicStructured                      // 基础结构化格式(无文件信息)
 	SimpleTimestamp                      // 简单时间格式(无文件信息)
 	Custom                               // 自定义格式(无文件信息)
-	//ExtendedStructured                      // 可扩展结构化格式
 )
 
 // fileInfoRequiredFormats 需要处理文件信息的日志格式集合

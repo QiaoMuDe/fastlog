@@ -14,7 +14,6 @@ func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
 	// 创建一个测试通道
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
-		threshold70: 70,
 		threshold80: 80,
 		threshold90: 90,
 		threshold95: 95,
@@ -39,7 +38,6 @@ func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
 	// 创建一个接近满载的通道
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
-		threshold70: 70,
 		threshold80: 80,
 		threshold90: 90,
 		threshold95: 95,
@@ -62,7 +60,6 @@ func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
 func BenchmarkShouldDropLogByBackpressure_EmptyChannel(b *testing.B) {
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
-		threshold70: 70,
 		threshold80: 80,
 		threshold90: 90,
 		threshold95: 95,

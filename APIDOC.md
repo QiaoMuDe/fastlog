@@ -333,29 +333,6 @@ Infof 记录信息级别的日志，支持占位符，格式化
 - `format`: 格式字符串
 - `v`: 可变参数，可以是任意类型，会被转换为字符串
 
-##### Success
-
-```go
-func (f *FastLog) Success(v ...any)
-```
-
-Success 记录成功级别的日志，不支持占位符
-
-**参数:**
-- `v`: 可变参数，可以是任意类型，会被转换为字符串
-
-##### Successf
-
-```go
-func (f *FastLog) Successf(format string, v ...any)
-```
-
-Successf 记录成功级别的日志，支持占位符，格式化
-
-**参数:**
-- `format`: 格式字符串
-- `v`: 可变参数，可以是任意类型，会被转换为字符串
-
 ##### Warn
 
 ```go
@@ -700,10 +677,9 @@ type LogLevel uint8
 const (
     DEBUG   LogLevel = 10  // 调试级别
     INFO    LogLevel = 20  // 信息级别
-    SUCCESS LogLevel = 30  // 成功级别
-    WARN    LogLevel = 40  // 警告级别
-    ERROR   LogLevel = 50  // 错误级别
-    FATAL   LogLevel = 60  // 致命级别
+    WARN    LogLevel = 30  // 警告级别
+    ERROR   LogLevel = 40  // 错误级别
+    FATAL   LogLevel = 50  // 致命级别
     NONE    LogLevel = 255 // 无日志级别
 )
 ```

@@ -453,13 +453,11 @@ func TestNullPointerProtection(t *testing.T) {
 		logger.Debug("test message")
 		logger.Warn("test message")
 		logger.Error("test message")
-		logger.Success("test message")
 
 		logger.Infof("test %s", "message")
 		logger.Debugf("test %s", "message")
 		logger.Warnf("test %s", "message")
 		logger.Errorf("test %s", "message")
-		logger.Successf("test %s", "message")
 
 		// 如果程序能执行到这里，说明空指针保护有效
 		t.Log("空指针保护测试通过")
@@ -479,7 +477,6 @@ func TestNullPointerProtection(t *testing.T) {
 		logger.Debugf("")
 		logger.Warnf("")
 		logger.Errorf("")
-		logger.Successf("")
 
 		t.Log("空格式字符串保护测试通过")
 	})
@@ -571,8 +568,6 @@ func TestHighConcurrencyStability(t *testing.T) {
 					logger.Warn("并发测试消息", id, j)
 				case 3:
 					logger.Error("并发测试消息", id, j)
-				case 4:
-					logger.Success("并发测试消息", id, j)
 				}
 			}
 		}(i)
