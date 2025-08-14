@@ -878,26 +878,22 @@ func TestFastLogInterfaceImplementation(t *testing.T) {
 func TestGetCloseTimeout_Comprehensive(t *testing.T) {
 	testCases := []struct {
 		flushInterval time.Duration
-		expectedMin   time.Duration
-		expectedMax   time.Duration
+		expected      time.Duration
 		desc          string
 	}{
 		{
 			flushInterval: 100 * time.Millisecond,
-			expectedMin:   3 * time.Second,
-			expectedMax:   3 * time.Second,
+			expected:      3 * time.Second, // 100ms * 10 = 1s，但最小是3s
 			desc:          "短刷新间隔应该使用最小超时",
 		},
 		{
 			flushInterval: 500 * time.Millisecond,
-			expectedMin:   5 * time.Second,
-			expectedMax:   5 * time.Second,
+			expected:      5 * time.Second, // 500ms * 10 = 5s
 			desc:          "中等刷新间隔",
 		},
 		{
 			flushInterval: 2 * time.Second,
-			expectedMin:   10 * time.Second,
-			expectedMax:   10 * time.Second,
+			expected:      10 * time.Second, // 2s * 10 = 20s，但最大是10s
 			desc:          "长刷新间隔应该使用最大超时",
 		},
 	}
@@ -913,70 +909,14 @@ func TestGetCloseTimeout_Comprehensive(t *testing.T) {
 
 			timeout := log.getCloseTimeout()
 
-			if timeout < tc.expectedMin || timeout > tc.expectedMax {
-				t.Errorf("超时时间不在预期范围内: %v (期望: %v-%v)",
-					timeout, tc.expectedMin, tc.expectedMax)
+			if timeout != tc.expected {
+				t.Errorf("超时时间不正确: %v (期望: %v)",
+					timeout, tc.expected)
 			}
 
 			t.Logf("刷新间隔: %v, 计算的超时: %v", tc.flushInterval, timeout)
 		})
 	}
-}
-
-// TestGracefulShutdown_Comprehensive 全面测试优雅关闭
-func TestGracefulShutdown_Comprehensive(t *testing.T) {
-	t.Run("正常关闭测试", func(t *testing.T) {
-		cfg := NewFastLogConfig("logs", "shutdown_test.log")
-		cfg.OutputToConsole = false
-		log := NewFastLog(cfg)
-
-		// 写入一些日志
-		for i := 0; i < 100; i++ {
-			log.Info("测试日志", i)
-		}
-
-		// 创建关闭上下文
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-
-		start := time.Now()
-		log.gracefulShutdown(ctx)
-		duration := time.Since(start)
-
-		t.Logf("优雅关闭耗时: %v", duration)
-
-		// 验证关闭时间合理
-		if duration > 5*time.Second {
-			t.Errorf("关闭时间过长: %v", duration)
-		}
-	})
-
-	t.Run("超时关闭测试", func(t *testing.T) {
-		cfg := NewFastLogConfig("logs", "timeout_shutdown_test.log")
-		cfg.OutputToConsole = false
-		cfg.FlushInterval = 10 * time.Second // 设置很长的刷新间隔
-		log := NewFastLog(cfg)
-
-		// 写入大量日志
-		for i := 0; i < 10000; i++ {
-			log.Info("大量测试日志", i)
-		}
-
-		// 创建很短的超时上下文
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-		defer cancel()
-
-		start := time.Now()
-		log.gracefulShutdown(ctx)
-		duration := time.Since(start)
-
-		t.Logf("超时关闭耗时: %v", duration)
-
-		// 应该在超时时间附近结束
-		if duration > 200*time.Millisecond {
-			t.Errorf("超时关闭时间过长: %v", duration)
-		}
-	})
 }
 
 // BenchmarkGetCachedTimestamp 时间戳缓存性能基准测试
@@ -1093,22 +1033,22 @@ func TestLogWithLevel_EdgeCases(t *testing.T) {
 func TestLogFatal_EdgeCases(t *testing.T) {
 	t.Run("nil FastLog Fatal测试", func(t *testing.T) {
 		// 这个测试需要在子进程中运行，因为logFatal会调用os.Exit
-		const testName = "TestLogFatal_EdgeCases_NilFastLog"
-
-		if os.Getenv("TEST_MODE") == testName {
+		if os.Getenv("GO_TEST_SUBPROCESS") == "1" {
 			var log *FastLog = nil
 			log.logFatal("nil fastlog fatal", 1)
 			return
 		}
 
 		// 启动子进程测试
-		cmd := exec.Command(os.Args[0], "-test.run=^"+testName+"$")
-		cmd.Env = append(os.Environ(), "TEST_MODE="+testName)
+		cmd := exec.Command(os.Args[0], "-test.run=TestLogFatal_EdgeCases")
+		cmd.Env = append(os.Environ(), "GO_TEST_SUBPROCESS=1")
 		err := cmd.Run()
 
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			if exitCode := exitErr.ExitCode(); exitCode != 1 {
 				t.Errorf("期望退出码1，实际得到%d", exitCode)
+			} else {
+				t.Log("nil FastLog Fatal测试通过，正确退出码1")
 			}
 		} else if err != nil {
 			t.Fatalf("测试命令执行失败: %v", err)

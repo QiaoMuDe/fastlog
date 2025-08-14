@@ -374,7 +374,7 @@ func (f *FastLog) notifyProcessorDone() {
 //  3. 确保最大超时为10秒，避免过长的等待影响程序退出
 func (f *FastLog) getCloseTimeout() time.Duration {
 	// 基于刷新间隔计算合理的超时时间
-	baseTimeout := time.Duration(f.config.FlushInterval) * time.Millisecond * 10
+	baseTimeout := f.config.FlushInterval * 10
 	if baseTimeout < 3*time.Second {
 		baseTimeout = 3 * time.Second
 	}
