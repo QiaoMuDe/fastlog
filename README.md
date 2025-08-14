@@ -24,7 +24,7 @@ FastLog 是一个企业级高性能 Go 日志库，专为高并发场景设计�
 
 ### 📊 **丰富的功能特性**
 - **五级日志系统** - DEBUG/INFO/WARN/ERROR/FATAL，支持动态级别调整
-- **五种输出格式** - Detailed/Json/Simple/Structured/Custom，满足不同场景需求
+- **八种输出格式** - Detailed/Json/JsonSimple/Simple/Structured/BasicStructured/SimpleTimestamp/Custom，满足不同场景需求
 - **双输出通道** - 文件和控制台独立缓冲区，分别优化性能
 - **智能日志轮转** - 基于大小(MB)、时间(天)、数量的轮转策略，支持压缩和本地时间
 - **终端颜色支持** - 基于 colorlib 的丰富颜色和样式，可配置禁用
@@ -226,7 +226,7 @@ func createLogger(env string) (*fastlog.FastLog, error) {
 
 ## 📝 日志格式
 
-FastLog 支持五种不同的日志格式：
+FastLog 支持八种不同的日志格式：
 
 | 格式名称 | 枚举值 | 说明 |
 |---------|--------|------|
