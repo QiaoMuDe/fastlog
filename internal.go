@@ -98,8 +98,15 @@ func putTempBuffer(buffer *bytes.Buffer) {
 }
 
 // needsFileInfo 判断日志格式是否需要文件信息
+//
+// 参数：
+//   - format: 日志格式类型
+//
+// 返回值：
+//   - bool: true表示需要文件信息，false表示不需要
 func needsFileInfo(format LogFormatType) bool {
-	return format == Json || format == Detailed || format == Structured
+	_, exists := fileInfoRequiredFormats[format]
+	return exists
 }
 
 // getCallerInfo 获取调用者的信息（优化版本，使用文件名缓存）

@@ -171,13 +171,21 @@ const (
 	Detailed        LogFormatType = iota // 详细格式
 	Json                                 // json格式
 	JsonSimple                           // json简化格式(无文件信息)
-	Simple                               // 简约格式
+	Simple                               // 简约格式(无文件信息)
 	Structured                           // 结构化格式
 	BasicStructured                      // 基础结构化格式(无文件信息)
-	SimpleTimestamp                      // 简单时间格式
-	Custom                               // 自定义格式
+	SimpleTimestamp                      // 简单时间格式(无文件信息)
+	Custom                               // 自定义格式(无文件信息)
 	//ExtendedStructured                      // 可扩展结构化格式
 )
+
+// fileInfoRequiredFormats 需要处理文件信息的日志格式集合
+// 如果日志格式需要文件信息(文件名、函数名、行号)，则将其添加到该集合中
+var fileInfoRequiredFormats = map[LogFormatType]struct{}{
+	Json:       {},
+	Detailed:   {},
+	Structured: {},
+}
 
 // 定义日志格式
 var logFormatMap = map[LogFormatType]string{
