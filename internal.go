@@ -166,8 +166,8 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 //   - bool: true表示应该丢弃该日志, false表示应该保留
 func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level LogLevel) bool {
 	// 完整的空指针和边界检查
-	if logChan == nil {
-		return false // 如果通道为nil, 不丢弃日志
+	if bp == nil || logChan == nil {
+		return false // 如果背压阈值或通道为nil, 不丢弃日志
 	}
 
 	// 提前获取通道长度和容量, 供后续复用
@@ -175,7 +175,12 @@ func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level L
 	chanCap := cap(logChan)
 
 	// 边界条件检查: 防止除零错误和异常情况
-	if chanCap <= 0 || chanLen < 0 {
+	if chanCap <= 0 {
+		return true // 容量为0或负数的通道应该丢弃日志
+	}
+
+	// 通道长度不能为负数
+	if chanLen < 0 {
 		return false
 	}
 

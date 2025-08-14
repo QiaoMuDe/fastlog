@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// BenchmarkShouldDropLogByBackpressure 测试背压函数的性能
-func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
+// BenchmarkShouldDropLogByBackpressureOriginal 测试背压函数的性能（原始版本）
+func BenchmarkShouldDropLogByBackpressureOriginal(b *testing.B) {
 	// 创建一个测试通道
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
