@@ -675,6 +675,7 @@ type LogFormatType int
 const (
     Detailed   LogFormatType = iota // 详细格式
     Json                            // json格式
+    JsonSimple                      // json简单格式(无文件信息)
     Simple                          // 简约格式
     Structured                      // 结构化格式
     BasicStructured                 // 基础结构化格式(无文件信息)

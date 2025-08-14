@@ -262,6 +262,7 @@ func TestLogFormats(t *testing.T) {
 		Simple:          "simple.log",
 		BasicStructured: "basic_structured.log",
 		SimpleTimestamp: "simple_timestamp.log",
+		JsonSimple:      "json_simple.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		Custom: "custom.log",
 	}

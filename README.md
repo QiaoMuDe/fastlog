@@ -235,6 +235,7 @@ FastLog 支持五种不同的日志格式：
 |---------|--------|------|
 | Detailed | `fastlog.Detailed` | 详细格式，包含时间、级别、文件、函数、行号等完整信息（默认） |
 | Json | `fastlog.Json` | JSON 格式输出，便于日志分析和处理 |
+| JsonSimple | `fastlog.JsonSimple` | JSON 简单格式(无文件信息) |
 | Simple | `fastlog.Simple` | 简约格式，仅包含时间、级别和消息 |
 | Structured | `fastlog.Structured` | 结构化格式，使用分隔符组织信息 |
 | BasicStructured | `fastlog.BasicStructured` | 基础结构化格式(无文件信息) |
@@ -255,31 +256,37 @@ FastLog 支持五种不同的日志格式：
 {"time":"2025-01-15 10:30:46","level":"ERROR","file":"database.go","function":"Connect","line":23,"message":"数据库连接失败"}
 ```
 
-#### 3. Simple 格式
+#### 3. JsonSimple 格式
+```json
+{"time":"2025-01-15 10:30:45","level":"INFO","message":"用户登录成功"}
+{"time":"2025-01-15 10:30:46","level":"ERROR","message":"数据库连接失败"}
+```
+
+#### 4. Simple 格式
 ```
 2025-01-15 10:30:45 | INFO    | 用户登录成功
 2025-01-15 10:30:46 | ERROR   | 数据库连接失败
 ```
 
-#### 4. Structured 格式
+#### 5. Structured 格式
 ```
 T:2025-01-15 10:30:45|L:INFO   |F:main.go:main:15|M:用户登录成功
 T:2025-01-15 10:30:46|L:ERROR  |F:database.go:Connect:23|M:数据库连接失败
 ```
 
-#### 5. BasicStructured 格式
+#### 6. BasicStructured 格式
 ```
 T:2025-01-15 10:30:45|L:INFO   |M:用户登录成功
 T:2025-01-15 10:30:46|L:ERROR  |M:数据库连接失败
 ```
 
-#### 6. SimpleTimestamp 格式
+#### 7. SimpleTimestamp 格式
 ```
 2025-01-15 10:30:45 INFO  用户登录成功
 2025-01-15 10:30:46 ERROR 数据库连接失败
 ```
 
-#### 7. Custom 格式
+#### 8. Custom 格式
 ```go
 // 使用 Custom 格式时，直接输出传入的消息内容
 logger.Info("自定义格式的日志消息")  // 输出: 自定义格式的日志消息

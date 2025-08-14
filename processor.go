@@ -371,6 +371,21 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 			)
 		}
 
+	// JsonSimple格式（无文件信息）
+	case JsonSimple:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(simpleLogMsg{
+			Timestamp: logMsg.Timestamp,
+			Level:     logMsg.Level,
+			Message:   logMsg.Message,
+		}); err == nil {
+			tempBuffer.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(tempBuffer, logFormatMap[JsonSimple],
+				logMsg.Timestamp, logLevelToString(logMsg.Level), fmt.Sprintf("Failed to serialize: %v | Original: %s", err, logMsg.Message))
+		}
+
 	// 详细格式
 	case Detailed:
 		tempBuffer.WriteString(logMsg.Timestamp) // 时间戳
