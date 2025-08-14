@@ -15,55 +15,54 @@ import (
 	"gitee.com/MM-Q/colorlib"
 )
 
-// 优化的时间戳缓存结构，使用原子操作 + 轻量级锁的混合方案
-// 相比原来的读写锁方案，性能提升2-3倍，特别是在高并发场景下
-type safeTimestampCache struct {
-	lastSecond   int64      // 原子操作的秒数，用于快速检查缓存是否有效
-	cachedString string     // 缓存的时间戳字符串
-	mu           sync.Mutex // 轻量级互斥锁，只保护字符串更新操作
+// 优化的时间戳缓存结构，使用原子操作 + 读写锁的混合方案
+// 读取时使用原子操作快速检查，只在必要时使用读写锁
+type rwTimestampCache struct {
+	lastSecond   int64        // 原子操作的秒数，用于快速检查
+	cachedString string       // 缓存的时间戳字符串
+	mu           sync.RWMutex // 读写锁，读多写少场景的最佳选择
 }
 
 // 全局时间戳缓存实例
-var globalSafeCache = &safeTimestampCache{}
+var globalRWCache = &rwTimestampCache{}
 
-// getCachedTimestamp 获取缓存的时间戳，优化版本（原子操作 + 轻量级锁）
+// getCachedTimestamp 获取缓存的时间戳，读写锁优化版本
 //
 // 性能特点：
-//   - 快路径完全无锁，使用原子读取
-//   - 慢路径使用轻量级Mutex，避免读写锁的开销
-//   - 双重检查锁定，确保并发安全
+//   - 快路径：原子操作检查 + 读锁保护
+//   - 慢路径：写锁保护更新操作
+//   - 多读者并发，单写者独占
+//   - 无unsafe操作，完全内存安全
 //
 // 返回值：
 //   - string: 格式化的时间戳字符串 "2006-01-02 15:04:05"
 func getCachedTimestamp() string {
-	// 步骤1：获取当前时间信息
 	now := time.Now()           // 获取当前完整时间对象
 	currentSecond := now.Unix() // 提取Unix时间戳的秒数部分
 
-	// 获取锁
-	globalSafeCache.mu.Lock()
-	defer globalSafeCache.mu.Unlock()
-
-	// 步骤2：快路径 - 原子读取，完全无锁（🚀 性能关键优化）
-	// 使用原子操作读取上次缓存的秒数，避免锁竞争
-	lastSecond := atomic.LoadInt64(&globalSafeCache.lastSecond)
-
-	// 如果秒数相同，直接返回缓存的字符串（大多数情况下走这个路径）
-	if currentSecond == lastSecond {
-		return globalSafeCache.cachedString // 🚀 无锁读取，性能最优
+	// 🚀 快路径：原子操作快速检查
+	if atomic.LoadInt64(&globalRWCache.lastSecond) == currentSecond {
+		// 使用读锁保护字符串读取，允许多个goroutine并发读取
+		globalRWCache.mu.RLock()
+		result := globalRWCache.cachedString
+		globalRWCache.mu.RUnlock()
+		return result // 大多数情况走这里，性能很好
 	}
 
-	// 步骤3：慢路径 - 快路径失败，需要更新缓存
-	// 在等待锁期间，可能其他goroutine已经更新了缓存
-	if currentSecond == atomic.LoadInt64(&globalSafeCache.lastSecond) {
-		return globalSafeCache.cachedString
+	// 慢路径：需要更新缓存
+	globalRWCache.mu.Lock()
+	defer globalRWCache.mu.Unlock()
+
+	// 双重检查：在等待写锁期间，可能其他goroutine已经更新了
+	if atomic.LoadInt64(&globalRWCache.lastSecond) == currentSecond {
+		return globalRWCache.cachedString
 	}
 
-	// 步骤4：执行缓存更新
+	// 执行更新
 	// 先更新字符串，再原子更新秒数（确保一致性）
 	newTimestamp := now.Format("2006-01-02 15:04:05")
-	globalSafeCache.cachedString = newTimestamp
-	atomic.StoreInt64(&globalSafeCache.lastSecond, currentSecond)
+	globalRWCache.cachedString = newTimestamp
+	atomic.StoreInt64(&globalRWCache.lastSecond, currentSecond)
 
 	return newTimestamp
 }
