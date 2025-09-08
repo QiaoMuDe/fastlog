@@ -101,17 +101,14 @@ func (p *processor) singleThreadProcessor() {
 			batch = append(batch, logMsg)
 
 			// 只在满足条件时才处理: 批处理切片写满
-			shouldFlush := len(batch) >= p.batchSize
-
-			// 检查是否需要处理(满足条件之一)
-			if shouldFlush {
+			if len(batch) >= p.batchSize {
 				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
 				batch = batch[:0]             // 重置批处理缓冲区，准备接收新消息
 			}
 
 		// 定时刷新事件
 		case <-ticker.C:
-			// 定时刷新：处理剩余消息并刷新缓冲区
+			// 定时刷新: 处理剩余消息并刷新缓冲区
 			if len(batch) > 0 {
 				p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
 				batch = batch[:0]             // 重置batch
@@ -148,10 +145,7 @@ func (p *processor) drainRemainingMessages(batch []*logMsg) {
 				batch = append(batch, logMsg)
 
 				// 只在满足条件时才处理: 批处理切片写满
-				shouldFlush := len(batch) >= p.batchSize
-
-				// 检查是否需要处理(满足条件之一)
-				if shouldFlush {
+				if len(batch) >= p.batchSize {
 					p.processAndFlushBatch(batch) // 处理并刷新批处理缓冲区
 					batch = batch[:0]             // 重置批处理缓冲区，准备接收新消息
 				}

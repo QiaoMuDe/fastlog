@@ -61,187 +61,153 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 }
 
 // =============================================================
-// 链式配置方法
+// 预设配置模式函数
 // =============================================================
 
-// WithLogDirName 设置日志目录路径
+// NewDevelopmentConfig 创建开发模式配置
+// 特点：控制台+文件输出，彩色显示，详细格式，DEBUG级别
 //
 // 参数:
-//   - logDirName: 日志目录路径
+//   - logDirName: 日志目录名称
+//   - logFileName: 日志文件名称
 //
 // 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithLogDirName(logDirName string) *FastLogConfig {
-	c.LogDirName = logDirName
-	return c
+//   - *FastLogConfig: 开发模式配置实例
+func NewDevelopmentConfig(logDirName string, logFileName string) *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      logDirName,
+		LogFileName:     logFileName,
+		OutputToConsole: true,                   // 控制台输出
+		OutputToFile:    true,                   // 文件输出
+		LogLevel:        DEBUG,                  // DEBUG级别
+		ChanIntSize:     10000,                  // 通道大小
+		FlushInterval:   100 * time.Millisecond, // 快速刷新
+		LogFormat:       Detailed,               // 详细格式
+		Color:           true,                   // 启用颜色
+		Bold:            true,                   // 启用加粗
+		MaxLogFileSize:  10,                     // 10MB文件大小
+		MaxLogAge:       7,                      // 保留7天
+		MaxLogBackups:   20,                     // 保留20个文件
+		IsLocalTime:     true,                   // 本地时间
+		EnableCompress:  false,                  // 不压缩
+		BatchSize:       defaultBatchSize,       // 默认批处理大小
+	}
 }
 
-// WithLogFileName 设置日志文件名
+// NewProductionConfig 创建生产模式配置
+// 特点：仅文件输出，JSON格式，INFO级别，高性能
 //
 // 参数:
-//   - logFileName: 日志文件名
+//   - logDirName: 日志目录名称
+//   - logFileName: 日志文件名称
 //
 // 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithLogFileName(logFileName string) *FastLogConfig {
-	c.LogFileName = logFileName
-	return c
+//   - *FastLogConfig: 生产模式配置实例
+func NewProductionConfig(logDirName string, logFileName string) *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      logDirName,
+		LogFileName:     logFileName,
+		OutputToConsole: false,                   // 不输出到控制台
+		OutputToFile:    true,                    // 文件输出
+		LogLevel:        INFO,                    // INFO级别
+		ChanIntSize:     20000,                   // 大通道缓冲
+		FlushInterval:   1000 * time.Millisecond, // 较慢刷新，提升性能
+		LogFormat:       Json,                    // JSON格式
+		Color:           false,                   // 不启用颜色
+		Bold:            false,                   // 不启用加粗
+		MaxLogFileSize:  10,                      // 10MB文件大小
+		MaxLogAge:       30,                      // 保留30天
+		MaxLogBackups:   50,                      // 保留50个文件
+		IsLocalTime:     true,                    // 本地时间
+		EnableCompress:  true,                    // 启用压缩
+		BatchSize:       defaultBatchSize * 2,    // 更大批处理提升性能
+	}
 }
 
-// WithOutputToConsole 设置是否将日志输出到控制台
-//
-// 参数:
-//   - outputToConsole: 是否输出到控制台，true为输出，false为不输出
+// NewConsoleConfig 创建控制台模式配置
+// 特点：仅控制台输出，彩色显示，简单格式
 //
 // 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithOutputToConsole(outputToConsole bool) *FastLogConfig {
-	c.OutputToConsole = outputToConsole
-	return c
+//   - *FastLogConfig: 控制台模式配置实例
+func NewConsoleConfig() *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      "",                     // 无日志目录
+		LogFileName:     "",                     // 无日志文件
+		OutputToConsole: true,                   // 控制台输出
+		OutputToFile:    false,                  // 不输出到文件
+		LogLevel:        INFO,                   // INFO级别
+		ChanIntSize:     5000,                   // 较小通道缓冲
+		FlushInterval:   100 * time.Millisecond, // 快速刷新，实时显示
+		LogFormat:       Simple,                 // 简单格式
+		Color:           true,                   // 启用颜色
+		Bold:            true,                   // 启用加粗
+		MaxLogFileSize:  0,                      // 不适用
+		MaxLogAge:       0,                      // 不适用
+		MaxLogBackups:   0,                      // 不适用
+		IsLocalTime:     true,                   // 本地时间
+		EnableCompress:  false,                  // 不适用
+		BatchSize:       defaultBatchSize / 2,   // 较小批处理，更实时
+	}
 }
 
-// WithOutputToFile 设置是否将日志输出到文件
+// NewFileConfig 创建文件模式配置
+// 特点：仅文件输出，无控制台输出，结构化格式
 //
 // 参数:
-//   - outputToFile: 是否输出到文件，true为输出，false为不输出
+//   - logDirName: 日志目录名称
+//   - logFileName: 日志文件名称
 //
 // 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithOutputToFile(outputToFile bool) *FastLogConfig {
-	c.OutputToFile = outputToFile
-	return c
+//   - *FastLogConfig: 文件模式配置实例
+func NewFileConfig(logDirName string, logFileName string) *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      logDirName,
+		LogFileName:     logFileName,
+		OutputToConsole: false,                  // 不输出到控制台
+		OutputToFile:    true,                   // 文件输出
+		LogLevel:        INFO,                   // INFO级别
+		ChanIntSize:     10000,                  // 中等通道缓冲
+		FlushInterval:   500 * time.Millisecond, // 中等刷新间隔
+		LogFormat:       BasicStructured,        // 结构化格式
+		Color:           false,                  // 不启用颜色
+		Bold:            false,                  // 不启用加粗
+		MaxLogFileSize:  10,                     // 10MB文件大小
+		MaxLogAge:       14,                     // 保留14天
+		MaxLogBackups:   30,                     // 保留30个文件
+		IsLocalTime:     true,                   // 本地时间
+		EnableCompress:  false,                  // 不压缩
+		BatchSize:       defaultBatchSize,       // 默认批处理大小
+	}
 }
 
-// WithFlushInterval 设置日志刷新间隔
+// NewSilentConfig 创建静默模式配置
+// 特点：仅WARN级别，最小输出，高性能
 //
 // 参数:
-//   - flushInterval: 刷新间隔时间，建议不小于10毫秒
+//   - logDirName: 日志目录名称
+//   - logFileName: 日志文件名称
 //
 // 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithFlushInterval(flushInterval time.Duration) *FastLogConfig {
-	c.FlushInterval = flushInterval
-	return c
-}
-
-// WithLogLevel 设置日志级别
-//
-// 参数:
-//   - logLevel: 日志级别，可选值：DEBUG, INFO, WARN, ERROR, NONE
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithLogLevel(logLevel LogLevel) *FastLogConfig {
-	c.LogLevel = logLevel
-	return c
-}
-
-// WithChanIntSize 设置通道缓冲区大小
-//
-// 参数:
-//   - chanIntSize: 通道缓冲区大小，建议设置为1000-100000之间
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithChanIntSize(chanIntSize int) *FastLogConfig {
-	c.ChanIntSize = chanIntSize
-	return c
-}
-
-// WithLogFormat 设置日志格式类型
-//
-// 参数:
-//   - logFormat: 日志格式类型，可选值：Detailed, Simple, JSON, Custom
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithLogFormat(logFormat LogFormatType) *FastLogConfig {
-	c.LogFormat = logFormat
-	return c
-}
-
-// WithColor 设置是否启用终端颜色输出
-//
-// 参数:
-//   - color: 是否启用颜色，true为启用，false为禁用
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithColor(color bool) *FastLogConfig {
-	c.Color = color
-	return c
-}
-
-// WithBold 设置是否启用终端字体加粗
-//
-// 参数:
-//   - bold: 是否启用加粗，true为启用，false为禁用
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithBold(bold bool) *FastLogConfig {
-	c.Bold = bold
-	return c
-}
-
-// WithMaxLogFileSize 设置单个日志文件的最大大小
-//
-// 参数:
-//   - maxLogFileSize: 最大文件大小，单位为MB，建议设置为1-1000之间
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithMaxLogFileSize(maxLogFileSize int) *FastLogConfig {
-	c.MaxLogFileSize = maxLogFileSize
-	return c
-}
-
-// WithMaxLogAge 设置日志文件最大保留天数
-//
-// 参数:
-//   - maxLogAge: 最大保留天数，0表示不限制，建议设置为7-3650之间
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithMaxLogAge(maxLogAge int) *FastLogConfig {
-	c.MaxLogAge = maxLogAge
-	return c
-}
-
-// WithMaxLogBackups 设置日志文件最大保留数量
-//
-// 参数:
-//   - maxLogBackups: 最大保留文件数量，0表示不限制，建议设置为5-1000之间
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithMaxLogBackups(maxLogBackups int) *FastLogConfig {
-	c.MaxLogBackups = maxLogBackups
-	return c
-}
-
-// WithIsLocalTime 设置是否使用本地时间
-//
-// 参数:
-//   - isLocalTime: 是否使用本地时间，true为本地时间，false为UTC时间
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithIsLocalTime(isLocalTime bool) *FastLogConfig {
-	c.IsLocalTime = isLocalTime
-	return c
-}
-
-// WithEnableCompress 设置是否启用日志文件压缩
-//
-// 参数:
-//   - enableCompress: 是否启用压缩，true为启用，false为禁用
-//
-// 返回值:
-//   - *FastLogConfig: 返回配置实例本身，支持链式调用
-func (c *FastLogConfig) WithEnableCompress(enableCompress bool) *FastLogConfig {
-	c.EnableCompress = enableCompress
-	return c
+//   - *FastLogConfig: 静默模式配置实例
+func NewSilentConfig(logDirName string, logFileName string) *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      logDirName,
+		LogFileName:     logFileName,
+		OutputToConsole: false,                   // 不输出到控制台
+		OutputToFile:    true,                    // 文件输出
+		LogLevel:        WARN,                    // 仅WARN级别日志
+		ChanIntSize:     20000,                   // 大通道缓冲
+		FlushInterval:   1000 * time.Millisecond, // 很慢刷新，最高性能
+		LogFormat:       JsonSimple,              // 简化JSON格式
+		Color:           false,                   // 不启用颜色
+		Bold:            false,                   // 不启用加粗
+		MaxLogFileSize:  10,                      // 10MB文件大小
+		MaxLogAge:       30,                      // 保留30天
+		MaxLogBackups:   50,                      // 保留50个文件
+		IsLocalTime:     true,                    // 本地时间
+		EnableCompress:  true,                    // 启用压缩
+		BatchSize:       defaultBatchSize * 2,    // 大批处理，最高性能
+	}
 }
 
 // ========================================================================
