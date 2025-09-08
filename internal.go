@@ -1,3 +1,8 @@
+/*
+internal.go - FastLog内部实现文件
+包含日志系统的核心内部功能实现，包括时间戳缓存、调用者信息获取、背压控制、
+日志消息处理和接口实现等，为FastLog提供高性能的底层支持。
+*/
 package fastlog
 
 import (
