@@ -39,6 +39,44 @@ const (
 
 	// 每条日志的估算字节数常量
 	bytesPerLogEntry = 256
+
+	// 通道大小配置常量
+	defaultChanSize = 10000 // 默认通道大小
+	largeChanSize   = 20000 // 大通道大小（生产/静默模式）
+	smallChanSize   = 5000  // 小通道大小（控制台模式）
+
+	// 刷新间隔配置常量
+	fastFlushInterval   = 100 * time.Millisecond  // 快速刷新（开发/控制台模式）
+	normalFlushInterval = 500 * time.Millisecond  // 正常刷新（默认/文件模式）
+	slowFlushInterval   = 1000 * time.Millisecond // 慢速刷新（生产/静默模式）
+
+	// 文件大小配置常量
+	defaultMaxFileSize = 10 // 默认最大文件大小（MB）
+
+	// 文件保留配置常量
+	developmentMaxAge     = 7   // 开发模式保留天数
+	developmentMaxBackups = 20  // 开发模式保留文件数
+	productionMaxAge      = 30  // 生产模式保留天数
+	productionMaxBackups  = 50  // 生产模式保留文件数
+	fileMaxAge            = 14  // 文件模式保留天数
+	fileMaxBackups        = 30  // 文件模式保留文件数
+	silentMaxAge          = 30  // 静默模式保留天数
+	silentMaxBackups      = 100 // 静默模式保留文件数
+
+	// 系统资源限制常量
+	maxChanSize         = 1000000 // 最大通道大小限制
+	maxSingleFileSize   = 10000   // 最大单文件大小限制（MB）
+	minFlushInterval    = time.Microsecond // 最小刷新间隔
+	maxFlushInterval    = 30 * time.Second // 最大刷新间隔
+	normalMinFlush      = 10 * time.Millisecond // 正常最小刷新间隔
+	maxBatchSize        = 5000 // 最大批处理大小
+	chanSizeLimit       = 100000 // 通道大小上限
+	maxRetentionDays    = 3650 // 最大保留天数（10年）
+	maxRetentionFiles   = 1000 // 最大保留文件数
+	minRetentionDays    = 7    // 最小保留天数
+	minRetentionFiles   = 5    // 最小保留文件数
+	performanceThreshold = 50000 // 性能阈值
+	performanceFlushMin  = 100 * time.Millisecond // 性能模式最小刷新间隔
 )
 
 // 日志级别枚举
@@ -97,17 +135,12 @@ var logMsgPool = sync.Pool{
 //   - *logMsg: 日志消息对象指针，保证非nil
 //   - 注意：返回的对象总是可以安全地传递给putLogMsg
 func getLogMsg() *logMsg {
-	// 尝试从对象池获取对象
-	if poolObj := logMsgPool.Get(); poolObj != nil {
-		if msg, ok := poolObj.(*logMsg); ok && msg != nil {
-			// 重置对象状态，确保干净的对象
-			*msg = logMsg{}
-			return msg
-		}
+	// 尝试从对象池获取对象并进行类型断言
+	if msg, ok := logMsgPool.Get().(*logMsg); ok {
+		return msg
 	}
 
-	// 对象池异常或类型断言失败时的fallback
-	// 创建新对象确保函数永远不返回nil
+	// 创建新的对象
 	return &logMsg{}
 }
 
@@ -128,8 +161,6 @@ func putLogMsg(msg *logMsg) {
 	*msg = logMsg{}
 
 	// 归还对象到池中
-	// 注意：sync.Pool设计上允许放入任何类型匹配的对象，
-	// 无论该对象是否最初从池中获取，都不会导致错误
 	logMsgPool.Put(msg)
 }
 
@@ -186,6 +217,13 @@ var (
 	}
 	maxFileNameLength = 255  // 大多数文件系统的文件名长度限制
 	maxPathLength     = 4096 // 大多数系统的路径长度限制
+	
+	// 文件处理字符串常量
+	defaultLogDir      = "logs"        // 默认日志目录名
+	defaultLogFileName = "app.log"     // 默认日志文件名
+	truncatedSuffix    = "_truncated"  // 路径截断后缀
+	charReplacement    = "_"           // 非法字符替换符
+	truncateReserve    = 10            // 路径截断预留长度
 )
 
 // processorDependencies 定义处理器所需的最小依赖接口

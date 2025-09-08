@@ -41,22 +41,22 @@ type FastLogConfig struct {
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:      logDirName,             // 日志目录名称
-		LogFileName:     logFileName,            // 日志文件名称
-		OutputToConsole: true,                   // 是否将日志输出到控制台
-		OutputToFile:    true,                   // 是否将日志输出到文件
-		LogLevel:        INFO,                   // 日志级别 默认INFO
-		ChanIntSize:     10000,                  // 通道大小 默认10000
-		FlushInterval:   500 * time.Millisecond, // 刷新间隔 默认500毫秒
-		LogFormat:       Simple,                 // 日志格式选项
-		MaxLogFileSize:  10,                     // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:   0,                      // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:     true,                   // 是否使用本地时间 默认使用本地时间
-		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
-		Color:           true,                   // 是否启用终端颜色
-		Bold:            true,                   // 是否启用终端字体加粗
-		BatchSize:       defaultBatchSize,       // 批处理数量
+		LogDirName:      logDirName,          // 日志目录名称
+		LogFileName:     logFileName,         // 日志文件名称
+		OutputToConsole: true,                // 是否将日志输出到控制台
+		OutputToFile:    true,                // 是否将日志输出到文件
+		LogLevel:        INFO,                // 日志级别 默认INFO
+		ChanIntSize:     defaultChanSize,     // 通道大小 默认10000
+		FlushInterval:   normalFlushInterval, // 刷新间隔 默认500毫秒
+		LogFormat:       Simple,              // 日志格式选项
+		MaxLogFileSize:  defaultMaxFileSize,  // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxLogAge:       0,                   // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxLogBackups:   0,                   // 最大日志文件保留数量, 默认为0, 表示不做限制
+		IsLocalTime:     true,                // 是否使用本地时间 默认使用本地时间
+		EnableCompress:  false,               // 是否启用日志文件压缩 默认不启用
+		Color:           true,                // 是否启用终端颜色
+		Bold:            true,                // 是否启用终端字体加粗
+		BatchSize:       defaultBatchSize,    // 批处理数量
 	}
 }
 
@@ -77,20 +77,20 @@ func NewDevelopmentConfig(logDirName string, logFileName string) *FastLogConfig 
 	return &FastLogConfig{
 		LogDirName:      logDirName,
 		LogFileName:     logFileName,
-		OutputToConsole: true,                   // 控制台输出
-		OutputToFile:    true,                   // 文件输出
-		LogLevel:        DEBUG,                  // DEBUG级别
-		ChanIntSize:     10000,                  // 通道大小
-		FlushInterval:   100 * time.Millisecond, // 快速刷新
-		LogFormat:       Detailed,               // 详细格式
-		Color:           true,                   // 启用颜色
-		Bold:            true,                   // 启用加粗
-		MaxLogFileSize:  10,                     // 10MB文件大小
-		MaxLogAge:       7,                      // 保留7天
-		MaxLogBackups:   20,                     // 保留20个文件
-		IsLocalTime:     true,                   // 本地时间
-		EnableCompress:  false,                  // 不压缩
-		BatchSize:       defaultBatchSize,       // 默认批处理大小
+		OutputToConsole: true,                  // 控制台输出
+		OutputToFile:    true,                  // 文件输出
+		LogLevel:        DEBUG,                 // DEBUG级别
+		ChanIntSize:     defaultChanSize,       // 通道大小
+		FlushInterval:   fastFlushInterval,     // 快速刷新
+		LogFormat:       Detailed,              // 详细格式
+		Color:           true,                  // 启用颜色
+		Bold:            true,                  // 启用加粗
+		MaxLogFileSize:  defaultMaxFileSize,    // 10MB文件大小
+		MaxLogAge:       developmentMaxAge,     // 保留7天
+		MaxLogBackups:   developmentMaxBackups, // 保留20个文件
+		IsLocalTime:     true,                  // 本地时间
+		EnableCompress:  false,                 // 不压缩
+		BatchSize:       defaultBatchSize,      // 默认批处理大小
 	}
 }
 
@@ -107,20 +107,20 @@ func NewProductionConfig(logDirName string, logFileName string) *FastLogConfig {
 	return &FastLogConfig{
 		LogDirName:      logDirName,
 		LogFileName:     logFileName,
-		OutputToConsole: false,                   // 不输出到控制台
-		OutputToFile:    true,                    // 文件输出
-		LogLevel:        INFO,                    // INFO级别
-		ChanIntSize:     20000,                   // 大通道缓冲
-		FlushInterval:   1000 * time.Millisecond, // 较慢刷新，提升性能
-		LogFormat:       Json,                    // JSON格式
-		Color:           false,                   // 不启用颜色
-		Bold:            false,                   // 不启用加粗
-		MaxLogFileSize:  10,                      // 10MB文件大小
-		MaxLogAge:       30,                      // 保留30天
-		MaxLogBackups:   50,                      // 保留50个文件
-		IsLocalTime:     true,                    // 本地时间
-		EnableCompress:  true,                    // 启用压缩
-		BatchSize:       defaultBatchSize * 2,    // 更大批处理提升性能
+		OutputToConsole: false,                // 不输出到控制台
+		OutputToFile:    true,                 // 文件输出
+		LogLevel:        INFO,                 // INFO级别
+		ChanIntSize:     largeChanSize,        // 大通道缓冲
+		FlushInterval:   slowFlushInterval,    // 较慢刷新，提升性能
+		LogFormat:       Json,                 // JSON格式
+		Color:           false,                // 不启用颜色
+		Bold:            false,                // 不启用加粗
+		MaxLogFileSize:  defaultMaxFileSize,   // 10MB文件大小
+		MaxLogAge:       productionMaxAge,     // 保留30天
+		MaxLogBackups:   productionMaxBackups, // 保留50个文件
+		IsLocalTime:     true,                 // 本地时间
+		EnableCompress:  true,                 // 启用压缩
+		BatchSize:       defaultBatchSize * 2, // 更大批处理提升性能
 	}
 }
 
@@ -131,22 +131,22 @@ func NewProductionConfig(logDirName string, logFileName string) *FastLogConfig {
 //   - *FastLogConfig: 控制台模式配置实例
 func NewConsoleConfig() *FastLogConfig {
 	return &FastLogConfig{
-		LogDirName:      "",                     // 无日志目录
-		LogFileName:     "",                     // 无日志文件
-		OutputToConsole: true,                   // 控制台输出
-		OutputToFile:    false,                  // 不输出到文件
-		LogLevel:        INFO,                   // INFO级别
-		ChanIntSize:     5000,                   // 较小通道缓冲
-		FlushInterval:   100 * time.Millisecond, // 快速刷新，实时显示
-		LogFormat:       Simple,                 // 简单格式
-		Color:           true,                   // 启用颜色
-		Bold:            true,                   // 启用加粗
-		MaxLogFileSize:  0,                      // 不适用
-		MaxLogAge:       0,                      // 不适用
-		MaxLogBackups:   0,                      // 不适用
-		IsLocalTime:     true,                   // 本地时间
-		EnableCompress:  false,                  // 不适用
-		BatchSize:       defaultBatchSize / 2,   // 较小批处理，更实时
+		LogDirName:      "",                   // 无日志目录
+		LogFileName:     "",                   // 无日志文件
+		OutputToConsole: true,                 // 控制台输出
+		OutputToFile:    false,                // 不输出到文件
+		LogLevel:        INFO,                 // INFO级别
+		ChanIntSize:     smallChanSize,        // 较小通道缓冲
+		FlushInterval:   fastFlushInterval,    // 快速刷新，实时显示
+		LogFormat:       Simple,               // 简单格式
+		Color:           true,                 // 启用颜色
+		Bold:            true,                 // 启用加粗
+		MaxLogFileSize:  0,                    // 不适用
+		MaxLogAge:       0,                    // 不适用
+		MaxLogBackups:   0,                    // 不适用
+		IsLocalTime:     true,                 // 本地时间
+		EnableCompress:  false,                // 不适用
+		BatchSize:       defaultBatchSize / 2, // 较小批处理，更实时
 	}
 }
 
@@ -163,20 +163,20 @@ func NewFileConfig(logDirName string, logFileName string) *FastLogConfig {
 	return &FastLogConfig{
 		LogDirName:      logDirName,
 		LogFileName:     logFileName,
-		OutputToConsole: false,                  // 不输出到控制台
-		OutputToFile:    true,                   // 文件输出
-		LogLevel:        INFO,                   // INFO级别
-		ChanIntSize:     10000,                  // 中等通道缓冲
-		FlushInterval:   500 * time.Millisecond, // 中等刷新间隔
-		LogFormat:       BasicStructured,        // 结构化格式
-		Color:           false,                  // 不启用颜色
-		Bold:            false,                  // 不启用加粗
-		MaxLogFileSize:  10,                     // 10MB文件大小
-		MaxLogAge:       14,                     // 保留14天
-		MaxLogBackups:   30,                     // 保留30个文件
-		IsLocalTime:     true,                   // 本地时间
-		EnableCompress:  false,                  // 不压缩
-		BatchSize:       defaultBatchSize,       // 默认批处理大小
+		OutputToConsole: false,               // 不输出到控制台
+		OutputToFile:    true,                // 文件输出
+		LogLevel:        INFO,                // INFO级别
+		ChanIntSize:     defaultChanSize,     // 中等通道缓冲
+		FlushInterval:   normalFlushInterval, // 中等刷新间隔
+		LogFormat:       BasicStructured,     // 结构化格式
+		Color:           false,               // 不启用颜色
+		Bold:            false,               // 不启用加粗
+		MaxLogFileSize:  defaultMaxFileSize,  // 10MB文件大小
+		MaxLogAge:       fileMaxAge,          // 保留14天
+		MaxLogBackups:   fileMaxBackups,      // 保留30个文件
+		IsLocalTime:     true,                // 本地时间
+		EnableCompress:  false,               // 不压缩
+		BatchSize:       defaultBatchSize,    // 默认批处理大小
 	}
 }
 
@@ -193,20 +193,20 @@ func NewSilentConfig(logDirName string, logFileName string) *FastLogConfig {
 	return &FastLogConfig{
 		LogDirName:      logDirName,
 		LogFileName:     logFileName,
-		OutputToConsole: false,                   // 不输出到控制台
-		OutputToFile:    true,                    // 文件输出
-		LogLevel:        WARN,                    // 仅WARN级别日志
-		ChanIntSize:     20000,                   // 大通道缓冲
-		FlushInterval:   1000 * time.Millisecond, // 很慢刷新，最高性能
-		LogFormat:       JsonSimple,              // 简化JSON格式
-		Color:           false,                   // 不启用颜色
-		Bold:            false,                   // 不启用加粗
-		MaxLogFileSize:  10,                      // 10MB文件大小
-		MaxLogAge:       30,                      // 保留30天
-		MaxLogBackups:   50,                      // 保留50个文件
-		IsLocalTime:     true,                    // 本地时间
-		EnableCompress:  true,                    // 启用压缩
-		BatchSize:       defaultBatchSize * 2,    // 大批处理，最高性能
+		OutputToConsole: false,                // 不输出到控制台
+		OutputToFile:    true,                 // 文件输出
+		LogLevel:        WARN,                 // 仅WARN级别日志
+		ChanIntSize:     largeChanSize,        // 大通道缓冲
+		FlushInterval:   slowFlushInterval,    // 很慢刷新，最高性能
+		LogFormat:       JsonSimple,           // 简化JSON格式
+		Color:           false,                // 不启用颜色
+		Bold:            false,                // 不启用加粗
+		MaxLogFileSize:  defaultMaxFileSize,   // 10MB文件大小
+		MaxLogAge:       silentMaxAge,         // 保留30天
+		MaxLogBackups:   silentMaxBackups,     // 保留50个文件
+		IsLocalTime:     true,                 // 本地时间
+		EnableCompress:  true,                 // 启用压缩
+		BatchSize:       defaultBatchSize * 2, // 大批处理，最高性能
 	}
 }
 
@@ -256,17 +256,17 @@ func (c *FastLogConfig) validateCriticalConfig() {
 // checkSystemResources 检查系统资源是否充足
 func (c *FastLogConfig) checkSystemResources() {
 	// 检查通道大小是否会占用过多内存
-	if c.ChanIntSize > 1000000 { // 超过100万条消息
+	if c.ChanIntSize > maxChanSize { // 超过100万条消息
 		panic("channel size too large, may cause memory overflow. Recommend setting within 1 million entries")
 	}
 
 	// 检查刷新间隔是否过小导致CPU占用过高
-	if c.FlushInterval > 0 && c.FlushInterval < time.Microsecond {
+	if c.FlushInterval > 0 && c.FlushInterval < minFlushInterval {
 		panic("refresh interval too small (less than 1 microsecond), will cause high CPU usage")
 	}
 
 	// 检查文件大小配置是否合理
-	if c.MaxLogFileSize > 10000 { // 超过10GB
+	if c.MaxLogFileSize > maxSingleFileSize { // 超过10GB
 		panic("single log file size too large (exceeds 10GB), may cause insufficient disk space")
 	}
 }
@@ -280,11 +280,11 @@ func (c *FastLogConfig) fixFileConfig() {
 
 	// 1. 修正基本字符串字段
 	if strings.TrimSpace(c.LogDirName) == "" {
-		c.LogDirName = "logs"
+		c.LogDirName = defaultLogDir
 	}
 
 	if strings.TrimSpace(c.LogFileName) == "" {
-		c.LogFileName = "app.log"
+		c.LogFileName = defaultLogFileName
 	}
 
 	// 2. 清理文件名中的非法字符
@@ -302,21 +302,21 @@ func (c *FastLogConfig) fixFileConfig() {
 
 	// 3. 修正文件轮转配置
 	if c.MaxLogFileSize <= 0 {
-		c.MaxLogFileSize = 10
-	} else if c.MaxLogFileSize > 1000 {
-		c.MaxLogFileSize = 1000
+		c.MaxLogFileSize = defaultMaxFileSize
+	} else if c.MaxLogFileSize > maxSingleFileSize {
+		c.MaxLogFileSize = maxSingleFileSize
 	}
 
 	if c.MaxLogAge < 0 {
 		c.MaxLogAge = 0
-	} else if c.MaxLogAge > 3650 { // 最多保留10年
-		c.MaxLogAge = 3650
+	} else if c.MaxLogAge > maxRetentionDays { // 最多保留10年
+		c.MaxLogAge = maxRetentionDays
 	}
 
 	if c.MaxLogBackups < 0 {
 		c.MaxLogBackups = 0
-	} else if c.MaxLogBackups > 1000 {
-		c.MaxLogBackups = 1000
+	} else if c.MaxLogBackups > maxRetentionFiles {
+		c.MaxLogBackups = maxRetentionFiles
 	}
 }
 
@@ -324,25 +324,25 @@ func (c *FastLogConfig) fixFileConfig() {
 func (c *FastLogConfig) fixPerformanceConfig() {
 	// 修正通道大小
 	if c.ChanIntSize <= 0 {
-		c.ChanIntSize = 10000
-	} else if c.ChanIntSize > 100000 {
-		c.ChanIntSize = 100000
+		c.ChanIntSize = defaultChanSize
+	} else if c.ChanIntSize > chanSizeLimit {
+		c.ChanIntSize = chanSizeLimit
 	}
 
 	// 修正刷新间隔
 	if c.FlushInterval <= 0 {
-		c.FlushInterval = 500 * time.Millisecond
-	} else if c.FlushInterval < 10*time.Millisecond {
-		c.FlushInterval = 10 * time.Millisecond
-	} else if c.FlushInterval > 30*time.Second {
-		c.FlushInterval = 30 * time.Second
+		c.FlushInterval = normalFlushInterval
+	} else if c.FlushInterval < normalMinFlush {
+		c.FlushInterval = normalMinFlush
+	} else if c.FlushInterval > maxFlushInterval {
+		c.FlushInterval = maxFlushInterval
 	}
 
 	// 修正批处理数量
 	if c.BatchSize <= 0 {
 		c.BatchSize = defaultBatchSize
-	} else if c.BatchSize > 5000 {
-		c.BatchSize = 5000
+	} else if c.BatchSize > maxBatchSize {
+		c.BatchSize = maxBatchSize
 	}
 }
 
@@ -370,22 +370,22 @@ func (c *FastLogConfig) validateFinalConsistency() {
 			maxFiles := c.MaxLogBackups
 
 			// 如果配置过于激进，调整为更保守的值
-			if maxRetentionDays < 7 && maxFiles < 5 {
+			if maxRetentionDays < minRetentionDays && maxFiles < minRetentionFiles {
 				// 至少保留7天或5个文件
-				if c.MaxLogAge > 0 && c.MaxLogAge < 7 {
-					c.MaxLogAge = 7
+				if c.MaxLogAge > 0 && c.MaxLogAge < minRetentionDays {
+					c.MaxLogAge = minRetentionDays
 				}
-				if c.MaxLogBackups > 0 && c.MaxLogBackups < 5 {
-					c.MaxLogBackups = 5
+				if c.MaxLogBackups > 0 && c.MaxLogBackups < minRetentionFiles {
+					c.MaxLogBackups = minRetentionFiles
 				}
 			}
 		}
 	}
 
 	// 检查性能配置的合理性
-	if c.ChanIntSize > 50000 && c.FlushInterval < 100*time.Millisecond {
+	if c.ChanIntSize > performanceThreshold && c.FlushInterval < performanceFlushMin {
 		// 大通道配合高频刷新可能导致性能问题，调整刷新间隔
-		c.FlushInterval = 100 * time.Millisecond
+		c.FlushInterval = performanceFlushMin
 	}
 }
 
@@ -399,7 +399,7 @@ func (c *FastLogConfig) validateFinalConsistency() {
 func cleanFileName(filename string) string {
 	// 处理空字符串
 	if strings.TrimSpace(filename) == "" {
-		return "app.log"
+		return defaultLogFileName
 	}
 
 	// 1. 使用 filepath.Clean 进行路径规范化
@@ -418,7 +418,7 @@ func cleanFileName(filename string) string {
 
 	// 4. 清理文件名中的非法字符
 	for _, char := range invalidFileChars {
-		actualFileName = strings.ReplaceAll(actualFileName, char, "_")
+		actualFileName = strings.ReplaceAll(actualFileName, char, charReplacement)
 	}
 
 	// 5. 移除文件名开头/结尾的点和空格
@@ -437,7 +437,7 @@ func cleanFileName(filename string) string {
 
 	// 7. 确保文件名不为空
 	if actualFileName == "" {
-		actualFileName = "app.log"
+		actualFileName = defaultLogFileName
 	}
 
 	// 8. 重新组合路径
@@ -449,7 +449,7 @@ func cleanFileName(filename string) string {
 
 	// 9. 最终路径长度检查
 	if len(cleaned) > maxPathLength {
-		cleaned = cleaned[:maxPathLength-10] + "_truncated"
+		cleaned = cleaned[:maxPathLength-truncateReserve] + truncatedSuffix
 	}
 
 	return cleaned

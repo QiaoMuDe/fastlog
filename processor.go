@@ -24,7 +24,9 @@ type processor struct {
 	// 批量处理配置
 	batchSize     int           // 批量处理数量
 	flushInterval time.Duration // 批量处理间隔
-	bufferSize    int           // 缓冲区大小
+
+	// 缓冲区相关
+	bufPool *pool.BufPool // 缓冲区池
 }
 
 // newProcessor 创建新的处理器实例
@@ -39,10 +41,10 @@ type processor struct {
 //   - *processor: 新的处理器实例
 func newProcessor(deps processorDependencies, batchSize int, flushInterval time.Duration) *processor {
 	return &processor{
-		deps:          deps,                           // 依赖接口 (替代直接持有FastLog引用)
-		batchSize:     batchSize,                      // 批处理条数
-		flushInterval: flushInterval,                  // 定时刷新间隔
-		bufferSize:    calculateBufferSize(batchSize), // 缓冲区大小
+		deps:          deps,                                                                              // 依赖接口 (替代直接持有FastLog引用)
+		batchSize:     batchSize,                                                                         // 批处理条数
+		flushInterval: flushInterval,                                                                     // 定时刷新间隔
+		bufPool:       pool.NewBufPool(calculateBufferSize(batchSize), calculateBufferSize(batchSize)*2), // 缓冲区池
 	}
 }
 
@@ -61,6 +63,9 @@ func (p *processor) singleThreadProcessor() {
 	}
 	if p.deps.getLogChannel() == nil {
 		panic("processor.deps.getLogChannel() is nil")
+	}
+	if p.bufPool == nil {
+		panic("processor.bufPool is nil")
 	}
 
 	// 初始化日志批处理切片，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
@@ -204,12 +209,12 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	// 根据配置获取文件和控制台缓冲区
 	var fileBuffer, consoleBuffer *bytes.Buffer
 	if config.OutputToFile {
-		fileBuffer = pool.GetBufCap(p.bufferSize)
-		defer pool.PutBuf(fileBuffer)
+		fileBuffer = p.bufPool.Get()
+		defer p.bufPool.Put(fileBuffer)
 	}
 	if config.OutputToConsole {
-		consoleBuffer = pool.GetBufCap(p.bufferSize)
-		defer pool.PutBuf(consoleBuffer)
+		consoleBuffer = p.bufPool.Get()
+		defer p.bufPool.Put(consoleBuffer)
 	}
 
 	// 遍历批处理中的所有日志消息（智能缓冲区优化版本）
