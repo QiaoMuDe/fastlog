@@ -80,14 +80,14 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 //   - *FastLogConfig: 开发模式配置实例
 func DevConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
-	
+
 	// 开发模式差异化设置
 	config.LogLevel = DEBUG
 	config.FlushInterval = fastFlushInterval
 	config.LogFormat = Detailed
 	config.MaxLogAge = developmentMaxAge
 	config.MaxLogBackups = developmentMaxBackups
-	
+
 	return config
 }
 
@@ -108,7 +108,7 @@ func DevConfig(logDirName, logFileName string) *FastLogConfig {
 //   - *FastLogConfig: 生产模式配置实例
 func ProdConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
-	
+
 	// 生产模式差异化设置
 	config.OutputToConsole = false
 	config.ChanIntSize = largeChanSize
@@ -120,7 +120,7 @@ func ProdConfig(logDirName, logFileName string) *FastLogConfig {
 	config.MaxLogBackups = productionMaxBackups
 	config.EnableCompress = true
 	config.BatchSize = defaultBatchSize * 2
-	
+
 	return config
 }
 
@@ -136,7 +136,7 @@ func ProdConfig(logDirName, logFileName string) *FastLogConfig {
 //   - *FastLogConfig: 控制台模式配置实例
 func ConsoleConfig() *FastLogConfig {
 	config := NewFastLogConfig("", "")
-	
+
 	// 控制台模式差异化设置
 	config.OutputToFile = false
 	config.ChanIntSize = smallChanSize
@@ -145,7 +145,7 @@ func ConsoleConfig() *FastLogConfig {
 	config.MaxLogAge = 0
 	config.MaxLogBackups = 0
 	config.BatchSize = defaultBatchSize / 2
-	
+
 	return config
 }
 
@@ -165,7 +165,7 @@ func ConsoleConfig() *FastLogConfig {
 //   - *FastLogConfig: 文件模式配置实例
 func FileConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
-	
+
 	// 文件模式差异化设置
 	config.OutputToConsole = false
 	config.LogFormat = BasicStructured
@@ -173,7 +173,7 @@ func FileConfig(logDirName, logFileName string) *FastLogConfig {
 	config.Bold = false
 	config.MaxLogAge = fileMaxAge
 	config.MaxLogBackups = fileMaxBackups
-	
+
 	return config
 }
 
@@ -194,7 +194,7 @@ func FileConfig(logDirName, logFileName string) *FastLogConfig {
 //   - *FastLogConfig: 静默模式配置实例
 func SilentConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
-	
+
 	// 静默模式差异化设置
 	config.OutputToConsole = false
 	config.LogLevel = WARN
@@ -207,7 +207,7 @@ func SilentConfig(logDirName, logFileName string) *FastLogConfig {
 	config.MaxLogBackups = silentMaxBackups
 	config.EnableCompress = true
 	config.BatchSize = defaultBatchSize * 2
-	
+
 	return config
 }
 

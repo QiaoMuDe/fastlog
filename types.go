@@ -64,18 +64,18 @@ const (
 	silentMaxBackups      = 100 // 静默模式保留文件数
 
 	// 系统资源限制常量
-	maxChanSize         = 1000000 // 最大通道大小限制
-	maxSingleFileSize   = 10000   // 最大单文件大小限制（MB）
-	minFlushInterval    = time.Microsecond // 最小刷新间隔
-	maxFlushInterval    = 30 * time.Second // 最大刷新间隔
-	normalMinFlush      = 10 * time.Millisecond // 正常最小刷新间隔
-	maxBatchSize        = 5000 // 最大批处理大小
-	chanSizeLimit       = 100000 // 通道大小上限
-	maxRetentionDays    = 3650 // 最大保留天数（10年）
-	maxRetentionFiles   = 1000 // 最大保留文件数
-	minRetentionDays    = 7    // 最小保留天数
-	minRetentionFiles   = 5    // 最小保留文件数
-	performanceThreshold = 50000 // 性能阈值
+	maxChanSize          = 1000000                // 最大通道大小限制
+	maxSingleFileSize    = 10000                  // 最大单文件大小限制（MB）
+	minFlushInterval     = time.Microsecond       // 最小刷新间隔
+	maxFlushInterval     = 30 * time.Second       // 最大刷新间隔
+	normalMinFlush       = 10 * time.Millisecond  // 正常最小刷新间隔
+	maxBatchSize         = 5000                   // 最大批处理大小
+	chanSizeLimit        = 100000                 // 通道大小上限
+	maxRetentionDays     = 3650                   // 最大保留天数（10年）
+	maxRetentionFiles    = 1000                   // 最大保留文件数
+	minRetentionDays     = 7                      // 最小保留天数
+	minRetentionFiles    = 5                      // 最小保留文件数
+	performanceThreshold = 50000                  // 性能阈值
 	performanceFlushMin  = 100 * time.Millisecond // 性能模式最小刷新间隔
 )
 
@@ -176,14 +176,29 @@ type LogFormatType int
 
 // 日志格式选项
 const (
-	Detailed        LogFormatType = iota // 详细格式
-	Json                                 // json格式
-	JsonSimple                           // json简化格式(无文件信息)
-	Simple                               // 简约格式(无文件信息)
-	Structured                           // 结构化格式
-	BasicStructured                      // 基础结构化格式(无文件信息)
-	SimpleTimestamp                      // 简单时间格式(无文件信息)
-	Custom                               // 自定义格式(无文件信息)
+	// 详细格式
+	Detailed LogFormatType = iota
+
+	// json格式
+	Json
+
+	// json简化格式(无文件信息)
+	JsonSimple
+
+	// 简约格式(无文件信息)
+	Simple
+
+	// 结构化格式
+	Structured
+
+	// 基础结构化格式(无文件信息)
+	BasicStructured
+
+	// 简单时间格式(无文件信息)
+	SimpleTimestamp
+
+	// 自定义格式(无文件信息)
+	Custom
 )
 
 // fileInfoRequiredFormats 需要处理文件信息的日志格式集合
@@ -217,13 +232,13 @@ var (
 	}
 	maxFileNameLength = 255  // 大多数文件系统的文件名长度限制
 	maxPathLength     = 4096 // 大多数系统的路径长度限制
-	
+
 	// 文件处理字符串常量
-	defaultLogDir      = "logs"        // 默认日志目录名
-	defaultLogFileName = "app.log"     // 默认日志文件名
-	truncatedSuffix    = "_truncated"  // 路径截断后缀
-	charReplacement    = "_"           // 非法字符替换符
-	truncateReserve    = 10            // 路径截断预留长度
+	defaultLogDir      = "logs"       // 默认日志目录名
+	defaultLogFileName = "app.log"    // 默认日志文件名
+	truncatedSuffix    = "_truncated" // 路径截断后缀
+	charReplacement    = "_"          // 非法字符替换符
+	truncateReserve    = 10           // 路径截断预留长度
 )
 
 // processorDependencies 定义处理器所需的最小依赖接口
