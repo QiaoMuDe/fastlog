@@ -1,5 +1,3 @@
-// internal_test.go - FastLog内部测试文件
-// 包含对FastLog内部实现的测试，确保其功能的正确性和性能。
 package fastlog
 
 import (

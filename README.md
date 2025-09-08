@@ -4,13 +4,13 @@
 ![Go Version](https://img.shields.io/badge/go-1.24.4-blue.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QiaoMuDe/fastlog)
 
-FastLog 是一个企业级高性能 Go 日志库，专为高并发场景设计。通过智能分层缓冲区系统、原子时间戳缓存和资源泄漏防护等核心技术，实现了 **152.7万条/秒** 的极致吞吐量和 **0.65μs** 的超低延迟。采用依赖注入架构避免循环依赖，支持智能背压控制和优雅关闭，确保生产环境的稳定性和可靠性。
+FastLog 是一个企业级高性能 Go 日志库，专为高并发场景设计。通过原子时间戳缓存、批量处理优化和资源泄漏防护等核心技术，实现了 **152.7万条/秒** 的极致吞吐量和 **0.65μs** 的超低延迟。采用依赖注入架构避免循环依赖，支持智能背压控制和优雅关闭，确保生产环境的稳定性和可靠性。
 
 ## 🌟 核心特性
 
 ### 🚀 **极致性能架构**
 - **异步非阻塞处理** - 基于 channel 的生产者-消费者模式，避免业务阻塞
-- **智能分层缓冲区** - 文件缓冲区(32KB→256KB→1MB)，控制台缓冲区(8KB→32KB→64KB)，90%阈值智能切换
+- **高效缓冲管理** - 使用 sync.Pool 对象池复用缓冲区，减少内存分配开销
 - **原子时间戳缓存** - 使用原子操作替代读写锁，3-5倍性能提升，快路径完全无锁
 - **批量处理优化** - 1000条日志批量格式化和写入，减少系统调用开销
 - **零拷贝优化** - 直接格式化到目标缓冲区，避免多次内存拷贝
@@ -81,32 +81,32 @@ func main() {
 }
 ```
 
-### 链式配置（推荐）
+### 预设配置模式（推荐）
 
-FastLog 支持流畅的链式配置语法，让配置更加简洁优雅：
+FastLog 提供了5种预设配置模式，覆盖常见使用场景，让配置更加简洁：
 
 ```go
 package main
 
-import (
-    "time"
-    "gitee.com/MM-Q/fastlog"
-)
+import "gitee.com/MM-Q/fastlog"
 
 func main() {
-    // 使用链式配置创建日志记录器
-    logger := fastlog.NewFastLog(
-        fastlog.NewFastLogConfig("logs", "app.log").
-            WithLogLevel(fastlog.DEBUG).
-            WithOutputToConsole(true).
-            WithOutputToFile(true).
-            WithFlushInterval(100 * time.Millisecond).
-            WithMaxLogFileSize(50).
-            WithMaxLogAge(30).
-            WithColor(true).
-            WithEnableCompress(true),
-    )
+    // 开发模式：双输出，详细信息，快速响应，彩色显示
+    devLogger := fastlog.DevConfig("logs", "dev.log")
+    logger := fastlog.NewFastLog(devLogger)
     defer logger.Close()
+
+    // 生产模式：高性能，结构化，长期存储，空间优化
+    // prodLogger := fastlog.ProdConfig("logs", "prod.log")
+    
+    // 控制台模式：纯控制台，视觉友好，快速响应，轻量级
+    // consoleLogger := fastlog.ConsoleConfig()
+    
+    // 文件模式：纯文件，结构化，中等性能，中期存储
+    // fileLogger := fastlog.FileConfig("logs", "file.log")
+    
+    // 静默模式：最小输出，极致性能，高效格式，长期存储
+    // silentLogger := fastlog.SilentConfig("logs", "silent.log")
 
     // 记录日志
     logger.Info("应用程序启动")
@@ -116,23 +116,13 @@ func main() {
 }
 ```
 
-#### 可用的链式配置方法
+#### 可用的预设配置模式
 
-- `WithLogDirName(string)` - 设置日志目录
-- `WithLogFileName(string)` - 设置日志文件名
-- `WithLogLevel(LogLevel)` - 设置日志级别
-- `WithOutputToConsole(bool)` - 设置控制台输出
-- `WithOutputToFile(bool)` - 设置文件输出
-- `WithFlushInterval(time.Duration)` - 设置刷新间隔
-- `WithChanIntSize(int)` - 设置通道缓冲区大小
-- `WithLogFormat(LogFormatType)` - 设置日志格式
-- `WithColor(bool)` - 设置终端颜色
-- `WithBold(bool)` - 设置字体加粗
-- `WithMaxLogFileSize(int)` - 设置最大文件大小(MB)
-- `WithMaxLogAge(int)` - 设置文件保留天数
-- `WithMaxLogBackups(int)` - 设置文件保留数量
-- `WithIsLocalTime(bool)` - 设置时间格式
-- `WithEnableCompress(bool)` - 设置文件压缩
+- `DevConfig(logDir, logFile)` - 开发模式：双输出、详细信息、快速响应、彩色显示、短期保留
+- `ProdConfig(logDir, logFile)` - 生产模式：高性能、结构化、合理级别、长期存储、空间优化、无装饰
+- `ConsoleConfig()` - 控制台模式：纯控制台、视觉友好、快速响应、轻量级、即时性
+- `FileConfig(logDir, logFile)` - 文件模式：纯文件、结构化、中等性能、中期存储、无装饰
+- `SilentConfig(logDir, logFile)` - 静默模式：最小输出、极致性能、高效格式、长期存储、空间优化
 
 ### 简化创建方式
 
@@ -203,23 +193,25 @@ func main() {
 ### 环境配置示例
 
 ```go
-// 推荐：根据环境使用不同的配置
-func createLogger(env string) (*fastlog.FastLog, error) {
-    config := fastlog.NewFastLogConfig("logs", "app.log")
-  
+// 推荐：根据环境使用不同的预设配置
+func createLogger(env string) *fastlog.FastLog {
+    var config *fastlog.FastLogConfig
+    
     switch env {
     case "development":
-        config.LogLevel = fastlog.DEBUG
-        config.LogFormat = fastlog.Detailed
-        config.OutputToConsole = true
+        config = fastlog.DevConfig("logs", "app.log")
     case "production":
-        config.LogLevel = fastlog.INFO
-        config.LogFormat = fastlog.Json
-        config.OutputToConsole = false
-        config.MaxLogFileSize = 100
-        config.MaxLogAge = 7
+        config = fastlog.ProdConfig("logs", "app.log")
+    case "console":
+        config = fastlog.ConsoleConfig()
+    case "file":
+        config = fastlog.FileConfig("logs", "app.log")
+    case "silent":
+        config = fastlog.SilentConfig("logs", "app.log")
+    default:
+        config = fastlog.NewFastLogConfig("logs", "app.log") // 默认配置
     }
-  
+    
     return fastlog.NewFastLog(config)
 }
 ```
@@ -332,7 +324,12 @@ config.EnableCompress = true    // 启用压缩功能
 
 | 函数名称 | 参数 | 返回值 | 说明 |
 |---------|------|--------|------|
-| `NewFastLogConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建日志配置实例 |
+| `NewFastLogConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建基础日志配置实例 |
+| `DevConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建开发模式配置 |
+| `ProdConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建生产模式配置 |
+| `ConsoleConfig` | 无 | `*FastLogConfig` | 创建控制台模式配置 |
+| `FileConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建文件模式配置 |
+| `SilentConfig` | `logDirPath string, logFileName string` | `*FastLogConfig` | 创建静默模式配置 |
 | `NewFastLog` | `cfg *FastLogConfig` | `*FastLog` | 根据配置创建日志记录器实例 |
 | `New` | `cfg *FastLogConfig` | `*FastLog` | `NewFastLog` 的简写形式 |
 | `NewCfg` | `logDirPath string, logFileName string` | `*FastLogConfig` | `NewFastLogConfig` 的简写形式 |
@@ -341,21 +338,22 @@ config.EnableCompress = true    // 启用压缩功能
 
 | 字段名称 | 类型 | 默认值 | 说明 |
 |---------|------|--------|------|
-| `LogDirName` | `string` | - | 日志目录路径 |
-| `LogFileName` | `string` | - | 日志文件名 |
+| `LogDirName` | `string` | `"logs"` | 日志目录路径 |
+| `LogFileName` | `string` | `"app.log"` | 日志文件名 |
 | `OutputToConsole` | `bool` | `true` | 是否输出到控制台 |
 | `OutputToFile` | `bool` | `true` | 是否输出到文件 |
 | `FlushInterval` | `time.Duration` | `500ms` | 缓冲区刷新间隔 |
 | `LogLevel` | `LogLevel` | `INFO` | 日志级别 |
 | `ChanIntSize` | `int` | `10000` | 通道大小 |
-| `LogFormat` | `LogFormatType` | `Detailed` | 日志格式 |
-| `NoColor` | `bool` | `false` | 是否禁用颜色输出 |
-| `NoBold` | `bool` | `false` | 是否禁用字体加粗 |
+| `LogFormat` | `LogFormatType` | `Basic` | 日志格式 |
+| `Color` | `bool` | `true` | 是否启用颜色输出 |
+| `Bold` | `bool` | `true` | 是否启用字体加粗 |
 | `MaxLogFileSize` | `int` | `10` | 最大日志文件大小(MB) |
 | `MaxLogAge` | `int` | `0` | 日志文件最大保留天数(0表示不限制) |
 | `MaxLogBackups` | `int` | `0` | 最大备份文件数量(0表示不限制) |
 | `IsLocalTime` | `bool` | `true` | 是否使用本地时间 |
 | `EnableCompress` | `bool` | `false` | 是否启用日志压缩 |
+| `BatchSize` | `int` | `1000` | 批处理大小 |
 
 ### 日志记录方法
 
@@ -409,7 +407,17 @@ config.EnableCompress = true    // 启用压缩功能
 ### 2. 性能优化建议
 
 ```go
-// 推荐：在高并发场景下适当调整配置
+// 推荐：根据场景选择合适的预设配置
+// 高并发生产环境
+logger := fastlog.NewFastLog(fastlog.ProdConfig("logs", "app.log"))
+
+// 开发调试环境
+logger := fastlog.NewFastLog(fastlog.DevConfig("logs", "debug.log"))
+
+// 极致性能场景
+logger := fastlog.NewFastLog(fastlog.SilentConfig("logs", "silent.log"))
+
+// 自定义配置（仅在预设配置不满足需求时使用）
 config := fastlog.NewFastLogConfig("logs", "app.log")
 config.FlushInterval = 1 * time.Second    // 增加刷新间隔减少 IO
 config.LogLevel = fastlog.INFO            // 生产环境避免 DEBUG 日志
@@ -553,7 +561,7 @@ logger.Info("自定义格式的消息")  // 直接输出原始消息
 - **测试数据量**: 300万条日志
 - **智能背压**: 启用（高负载下自动丢弃低优先级日志）
 - **文件输出**: 启用（实际写入6.5万条有效日志）
-- **智能分层缓冲区**: 启用（90%阈值智能切换）
+- **缓冲区管理**: 使用sync.Pool对象池优化内存分配
 
 ### 性能特点
 
@@ -566,18 +574,17 @@ logger.Info("自定义格式的消息")  // 直接输出原始消息
 
 ### 🚀 性能优化成果
 
-经过智能分层缓冲区系统的全面优化，FastLog 在以下方面取得了显著提升：
+经过全面的性能优化，FastLog 在以下方面取得了显著提升：
 
-- **吞吐量提升**: 从141.9万条/秒提升到152.7万条/秒（+7.6%）
-- **延迟降低**: 从0.70μs降低到0.65μs（-7.1%）
-- **内存优化**: 峰值内存从28.0MB优化到29.7MB（稳定控制）
-- **内存效率**: 保持0.31 bytes/条的极致内存效率
-- **并发优化**: 12个Goroutine实现更高效的资源利用
-- **GC优化**: GC暂停时间从14.12ms降低到8.20ms（-41.9%）
+- **吞吐量提升**: 达到152.7万条/秒的极致处理能力
+- **超低延迟**: 平均0.65μs的单条日志处理时间
+- **内存优化**: 峰值内存控制在29.7MB，内存效率0.31 bytes/条
+- **并发优化**: 12个Goroutine实现高效的资源利用
+- **GC优化**: GC暂停时间仅8.20ms，平均0.29ms/次
 
 #### 核心优化技术
 
-1. **智能分层缓冲区系统**: 文件/控制台分别优化，90%阈值智能切换
+1. **对象池优化**: 使用sync.Pool复用缓冲区，减少内存分配
 2. **时间戳原子缓存**: 使用原子操作替代读写锁，3-5倍性能提升
 3. **资源泄漏防护**: defer保护机制确保对象池正确回收
 4. **文件名缓存优化**: 避免重复的 `filepath.Base()` 调用
