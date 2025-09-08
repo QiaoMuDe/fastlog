@@ -54,6 +54,7 @@ type FastLog struct {
 	logger        *logrotatex.LogRotateX // logrotatex 日志文件切割
 	config        *FastLogConfig         // 嵌入的配置结构体
 	bp            *bpThresholds          // 预计算背压阈值
+	bufferSize    int                    // 缓冲区大小
 }
 
 // bpThresholds 预计算的背压阈值, 避免运行时频繁计算
@@ -97,6 +98,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		EnableCompress:  config.EnableCompress,  // 是否启用日志文件压缩
 		Color:           config.Color,           // 是否启用终端颜色
 		Bold:            config.Bold,            // 是否启用终端字体加粗
+		BatchSize:       config.BatchSize,       // 批处理数量
 	}
 
 	// 初始化写入器

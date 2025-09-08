@@ -363,6 +363,11 @@ func (f *FastLog) notifyProcessorDone() {
 	f.logWait.Done()
 }
 
+// getBufferSize 获取缓冲区大小
+func (f *FastLog) getBufferSize() int {
+	return f.bufferSize
+}
+
 // getCloseTimeout 计算并返回日志记录器关闭时的合理超时时间
 //
 // 返回值:
@@ -412,4 +417,30 @@ func (f *FastLog) gracefulShutdown(ctx context.Context) {
 
 	// 5. 关闭日志通道，停止接收新日志
 	close(f.logChan)
+}
+
+// calculateBufferSize 根据批处理数量计算缓冲区大小
+// 保证最小16KB和最大1MB的范围
+//
+// 参数:
+//   - batchSize: 批处理数量
+//
+// 返回值:
+//   - int: 缓冲区大小（字节）
+func calculateBufferSize(batchSize int) int {
+	if batchSize <= 0 {
+		return 16 * 1024 // 16KB
+	}
+
+	size := batchSize * bytesPerLogEntry
+
+	// 最小16KB，最大1MB
+	if size < 16*1024 {
+		return 16 * 1024
+	}
+	if size > 1024*1024 {
+		return 1024 * 1024
+	}
+
+	return size
 }

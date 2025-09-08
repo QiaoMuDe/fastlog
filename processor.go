@@ -1,7 +1,6 @@
 /*
 processor.go - 单线程日志处理器实现
 负责从日志通道接收消息、批量缓存，并根据批次大小或时间间隔触发处理，
-实现日志的批量格式化和输出。使用智能分层缓冲区池优化内存管理。
 */
 package fastlog
 
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"gitee.com/MM-Q/colorlib"
+	"gitee.com/MM-Q/go-kit/pool"
 )
 
 // processor 单线程日志处理器
@@ -21,12 +21,10 @@ type processor struct {
 	// 依赖接口 (替代直接持有FastLog引用)
 	deps processorDependencies
 
-	// 智能分层缓冲区池 (替代固定缓冲区)
-	bufferPool *smartTieredBufferPool
-
 	// 批量处理配置
 	batchSize     int           // 批量处理数量
 	flushInterval time.Duration // 批量处理间隔
+	bufferSize    int           // 缓冲区大小
 }
 
 // newProcessor 创建新的处理器实例
@@ -41,10 +39,10 @@ type processor struct {
 //   - *processor: 新的处理器实例
 func newProcessor(deps processorDependencies, batchSize int, flushInterval time.Duration) *processor {
 	return &processor{
-		deps:          deps,                  // 依赖接口 (替代直接持有FastLog引用)
-		bufferPool:    globalSmartBufferPool, // 智能分层缓冲区池
-		batchSize:     batchSize,             // 批处理条数
-		flushInterval: flushInterval,         // 定时刷新间隔
+		deps:          deps,                           // 依赖接口 (替代直接持有FastLog引用)
+		batchSize:     batchSize,                      // 批处理条数
+		flushInterval: flushInterval,                  // 定时刷新间隔
+		bufferSize:    calculateBufferSize(batchSize), // 缓冲区大小
 	}
 }
 
@@ -61,15 +59,11 @@ func (p *processor) singleThreadProcessor() {
 	if p.deps.getConfig() == nil {
 		panic("processor.deps.getConfig() is nil")
 	}
-	if p.bufferPool == nil {
-		panic("processor.bufferPool is nil")
-	}
-	// 检查通道是否为nil
 	if p.deps.getLogChannel() == nil {
 		panic("processor.deps.getLogChannel() is nil")
 	}
 
-	// 初始化日志批处理缓冲区，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
+	// 初始化日志批处理切片，预分配容量以减少内存分配, 容量为配置的批处理大小batchSize
 	batch := make([]*logMsg, 0, p.batchSize)
 
 	// 创建定时刷新器，间隔由flushInterval指定
@@ -106,8 +100,8 @@ func (p *processor) singleThreadProcessor() {
 			// 将日志消息添加到批处理缓冲区
 			batch = append(batch, logMsg)
 
-			// 只在满足条件时才处理: 批处理切片写满 || 缓冲区到达90%阈值
-			shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold(batch)
+			// 只在满足条件时才处理: 批处理切片写满
+			shouldFlush := len(batch) >= p.batchSize
 
 			// 检查是否需要处理(满足条件之一)
 			if shouldFlush {
@@ -153,8 +147,8 @@ func (p *processor) drainRemainingMessages(batch []*logMsg) {
 				// 添加到批处理切片
 				batch = append(batch, logMsg)
 
-				// 只在满足条件时才处理: 批处理切片写满 || 缓冲区到达90%阈值
-				shouldFlush := len(batch) >= p.batchSize || p.shouldFlushByThreshold(batch)
+				// 只在满足条件时才处理: 批处理切片写满
+				shouldFlush := len(batch) >= p.batchSize
 
 				// 检查是否需要处理(满足条件之一)
 				if shouldFlush {
@@ -200,9 +194,6 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 	if p == nil {
 		return
 	}
-	if p.bufferPool == nil {
-		return
-	}
 	if p.deps == nil {
 		return
 	}
@@ -216,22 +207,15 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 		return
 	}
 
-	// 估算批次大小，用于选择合适的缓冲区
-	estimatedSize := len(batch) * 200 // 假设每条日志平均200字节
-
-	// 🎯 智能获取分层缓冲区
+	// 根据配置获取文件和控制台缓冲区
 	var fileBuffer, consoleBuffer *bytes.Buffer
-
 	if config.OutputToFile {
-		// 获取文件缓冲区(大容量，32KB起步)
-		fileBuffer = p.bufferPool.GetFileBuffer(estimatedSize)
-		defer p.bufferPool.PutFileBuffer(fileBuffer)
+		fileBuffer = pool.GetBufCap(p.bufferSize)
+		defer pool.PutBuf(fileBuffer)
 	}
-
 	if config.OutputToConsole {
-		// 获取控制台缓冲区(小容量，8KB起步)
-		consoleBuffer = p.bufferPool.GetConsoleBuffer(estimatedSize)
-		defer p.bufferPool.PutConsoleBuffer(consoleBuffer)
+		consoleBuffer = pool.GetBufCap(p.bufferSize)
+		defer pool.PutBuf(consoleBuffer)
 	}
 
 	// 遍历批处理中的所有日志消息（智能缓冲区优化版本）
@@ -241,21 +225,14 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 			continue
 		}
 
-		// 估算单条日志大小
-		singleLogSize := len(logMsg.Message) + 100 // 消息长度 + 格式化开销
-
-		// 文件输出处理：智能缓冲区升级 + 直接格式化
+		// 直接格式化日志消息到缓冲区
 		if config.OutputToFile && fileBuffer != nil {
-			// 🚀 智能检查并升级缓冲区（32KB -> 256KB -> 1MB）
-			fileBuffer = p.bufferPool.CheckAndUpgradeFileBuffer(fileBuffer, singleLogSize)
 			formatLogDirectlyToBuffer(fileBuffer, config, logMsg, false, p.deps.getColorLib())
 			fileBuffer.WriteByte('\n') // 添加换行符
 		}
 
-		// 控制台输出处理：智能缓冲区升级 + 直接格式化，带颜色处理
+		// 直接格式化日志消息到缓冲区
 		if config.OutputToConsole && consoleBuffer != nil {
-			// 🚀 智能检查并升级缓冲区(8KB -> 32KB -> 64KB)
-			consoleBuffer = p.bufferPool.CheckAndUpgradeConsoleBuffer(consoleBuffer, singleLogSize)
 			formatLogDirectlyToBuffer(consoleBuffer, config, logMsg, true, p.deps.getColorLib())
 			consoleBuffer.WriteByte('\n') // 添加换行符
 		}
@@ -270,55 +247,16 @@ func (p *processor) processAndFlushBatch(batch []*logMsg) {
 
 			// 如果启用了控制台输出，将文件内容降级输出到控制台
 			if config.OutputToConsole && consoleBuffer != nil {
-				if _, consoleErr := p.deps.getConsoleWriter().Write(fileBuffer.Bytes()); consoleErr != nil {
-					// 控制台输出失败时静默处理，避免影响程序运行
-					_ = writeErr
-				}
+				_, _ = p.deps.getConsoleWriter().Write(fileBuffer.Bytes())
 			}
 		}
 	}
 
 	// 如果启用控制台输出, 并且控制台缓冲区有内容, 则将缓冲区内容写入控制台
 	if config.OutputToConsole && consoleBuffer != nil && consoleBuffer.Len() > 0 {
-		// 将控制台缓冲区的内容一次性写入控制台, 提高I/O效率
-		if _, writeErr := p.deps.getConsoleWriter().Write(consoleBuffer.Bytes()); writeErr != nil {
-			// 控制台输出失败时静默处理，避免影响程序运行
-			_ = writeErr
-		}
+		// 控制台输出失败时静默处理，避免影响程序运行
+		_, _ = p.deps.getConsoleWriter().Write(consoleBuffer.Bytes())
 	}
-}
-
-// shouldFlushByThreshold 检查是否应该根据缓冲区大小阈值进行刷新
-// 智能版本：基于批次大小估算，而不是实际缓冲区大小
-//
-// 参数:
-//   - batch: 当前批次的日志消息
-//
-// 返回值:
-//   - bool: 是否应该刷新
-func (p *processor) shouldFlushByThreshold(batch []*logMsg) bool {
-	if len(batch) == 0 {
-		return false
-	}
-
-	config := p.deps.getConfig()
-	if config == nil {
-		return false
-	}
-
-	// 估算当前批次的大小
-	estimatedSize := len(batch) * 200 // 每条日志约200字节
-
-	// 检查是否达到阈值
-	if config.OutputToFile && estimatedSize >= fileSmallThreshold {
-		return true
-	}
-
-	if config.OutputToConsole && estimatedSize >= consoleSmallThreshold {
-		return true
-	}
-
-	return false
 }
 
 // formatLogDirectlyToBuffer 直接将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
@@ -351,9 +289,9 @@ func formatLogDirectlyToBuffer(buffer *bytes.Buffer, config *FastLogConfig, logM
 		logMsg.FuncName = "unknown-func"
 	}
 
-	// 文本格式处理：先格式化到临时缓冲区，然后根据需要添加颜色
-	tempBuffer := getTempBuffer()
-	defer putTempBuffer(tempBuffer)
+	// 文本格式处理: 先格式化到临时缓冲区，然后根据需要添加颜色
+	tempBuffer := pool.GetBuf()
+	defer pool.PutBuf(tempBuffer)
 
 	// 根据日志格式格式化到临时缓冲区
 	switch config.LogFormat {

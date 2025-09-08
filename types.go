@@ -33,32 +33,12 @@ var logLevelPaddedStringMap = map[LogLevel]string{
 	NONE:  "NONE  ", // 6个字符
 }
 
-// 定义缓冲区相关常量
 const (
-	// 1 KB 用于快捷计算
-	kb = 1024
-
 	// 默认批量处理大小
 	defaultBatchSize = 1000
 
-	// 分层缓冲区配置
-	// 文件缓冲区分层（大容量，适合批量I/O）
-	fileSmallBufferCapacity  = 32 * kb   // 32KB - 小文件批量
-	fileMediumBufferCapacity = 256 * kb  // 256KB - 中等文件批量
-	fileLargeBufferCapacity  = 1024 * kb // 1MB - 大文件批量
-
-	// 控制台缓冲区分层（小容量，适合实时显示）
-	consoleSmallBufferCapacity  = 8 * kb  // 8KB - 小控制台批量
-	consoleMediumBufferCapacity = 32 * kb // 32KB - 中等控制台批量
-	consoleLargeBufferCapacity  = 64 * kb // 64KB - 大控制台批量
-
-	// 分层缓冲区90%阈值
-	fileSmallThreshold     = fileSmallBufferCapacity * 9 / 10     // 32KB * 90% = 28.8KB
-	fileMediumThreshold    = fileMediumBufferCapacity * 9 / 10    // 256KB * 90% = 230.4KB
-	fileLargeThreshold     = fileLargeBufferCapacity * 9 / 10     // 1MB * 90% = 900KB
-	consoleSmallThreshold  = consoleSmallBufferCapacity * 9 / 10  // 8KB * 90% = 7.2KB
-	consoleMediumThreshold = consoleMediumBufferCapacity * 9 / 10 // 32KB * 90% = 28.8KB
-	consoleLargeThreshold  = consoleLargeBufferCapacity * 9 / 10  // 64KB * 90% = 57.6KB
+	// 每条日志的估算字节数常量
+	bytesPerLogEntry = 256
 )
 
 // 日志级别枚举
@@ -231,6 +211,9 @@ type processorDependencies interface {
 
 	// notifyProcessorDone 通知处理器完成工作
 	notifyProcessorDone()
+
+	// getBufferSize 获取缓冲区大小
+	getBufferSize() int
 }
 
 // WriterPair 写入器对，用于批量传递写入器

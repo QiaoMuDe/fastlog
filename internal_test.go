@@ -793,6 +793,7 @@ type MockProcessorDependencies struct {
 	ctx           context.Context
 	logChan       chan *logMsg
 	doneCallback  func()
+	bufferSize    int
 }
 
 func (m *MockProcessorDependencies) getConfig() *FastLogConfig {
@@ -823,6 +824,10 @@ func (m *MockProcessorDependencies) notifyProcessorDone() {
 	if m.doneCallback != nil {
 		m.doneCallback()
 	}
+}
+
+func (m *MockProcessorDependencies) getBufferSize() int {
+	return m.bufferSize
 }
 
 // TestFastLogInterfaceImplementation 测试FastLog接口实现

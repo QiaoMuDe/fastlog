@@ -27,6 +27,7 @@ type FastLogConfig struct {
 	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	IsLocalTime     bool          // 是否使用本地时间 默认使用UTC时间
 	EnableCompress  bool          // 是否启用日志文件压缩 默认不启用
+	BatchSize       int           // 批处理数量
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -45,8 +46,8 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		OutputToConsole: true,                   // 是否将日志输出到控制台
 		OutputToFile:    true,                   // 是否将日志输出到文件
 		LogLevel:        INFO,                   // 日志级别 默认INFO
-		ChanIntSize:     10000,                  // 通道大小 增加到10000
-		FlushInterval:   500 * time.Millisecond, // 刷新间隔 缩短到500毫秒
+		ChanIntSize:     10000,                  // 通道大小 默认10000
+		FlushInterval:   500 * time.Millisecond, // 刷新间隔 默认500毫秒
 		LogFormat:       Simple,                 // 日志格式选项
 		MaxLogFileSize:  10,                     // 最大日志文件大小, 单位为MB, 默认10MB
 		MaxLogAge:       0,                      // 最大日志文件保留天数, 默认为0, 表示不做限制
@@ -55,6 +56,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		EnableCompress:  false,                  // 是否启用日志文件压缩 默认不启用
 		Color:           true,                   // 是否启用终端颜色
 		Bold:            true,                   // 是否启用终端字体加粗
+		BatchSize:       defaultBatchSize,       // 批处理数量
 	}
 }
 
@@ -368,6 +370,13 @@ func (c *FastLogConfig) fixPerformanceConfig() {
 		c.FlushInterval = 10 * time.Millisecond
 	} else if c.FlushInterval > 30*time.Second {
 		c.FlushInterval = 30 * time.Second
+	}
+
+	// 修正批处理数量
+	if c.BatchSize <= 0 {
+		c.BatchSize = defaultBatchSize
+	} else if c.BatchSize > 5000 {
+		c.BatchSize = 5000
 	}
 }
 
