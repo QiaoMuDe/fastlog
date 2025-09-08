@@ -55,13 +55,13 @@ const (
 
 	// 文件保留配置常量
 	developmentMaxAge     = 7   // 开发模式保留天数
-	developmentMaxBackups = 20  // 开发模式保留文件数
+	developmentMaxBackups = 10  // 开发模式保留文件数
 	productionMaxAge      = 30  // 生产模式保留天数
-	productionMaxBackups  = 50  // 生产模式保留文件数
+	productionMaxBackups  = 100 // 生产模式保留文件数
 	fileMaxAge            = 14  // 文件模式保留天数
 	fileMaxBackups        = 30  // 文件模式保留文件数
 	silentMaxAge          = 30  // 静默模式保留天数
-	silentMaxBackups      = 100 // 静默模式保留文件数
+	silentMaxBackups      = 50  // 静默模式保留文件数
 
 	// 系统资源限制常量
 	maxChanSize          = 1000000                // 最大通道大小限制
