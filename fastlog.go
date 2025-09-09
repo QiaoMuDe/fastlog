@@ -79,7 +79,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 	}
 
 	// 最终配置修正: 直接在原始配置上修正所有不合理的值
-	config.fixFinalConfig()
+	config.validateConfig()
 
 	// 克隆配置结构体防止原配置被意外修改
 	cfg := &FastLogConfig{

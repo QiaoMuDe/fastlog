@@ -6,7 +6,6 @@ internal_test.go - FastLog内部功能测试文件
 package fastlog
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -19,7 +18,6 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
-	"unsafe"
 
 	"gitee.com/MM-Q/colorlib"
 )
@@ -671,122 +669,6 @@ func TestNeedsFileInfo_Comprehensive(t *testing.T) {
 	})
 }
 
-// TestTempBufferPool_Comprehensive 全面测试临时缓冲区池
-func TestTempBufferPool_Comprehensive(t *testing.T) {
-	t.Run("基本功能测试", func(t *testing.T) {
-		// 获取缓冲区
-		buf := getTempBuffer()
-		if buf == nil {
-			t.Fatal("getTempBuffer返回nil")
-		}
-
-		// 验证缓冲区是空的
-		if buf.Len() != 0 {
-			t.Errorf("新获取的缓冲区应该为空，实际长度: %d", buf.Len())
-		}
-
-		// 写入数据
-		testData := "test data"
-		buf.WriteString(testData)
-		if buf.String() != testData {
-			t.Errorf("缓冲区内容不正确: 期望%s，实际%s", testData, buf.String())
-		}
-
-		// 归还缓冲区
-		putTempBuffer(buf)
-
-		// 再次获取，应该是重置后的缓冲区
-		buf2 := getTempBuffer()
-		if buf2.Len() != 0 {
-			t.Errorf("重用的缓冲区应该为空，实际长度: %d", buf2.Len())
-		}
-
-		putTempBuffer(buf2)
-	})
-
-	t.Run("nil安全测试", func(t *testing.T) {
-		// 测试putTempBuffer处理nil的情况
-		putTempBuffer(nil) // 不应该panic
-	})
-
-	t.Run("并发安全测试", func(t *testing.T) {
-		const goroutineCount = 100
-		const iterationsPerGoroutine = 100
-
-		var wg sync.WaitGroup
-
-		for i := 0; i < goroutineCount; i++ {
-			wg.Add(1)
-			go func(goroutineID int) {
-				defer wg.Done()
-
-				for j := 0; j < iterationsPerGoroutine; j++ {
-					buf := getTempBuffer()
-					if buf == nil {
-						t.Errorf("goroutine %d: getTempBuffer返回nil", goroutineID)
-						return
-					}
-
-					// 写入一些数据
-					fmt.Fprintf(buf, "goroutine-%d-iteration-%d", goroutineID, j)
-
-					// 验证数据
-					expected := fmt.Sprintf("goroutine-%d-iteration-%d", goroutineID, j)
-					if buf.String() != expected {
-						t.Errorf("goroutine %d: 缓冲区内容不正确", goroutineID)
-						return
-					}
-
-					putTempBuffer(buf)
-				}
-			}(i)
-		}
-
-		wg.Wait()
-	})
-
-	t.Run("内存重用测试", func(t *testing.T) {
-		// 获取多个缓冲区并记录它们的地址
-		buffers := make([]*bytes.Buffer, 10)
-		addresses := make([]uintptr, 10)
-
-		for i := 0; i < 10; i++ {
-			buffers[i] = getTempBuffer()
-			addresses[i] = uintptr(unsafe.Pointer(buffers[i]))
-		}
-
-		// 归还所有缓冲区
-		for i := 0; i < 10; i++ {
-			putTempBuffer(buffers[i])
-		}
-
-		// 再次获取缓冲区，检查是否有重用
-		newBuffers := make([]*bytes.Buffer, 10)
-		newAddresses := make([]uintptr, 10)
-		reuseCount := 0
-
-		for i := 0; i < 10; i++ {
-			newBuffers[i] = getTempBuffer()
-			newAddresses[i] = uintptr(unsafe.Pointer(newBuffers[i]))
-
-			// 检查是否重用了之前的地址
-			for j := 0; j < 10; j++ {
-				if newAddresses[i] == addresses[j] {
-					reuseCount++
-					break
-				}
-			}
-		}
-
-		t.Logf("缓冲区重用率: %d/10 (%.1f%%)", reuseCount, float64(reuseCount)*10)
-
-		// 清理
-		for i := 0; i < 10; i++ {
-			putTempBuffer(newBuffers[i])
-		}
-	})
-}
-
 // MockProcessorDependencies 模拟处理器依赖
 type MockProcessorDependencies struct {
 	config        *FastLogConfig
@@ -969,17 +851,6 @@ func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
 	// 清理
 	for len(ch) > 0 {
 		<-ch
-	}
-}
-
-// BenchmarkTempBufferPool 临时缓冲区池性能基准测试
-func BenchmarkTempBufferPool(b *testing.B) {
-	b.ResetTimer()
-
-	for i := 0; i < b.N; i++ {
-		buf := getTempBuffer()
-		buf.WriteString("test data")
-		putTempBuffer(buf)
 	}
 }
 

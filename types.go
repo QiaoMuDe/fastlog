@@ -64,19 +64,13 @@ const (
 	silentMaxBackups      = 50  // 静默模式保留文件数
 
 	// 系统资源限制常量
-	maxChanSize          = 1000000                // 最大通道大小限制
-	maxSingleFileSize    = 10000                  // 最大单文件大小限制（MB）
-	minFlushInterval     = time.Microsecond       // 最小刷新间隔
-	maxFlushInterval     = 30 * time.Second       // 最大刷新间隔
-	normalMinFlush       = 10 * time.Millisecond  // 正常最小刷新间隔
-	maxBatchSize         = 5000                   // 最大批处理大小
-	chanSizeLimit        = 100000                 // 通道大小上限
-	maxRetentionDays     = 3650                   // 最大保留天数（10年）
-	maxRetentionFiles    = 1000                   // 最大保留文件数
-	minRetentionDays     = 7                      // 最小保留天数
-	minRetentionFiles    = 5                      // 最小保留文件数
-	performanceThreshold = 50000                  // 性能阈值
-	performanceFlushMin  = 100 * time.Millisecond // 性能模式最小刷新间隔
+	maxChanSize       = 1000000          // 最大通道大小限制
+	maxSingleFileSize = 2048             // 最大单文件大小限制（MB）- 2GB
+	minFlushInterval  = time.Microsecond // 最小刷新间隔
+	maxFlushInterval  = 30 * time.Second // 最大刷新间隔
+	maxBatchSize      = 5000             // 最大批处理大小
+	maxRetentionDays  = 3650             // 最大保留天数（10年）
+	maxRetentionFiles = 1000             // 最大保留文件数
 )
 
 // 日志级别枚举

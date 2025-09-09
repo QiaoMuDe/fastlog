@@ -6,7 +6,6 @@ internal.go - FastLog内部实现文件
 package fastlog
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -75,31 +74,6 @@ func getCachedTimestamp() string {
 // 文件名缓存，用于缓存 filepath.Base() 的结果，减少重复的字符串处理开销
 // key: 完整文件路径，value: 文件名（不含路径）
 var fileNameCache = sync.Map{}
-
-// 临时缓冲区对象池，用于复用临时缓冲区，减少内存分配
-var tempBufferPool = sync.Pool{
-	New: func() any {
-		return &bytes.Buffer{}
-	},
-}
-
-// getTempBuffer 从对象池获取临时缓冲区，使用安全的类型断言
-func getTempBuffer() *bytes.Buffer {
-	// 安全的类型断言
-	if buffer, ok := tempBufferPool.Get().(*bytes.Buffer); ok {
-		return buffer
-	}
-	// 如果类型断言失败，创建新的缓冲区作为fallback
-	return &bytes.Buffer{}
-}
-
-// putTempBuffer 将临时缓冲区归还到对象池
-func putTempBuffer(buffer *bytes.Buffer) {
-	if buffer != nil {
-		buffer.Reset()             // 重置缓冲区内容
-		tempBufferPool.Put(buffer) // 归还到对象池
-	}
-}
 
 // needsFileInfo 判断日志格式是否需要文件信息
 //

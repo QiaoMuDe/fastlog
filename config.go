@@ -5,6 +5,7 @@ config.go - 日志配置管理模块
 package fastlog
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -82,11 +83,11 @@ func DevConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 开发模式差异化设置
-	config.LogLevel = DEBUG
-	config.FlushInterval = fastFlushInterval
-	config.LogFormat = Detailed
-	config.MaxLogAge = developmentMaxAge
-	config.MaxLogBackups = developmentMaxBackups
+	config.LogLevel = DEBUG                      // 开发模式默认DEBUG级别
+	config.FlushInterval = fastFlushInterval     // 开发模式快速刷新
+	config.LogFormat = Detailed                  // 开发模式详细信息
+	config.MaxLogAge = developmentMaxAge         // 开发模式默认7天保留
+	config.MaxLogBackups = developmentMaxBackups // 开发模式默认10个备份文件
 
 	return config
 }
@@ -110,16 +111,16 @@ func ProdConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 生产模式差异化设置
-	config.OutputToConsole = false
-	config.ChanIntSize = largeChanSize
-	config.FlushInterval = slowFlushInterval
-	config.LogFormat = Json
-	config.Color = false
-	config.Bold = false
-	config.MaxLogAge = productionMaxAge
-	config.MaxLogBackups = productionMaxBackups
-	config.EnableCompress = true
-	config.BatchSize = defaultBatchSize * 2
+	config.OutputToConsole = false              // 生产模式仅文件输出
+	config.ChanIntSize = largeChanSize          // 生产模式大缓冲区
+	config.FlushInterval = slowFlushInterval    // 生产模式慢刷新
+	config.LogFormat = Json                     // 生产模式结构化
+	config.Color = false                        // 生产模式无装饰
+	config.Bold = false                         // 生产模式无加粗
+	config.MaxLogAge = productionMaxAge         // 生产模式长期存储
+	config.MaxLogBackups = productionMaxBackups // 生产模式长期备份
+	config.EnableCompress = true                // 生产模式压缩存储
+	config.BatchSize = defaultBatchSize * 2     // 生产模式大批处理
 
 	return config
 }
@@ -138,13 +139,13 @@ func ConsoleConfig() *FastLogConfig {
 	config := NewFastLogConfig("", "")
 
 	// 控制台模式差异化设置
-	config.OutputToFile = false
-	config.ChanIntSize = smallChanSize
-	config.FlushInterval = fastFlushInterval
-	config.MaxLogFileSize = 0
-	config.MaxLogAge = 0
-	config.MaxLogBackups = 0
-	config.BatchSize = defaultBatchSize / 2
+	config.OutputToFile = false              // 控制台模式纯控制台
+	config.ChanIntSize = smallChanSize       // 控制台模式小缓冲区
+	config.FlushInterval = fastFlushInterval // 控制台模式快刷新
+	config.MaxLogFileSize = 0                // 控制台模式无文件
+	config.MaxLogAge = 0                     // 控制台模式无文件
+	config.MaxLogBackups = 0                 // 控制台模式无文件
+	config.BatchSize = defaultBatchSize / 2  // 控制台模式小批处理
 
 	return config
 }
@@ -167,12 +168,12 @@ func FileConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 文件模式差异化设置
-	config.OutputToConsole = false
-	config.LogFormat = BasicStructured
-	config.Color = false
-	config.Bold = false
-	config.MaxLogAge = fileMaxAge
-	config.MaxLogBackups = fileMaxBackups
+	config.OutputToConsole = false        // 文件模式纯文件
+	config.LogFormat = BasicStructured    // 文件模式结构化
+	config.Color = false                  // 文件模式无装饰
+	config.Bold = false                   // 文件模式无加粗
+	config.MaxLogAge = fileMaxAge         // 文件模式中期存储
+	config.MaxLogBackups = fileMaxBackups // 文件模式中期备份
 
 	return config
 }
@@ -196,17 +197,17 @@ func SilentConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 静默模式差异化设置
-	config.OutputToConsole = false
-	config.LogLevel = WARN
-	config.ChanIntSize = largeChanSize
-	config.FlushInterval = slowFlushInterval
-	config.LogFormat = JsonSimple
-	config.Color = false
-	config.Bold = false
-	config.MaxLogAge = silentMaxAge
-	config.MaxLogBackups = silentMaxBackups
-	config.EnableCompress = true
-	config.BatchSize = defaultBatchSize * 2
+	config.OutputToConsole = false           // 静默模式纯文件
+	config.LogLevel = WARN                   // 静默模式最小输出
+	config.ChanIntSize = largeChanSize       // 静默模式大缓冲区
+	config.FlushInterval = slowFlushInterval // 静默模式慢刷新
+	config.LogFormat = JsonSimple            // 静默模式简单JSON
+	config.Color = false                     // 静默模式无装饰
+	config.Bold = false                      // 静默模式无加粗
+	config.MaxLogAge = silentMaxAge          // 静默模式长期存储
+	config.MaxLogBackups = silentMaxBackups  // 静默模式长期备份
+	config.EnableCompress = true             // 静默模式压缩存储
+	config.BatchSize = defaultBatchSize * 2  // 静默模式大批处理
 
 	return config
 }
@@ -215,178 +216,141 @@ func SilentConfig(logDirName, logFileName string) *FastLogConfig {
 // 内部辅助函数
 // ========================================================================
 
-// fixFinalConfig 最终配置修正函数 - 在NewFastLog开始时调用
-// 负责修正所有不合理的配置值, 确保系统稳定运行
-// 对于无法修正的关键错误会panic
-func (c *FastLogConfig) fixFinalConfig() {
-	// 第一步：检查系统资源充足性
-	c.checkSystemResources()
-
-	// 第二步：修正可以修正的配置项
-	c.fixFileConfig()
-
-	// 第三步：验证关键配置，无法修正时panic
-	c.validateCriticalConfig()
-	c.fixPerformanceConfig()
-	c.fixLogConfig()
-
-	// 第四步：最终一致性检查
-	c.validateFinalConsistency()
-}
-
-// validateCriticalConfig 验证关键配置，无法修正时panic
-func (c *FastLogConfig) validateCriticalConfig() {
+// validateConfig 验证配置并设置默认值
+// 发现任何不合理的配置值都会panic，确保调用者提供正确配置
+func (c *FastLogConfig) validateConfig() {
 	// 配置对象不能为nil
 	if c == nil {
-		panic("FastLogConfig configuration object cannot be nil")
+		panic("FastLogConfig cannot be nil")
 	}
 
-	// 必须启用至少一种输出方式
-	if !c.OutputToConsole && !c.OutputToFile {
-		panic("At least one output method must be enabled: console output (OutputToConsole) or file output (OutputToFile)")
-	}
+	// ========================================================================
+	// 第一步：设置所有默认值
+	// ========================================================================
 
-	// 如果启用文件输出，目录名和文件名不能同时为空
-	if c.OutputToFile {
-		if strings.TrimSpace(c.LogDirName) == "" && strings.TrimSpace(c.LogFileName) == "" {
-			panic("When file output is enabled, log directory name (LogDirName) and file name (LogFileName) cannot both be empty")
-		}
-	}
-}
-
-// checkSystemResources 检查系统资源是否充足
-func (c *FastLogConfig) checkSystemResources() {
-	// 检查通道大小是否会占用过多内存
-	if c.ChanIntSize > maxChanSize { // 超过100万条消息
-		panic("channel size too large, may cause memory overflow. Recommend setting within 1 million entries")
-	}
-
-	// 检查刷新间隔是否过小导致CPU占用过高
-	if c.FlushInterval > 0 && c.FlushInterval < minFlushInterval {
-		panic("refresh interval too small (less than 1 microsecond), will cause high CPU usage")
-	}
-
-	// 检查文件大小配置是否合理
-	if c.MaxLogFileSize > maxSingleFileSize { // 超过10GB
-		panic("single log file size too large (exceeds 10GB), may cause insufficient disk space")
-	}
-}
-
-// fixFileConfig 修正文件相关配置
-func (c *FastLogConfig) fixFileConfig() {
-	// 只在文件输出模式下修正
-	if !c.OutputToFile {
-		return
-	}
-
-	// 1. 修正基本字符串字段
-	if strings.TrimSpace(c.LogDirName) == "" {
-		c.LogDirName = defaultLogDir
-	}
-
-	if strings.TrimSpace(c.LogFileName) == "" {
-		c.LogFileName = defaultLogFileName
-	}
-
-	// 2. 清理文件名中的非法字符
-	originalDir := c.LogDirName
-	cleanedDir := cleanFileName(originalDir)
-	if originalDir != cleanedDir {
-		c.LogDirName = cleanedDir
-	}
-
-	originalFile := c.LogFileName
-	cleanedFile := cleanFileName(originalFile)
-	if originalFile != cleanedFile {
-		c.LogFileName = cleanedFile
-	}
-
-	// 3. 修正文件轮转配置
-	if c.MaxLogFileSize <= 0 {
-		c.MaxLogFileSize = defaultMaxFileSize
-	} else if c.MaxLogFileSize > maxSingleFileSize {
-		c.MaxLogFileSize = maxSingleFileSize
-	}
-
-	if c.MaxLogAge < 0 {
-		c.MaxLogAge = 0
-	} else if c.MaxLogAge > maxRetentionDays { // 最多保留10年
-		c.MaxLogAge = maxRetentionDays
-	}
-
-	if c.MaxLogBackups < 0 {
-		c.MaxLogBackups = 0
-	} else if c.MaxLogBackups > maxRetentionFiles {
-		c.MaxLogBackups = maxRetentionFiles
-	}
-}
-
-// fixPerformanceConfig 修正性能相关配置
-func (c *FastLogConfig) fixPerformanceConfig() {
-	// 修正通道大小
-	if c.ChanIntSize <= 0 {
+	// 设置通道大小默认值
+	if c.ChanIntSize == 0 {
 		c.ChanIntSize = defaultChanSize
-	} else if c.ChanIntSize > chanSizeLimit {
-		c.ChanIntSize = chanSizeLimit
 	}
 
-	// 修正刷新间隔
-	if c.FlushInterval <= 0 {
+	// 设置刷新间隔默认值
+	if c.FlushInterval == 0 {
 		c.FlushInterval = normalFlushInterval
-	} else if c.FlushInterval < normalMinFlush {
-		c.FlushInterval = normalMinFlush
-	} else if c.FlushInterval > maxFlushInterval {
-		c.FlushInterval = maxFlushInterval
 	}
 
-	// 修正批处理数量
-	if c.BatchSize <= 0 {
+	// 设置批处理大小默认值
+	if c.BatchSize == 0 {
 		c.BatchSize = defaultBatchSize
-	} else if c.BatchSize > maxBatchSize {
-		c.BatchSize = maxBatchSize
 	}
-}
 
-// fixLogConfig 修正日志级别和格式配置
-func (c *FastLogConfig) fixLogConfig() {
-	// 修正日志级别
-	if c.LogLevel < DEBUG || c.LogLevel > NONE {
+	// 设置日志级别默认值
+	if c.LogLevel == 0 {
 		c.LogLevel = INFO
 	}
 
-	// 修正日志格式
-	if c.LogFormat < Detailed || c.LogFormat > Custom {
+	// 设置日志格式默认值
+	if c.LogFormat == 0 {
 		c.LogFormat = Simple
 	}
-}
 
-// validateFinalConsistency 最终一致性检查
-func (c *FastLogConfig) validateFinalConsistency() {
-	// 检查配置组合是否合理
+	// 设置文件大小默认值
+	if c.MaxLogFileSize == 0 {
+		c.MaxLogFileSize = defaultMaxFileSize
+	}
+
+	// 设置文件相关默认值（仅在启用文件输出时）
 	if c.OutputToFile {
-		// 如果启用文件输出但文件轮转配置可能导致日志丢失
-		if c.MaxLogAge > 0 && c.MaxLogBackups > 0 {
-			// 计算可能的最大日志保留量
-			maxRetentionDays := c.MaxLogAge
-			maxFiles := c.MaxLogBackups
-
-			// 如果配置过于激进，调整为更保守的值
-			if maxRetentionDays < minRetentionDays && maxFiles < minRetentionFiles {
-				// 至少保留7天或5个文件
-				if c.MaxLogAge > 0 && c.MaxLogAge < minRetentionDays {
-					c.MaxLogAge = minRetentionDays
-				}
-				if c.MaxLogBackups > 0 && c.MaxLogBackups < minRetentionFiles {
-					c.MaxLogBackups = minRetentionFiles
-				}
-			}
+		if strings.TrimSpace(c.LogDirName) == "" {
+			c.LogDirName = defaultLogDir
+		}
+		if strings.TrimSpace(c.LogFileName) == "" {
+			c.LogFileName = defaultLogFileName
 		}
 	}
 
-	// 检查性能配置的合理性
-	if c.ChanIntSize > performanceThreshold && c.FlushInterval < performanceFlushMin {
-		// 大通道配合高频刷新可能导致性能问题，调整刷新间隔
-		c.FlushInterval = performanceFlushMin
+	// ========================================================================
+	// 第二步：验证所有配置值
+	// ========================================================================
+
+	// 必须启用至少一种输出方式
+	if !c.OutputToConsole && !c.OutputToFile {
+		panic("at least one output method must be enabled: OutputToConsole or OutputToFile")
+	}
+
+	// 验证通道大小
+	if c.ChanIntSize < 0 {
+		panic("ChanIntSize cannot be negative")
+	}
+	if c.ChanIntSize > maxChanSize {
+		panic(fmt.Sprintf("ChanIntSize %d exceeds maximum %d", c.ChanIntSize, maxChanSize))
+	}
+
+	// 验证刷新间隔
+	if c.FlushInterval < 0 {
+		panic("FlushInterval cannot be negative")
+	}
+	if c.FlushInterval > 0 && c.FlushInterval < minFlushInterval {
+		panic(fmt.Sprintf("FlushInterval %v too small, minimum %v", c.FlushInterval, minFlushInterval))
+	}
+	if c.FlushInterval > maxFlushInterval {
+		panic(fmt.Sprintf("FlushInterval %v exceeds maximum %v", c.FlushInterval, maxFlushInterval))
+	}
+
+	// 验证批处理大小
+	if c.BatchSize < 0 {
+		panic("BatchSize cannot be negative")
+	}
+	if c.BatchSize > maxBatchSize {
+		panic(fmt.Sprintf("BatchSize %d exceeds maximum %d", c.BatchSize, maxBatchSize))
+	}
+
+	// 验证日志级别
+	if c.LogLevel < DEBUG || c.LogLevel > NONE {
+		panic(fmt.Sprintf("invalid LogLevel %d, must be %d-%d", c.LogLevel, DEBUG, NONE))
+	}
+
+	// 验证日志格式
+	if c.LogFormat < Detailed || c.LogFormat > Custom {
+		panic(fmt.Sprintf("invalid LogFormat %d, must be %d-%d", c.LogFormat, Detailed, Custom))
+	}
+
+	// 验证文件大小
+	if c.MaxLogFileSize < 0 {
+		panic("MaxLogFileSize cannot be negative")
+	}
+	if c.MaxLogFileSize > maxSingleFileSize {
+		panic(fmt.Sprintf("MaxLogFileSize %d exceeds maximum %d MB", c.MaxLogFileSize, maxSingleFileSize))
+	}
+
+	// 验证保留天数
+	if c.MaxLogAge < 0 {
+		panic("MaxLogAge cannot be negative")
+	}
+	if c.MaxLogAge > maxRetentionDays {
+		panic(fmt.Sprintf("MaxLogAge %d exceeds maximum %d days", c.MaxLogAge, maxRetentionDays))
+	}
+
+	// 验证保留文件数
+	if c.MaxLogBackups < 0 {
+		panic("MaxLogBackups cannot be negative")
+	}
+	if c.MaxLogBackups > maxRetentionFiles {
+		panic(fmt.Sprintf("MaxLogBackups %d exceeds maximum %d files", c.MaxLogBackups, maxRetentionFiles))
+	}
+
+	// 验证文件输出相关配置
+	if c.OutputToFile {
+		// 验证路径安全性
+		if strings.Contains(c.LogDirName, "..") {
+			panic("LogDirName contains path traversal '..'")
+		}
+		if strings.Contains(c.LogFileName, "..") {
+			panic("LogFileName contains path traversal '..'")
+		}
+
+		// 清理文件名
+		c.LogDirName = cleanFileName(c.LogDirName)
+		c.LogFileName = cleanFileName(c.LogFileName)
 	}
 }
 
