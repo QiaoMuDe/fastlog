@@ -38,11 +38,9 @@ func TestMain(m *testing.M) {
 	// 运行所有测试
 	exitCode := m.Run()
 
-	// 清理日志目录
-	if _, err := os.Stat("logs"); err == nil {
-		if err := os.RemoveAll("logs"); err != nil {
-			fmt.Printf("清理日志目录失败: %v\n", err)
-		}
+	//清理日志目录
+	if err := os.RemoveAll("logs"); err != nil {
+		fmt.Printf("清理日志目录失败: %v\n", err)
 	}
 
 	// 恢复原始输出
@@ -53,6 +51,101 @@ func TestMain(m *testing.M) {
 	}
 
 	os.Exit(exitCode)
+}
+
+// TestLogRotate 测试日志轮转功能
+func TestLogRotate(t *testing.T) {
+	dir := "logs/test_m"
+
+	cfg := NewCfg(dir, "test.log")
+	cfg.MaxSize = 1
+	cfg.MaxFiles = 3
+	cfg.LogLevel = DEBUG
+	cfg.OutputToConsole = false
+
+	log := NewFastLog(cfg)
+	defer func() { log.Close() }()
+
+	// 生成1MB日志确保触发切割
+	data := make([]byte, 1024*1024)
+
+	// 第一次写入日志
+	log.Info(string(data))
+
+	// 等待日志写入和切割完成
+	time.Sleep(2 * time.Second)
+
+	// 检查日志文件数量
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("读取日志目录失败: %v", err)
+	}
+	var files []string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "test") && strings.HasSuffix(entry.Name(), ".log") {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	t.Logf("找到的日志文件: %v", files)
+
+	// 检查文件大小
+	for _, file := range files {
+		if stat, err := os.Stat(file); err == nil {
+			t.Logf("文件 %s 大小: %d bytes", file, stat.Size())
+		}
+	}
+
+	if len(files) < 2 {
+		t.Fatalf("日志文件数量不正确: %d", len(files))
+	}
+
+	// 第2次写入日志
+	log.Info(string(data))
+
+	// 等待日志写入完成
+	time.Sleep(500 * time.Millisecond)
+
+	// 检查日志文件数量
+	entries, err = os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("读取日志目录失败: %v", err)
+	}
+	files = nil
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "test") && strings.HasSuffix(entry.Name(), ".log") {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	t.Logf("第2次写入后找到的日志文件: %v", files)
+	if len(files) < 3 {
+		t.Fatalf("日志文件数量不足: %d (期望至少3个)", len(files))
+	}
+
+	// 连续写入3次日志, 然后检查日志轮转情况
+	for i := 0; i < 3; i++ {
+		log.Info(string(data))
+		time.Sleep(500 * time.Millisecond) // 每次写入后稍等
+	}
+
+	// 等待日志写入和轮转完成
+	time.Sleep(2 * time.Second)
+
+	// 检查日志文件数量
+	entries, err = os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("读取日志目录失败: %v", err)
+	}
+	files = nil
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "test") && strings.HasSuffix(entry.Name(), ".log") {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	t.Logf("最终找到的日志文件: %v", files)
+	// 由于MaxFiles=3，最终应该保持在3个文件左右（允许轻微超出）
+	if len(files) < 3 || len(files) > 4 {
+		t.Fatalf("日志文件数量不在预期范围内: %d (期望3-4个)", len(files))
+	}
 }
 
 // TestCustomFormat 测试自定义日志格式
