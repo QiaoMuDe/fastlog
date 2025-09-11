@@ -202,7 +202,7 @@ func TestFastLog_LogLevels(t *testing.T) {
 // TestFastLog_FileRotation 测试日志文件切割功能
 func TestFastLog_FileRotation(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "test.log")
-	cfg.MaxLogFileSize = 1
+	cfg.MaxSize = 1
 	cfg.OutputToConsole = false
 	log := NewFastLog(cfg)
 

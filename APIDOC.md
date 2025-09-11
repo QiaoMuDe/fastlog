@@ -349,11 +349,11 @@ type FastLogConfig struct {
 	LogFormat       LogFormatType // 日志格式选项
 	Color           bool          // 是否启用终端颜色
 	Bold            bool          // 是否启用终端字体加粗
-	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认10MB
-	MaxLogAge       int           // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
-	IsLocalTime     bool          // 是否使用本地时间 默认使用UTC时间
-	EnableCompress  bool          // 是否启用日志文件压缩 默认不启用
+	MaxSize  int                  // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxAge       int              // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxFiles   int                // 最大日志文件保留数量, 默认为0, 表示不做限制
+	LocalTime     bool            // 是否使用本地时间 默认使用UTC时间
+	Compress  bool                // 是否启用日志文件压缩 默认不启用
 	BatchSize       int           // 批处理数量
 }
 ```

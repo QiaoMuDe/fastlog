@@ -23,11 +23,11 @@ type FastLogConfig struct {
 	LogFormat       LogFormatType // 日志格式选项
 	Color           bool          // 是否启用终端颜色
 	Bold            bool          // 是否启用终端字体加粗
-	MaxLogFileSize  int           // 最大日志文件大小, 单位为MB, 默认10MB
-	MaxLogAge       int           // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxLogBackups   int           // 最大日志文件保留数量, 默认为0, 表示不做限制
-	IsLocalTime     bool          // 是否使用本地时间 默认使用UTC时间
-	EnableCompress  bool          // 是否启用日志文件压缩 默认不启用
+	MaxSize         int           // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxAge          int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxFiles        int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	LocalTime       bool          // 是否使用本地时间 默认使用UTC时间
+	Compress        bool          // 是否启用日志文件压缩 默认不启用
 	BatchSize       int           // 批处理数量
 }
 
@@ -50,11 +50,11 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		ChanIntSize:     defaultChanSize,     // 通道大小 默认10000
 		FlushInterval:   normalFlushInterval, // 刷新间隔 默认500毫秒
 		LogFormat:       Simple,              // 日志格式选项
-		MaxLogFileSize:  defaultMaxFileSize,  // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxLogAge:       0,                   // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxLogBackups:   0,                   // 最大日志文件保留数量, 默认为0, 表示不做限制
-		IsLocalTime:     true,                // 是否使用本地时间 默认使用本地时间
-		EnableCompress:  false,               // 是否启用日志文件压缩 默认不启用
+		MaxSize:         defaultMaxFileSize,  // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxAge:          0,                   // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxFiles:        0,                   // 最大日志文件保留数量, 默认为0, 表示不做限制
+		LocalTime:       true,                // 是否使用本地时间 默认使用本地时间
+		Compress:        false,               // 是否启用日志文件压缩 默认不启用
 		Color:           true,                // 是否启用终端颜色
 		Bold:            true,                // 是否启用终端字体加粗
 		BatchSize:       defaultBatchSize,    // 批处理数量
@@ -83,11 +83,11 @@ func DevConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 开发模式差异化设置
-	config.LogLevel = DEBUG                      // 开发模式默认DEBUG级别
-	config.FlushInterval = fastFlushInterval     // 开发模式快速刷新
-	config.LogFormat = Detailed                  // 开发模式详细信息
-	config.MaxLogAge = developmentMaxAge         // 开发模式默认7天保留
-	config.MaxLogBackups = developmentMaxBackups // 开发模式默认10个备份文件
+	config.LogLevel = DEBUG                  // 开发模式默认DEBUG级别
+	config.FlushInterval = fastFlushInterval // 开发模式快速刷新
+	config.LogFormat = Detailed              // 开发模式详细信息
+	config.MaxAge = developmentMaxAge        // 开发模式默认7天保留
+	config.MaxFiles = developmentMaxBackups  // 开发模式默认10个备份文件
 
 	return config
 }
@@ -111,16 +111,16 @@ func ProdConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 生产模式差异化设置
-	config.OutputToConsole = false              // 生产模式仅文件输出
-	config.ChanIntSize = largeChanSize          // 生产模式大缓冲区
-	config.FlushInterval = slowFlushInterval    // 生产模式慢刷新
-	config.LogFormat = Json                     // 生产模式结构化
-	config.Color = false                        // 生产模式无装饰
-	config.Bold = false                         // 生产模式无加粗
-	config.MaxLogAge = productionMaxAge         // 生产模式长期存储
-	config.MaxLogBackups = productionMaxBackups // 生产模式长期备份
-	config.EnableCompress = true                // 生产模式压缩存储
-	config.BatchSize = defaultBatchSize * 2     // 生产模式大批处理
+	config.OutputToConsole = false           // 生产模式仅文件输出
+	config.ChanIntSize = largeChanSize       // 生产模式大缓冲区
+	config.FlushInterval = slowFlushInterval // 生产模式慢刷新
+	config.LogFormat = Json                  // 生产模式结构化
+	config.Color = false                     // 生产模式无装饰
+	config.Bold = false                      // 生产模式无加粗
+	config.MaxAge = productionMaxAge         // 生产模式长期存储
+	config.MaxFiles = productionMaxBackups   // 生产模式长期备份
+	config.Compress = true                   // 生产模式压缩存储
+	config.BatchSize = defaultBatchSize * 2  // 生产模式大批处理
 
 	return config
 }
@@ -142,9 +142,9 @@ func ConsoleConfig() *FastLogConfig {
 	config.OutputToFile = false              // 控制台模式纯控制台
 	config.ChanIntSize = smallChanSize       // 控制台模式小缓冲区
 	config.FlushInterval = fastFlushInterval // 控制台模式快刷新
-	config.MaxLogFileSize = 0                // 控制台模式无文件
-	config.MaxLogAge = 0                     // 控制台模式无文件
-	config.MaxLogBackups = 0                 // 控制台模式无文件
+	config.MaxSize = 0                       // 控制台模式无文件
+	config.MaxAge = 0                        // 控制台模式无文件
+	config.MaxFiles = 0                      // 控制台模式无文件
 	config.BatchSize = defaultBatchSize / 2  // 控制台模式小批处理
 
 	return config
@@ -168,12 +168,12 @@ func FileConfig(logDirName, logFileName string) *FastLogConfig {
 	config := NewFastLogConfig(logDirName, logFileName)
 
 	// 文件模式差异化设置
-	config.OutputToConsole = false        // 文件模式纯文件
-	config.LogFormat = BasicStructured    // 文件模式结构化
-	config.Color = false                  // 文件模式无装饰
-	config.Bold = false                   // 文件模式无加粗
-	config.MaxLogAge = fileMaxAge         // 文件模式中期存储
-	config.MaxLogBackups = fileMaxBackups // 文件模式中期备份
+	config.OutputToConsole = false     // 文件模式纯文件
+	config.LogFormat = BasicStructured // 文件模式结构化
+	config.Color = false               // 文件模式无装饰
+	config.Bold = false                // 文件模式无加粗
+	config.MaxAge = fileMaxAge         // 文件模式中期存储
+	config.MaxFiles = fileMaxBackups   // 文件模式中期备份
 
 	return config
 }
@@ -204,9 +204,9 @@ func SilentConfig(logDirName, logFileName string) *FastLogConfig {
 	config.LogFormat = JsonSimple            // 静默模式简单JSON
 	config.Color = false                     // 静默模式无装饰
 	config.Bold = false                      // 静默模式无加粗
-	config.MaxLogAge = silentMaxAge          // 静默模式长期存储
-	config.MaxLogBackups = silentMaxBackups  // 静默模式长期备份
-	config.EnableCompress = true             // 静默模式压缩存储
+	config.MaxAge = silentMaxAge             // 静默模式长期存储
+	config.MaxFiles = silentMaxBackups       // 静默模式长期备份
+	config.Compress = true                   // 静默模式压缩存储
 	config.BatchSize = defaultBatchSize * 2  // 静默模式大批处理
 
 	return config
@@ -254,8 +254,8 @@ func (c *FastLogConfig) validateConfig() {
 	}
 
 	// 设置文件大小默认值
-	if c.MaxLogFileSize == 0 {
-		c.MaxLogFileSize = defaultMaxFileSize
+	if c.MaxSize == 0 {
+		c.MaxSize = defaultMaxFileSize
 	}
 
 	// 设置文件相关默认值（仅在启用文件输出时）
@@ -315,27 +315,27 @@ func (c *FastLogConfig) validateConfig() {
 	}
 
 	// 验证文件大小
-	if c.MaxLogFileSize < 0 {
-		panic("MaxLogFileSize cannot be negative")
+	if c.MaxSize < 0 {
+		panic("MaxSize cannot be negative")
 	}
-	if c.MaxLogFileSize > maxSingleFileSize {
-		panic(fmt.Sprintf("MaxLogFileSize %d exceeds maximum %d MB", c.MaxLogFileSize, maxSingleFileSize))
+	if c.MaxSize > maxSingleFileSize {
+		panic(fmt.Sprintf("MaxSize %d exceeds maximum %d MB", c.MaxSize, maxSingleFileSize))
 	}
 
 	// 验证保留天数
-	if c.MaxLogAge < 0 {
-		panic("MaxLogAge cannot be negative")
+	if c.MaxAge < 0 {
+		panic("MaxAge cannot be negative")
 	}
-	if c.MaxLogAge > maxRetentionDays {
-		panic(fmt.Sprintf("MaxLogAge %d exceeds maximum %d days", c.MaxLogAge, maxRetentionDays))
+	if c.MaxAge > maxRetentionDays {
+		panic(fmt.Sprintf("MaxAge %d exceeds maximum %d days", c.MaxAge, maxRetentionDays))
 	}
 
 	// 验证保留文件数
-	if c.MaxLogBackups < 0 {
-		panic("MaxLogBackups cannot be negative")
+	if c.MaxFiles < 0 {
+		panic("MaxFiles cannot be negative")
 	}
-	if c.MaxLogBackups > maxRetentionFiles {
-		panic(fmt.Sprintf("MaxLogBackups %d exceeds maximum %d files", c.MaxLogBackups, maxRetentionFiles))
+	if c.MaxFiles > maxRetentionFiles {
+		panic(fmt.Sprintf("MaxFiles %d exceeds maximum %d files", c.MaxFiles, maxRetentionFiles))
 	}
 
 	// 验证文件输出相关配置

@@ -166,11 +166,11 @@ func main() {
     config.ChanIntSize = 20000                           // 设置通道大小
     
     // 配置文件轮转
-    config.MaxLogFileSize = 50                           // 最大文件大小 50MB
-    config.MaxLogAge = 30                                // 保留 30 天
-    config.MaxLogBackups = 10                            // 最多 10 个备份
-    config.IsLocalTime = true                            // 使用本地时间
-    config.EnableCompress = true                         // 启用压缩
+    config.MaxSize = 50                                  // 最大文件大小 50MB
+    config.MaxAge = 30                                   // 保留 30 天
+    config.MaxFiles = 10                                 // 最多 10 个备份
+    config.LocalTime = true                              // 使用本地时间
+    config.Compress = true                               // 启用压缩
     
     // 配置输出选项
     config.OutputToConsole = true                        // 启用控制台输出
@@ -309,11 +309,11 @@ FastLog 基于 `logrotatex` 提供强大的日志轮转功能：
 
 ```go
 config := fastlog.NewFastLogConfig("logs", "app.log")
-config.MaxLogFileSize = 10      // 文件大小超过 10MB 时轮转
-config.MaxLogAge = 7            // 保留 7 天的日志文件
-config.MaxLogBackups = 5        // 最多保留 5 个备份文件
-config.IsLocalTime = true       // 使用本地时间命名
-config.EnableCompress = true    // 启用压缩功能
+config.MaxSize = 10             // 文件大小超过 10MB 时轮转
+config.MaxAge = 7               // 保留 7 天的日志文件
+config.MaxFiles = 5             // 最多保留 5 个备份文件
+config.LocalTime = true         // 使用本地时间命名
+config.Compress = true          // 启用压缩功能
 ```
 
 轮转后的日志文件命名格式：`app-2025-01-15T10-30-45.123.log`
@@ -348,11 +348,11 @@ config.EnableCompress = true    // 启用压缩功能
 | `LogFormat` | `LogFormatType` | `Basic` | 日志格式 |
 | `Color` | `bool` | `true` | 是否启用颜色输出 |
 | `Bold` | `bool` | `true` | 是否启用字体加粗 |
-| `MaxLogFileSize` | `int` | `10` | 最大日志文件大小(MB) |
-| `MaxLogAge` | `int` | `0` | 日志文件最大保留天数(0表示不限制) |
-| `MaxLogBackups` | `int` | `0` | 最大备份文件数量(0表示不限制) |
-| `IsLocalTime` | `bool` | `true` | 是否使用本地时间 |
-| `EnableCompress` | `bool` | `false` | 是否启用日志压缩 |
+| `MaxSize` | `int` | `10` | 最大日志文件大小(MB) |
+| `MaxAge` | `int` | `0` | 日志文件最大保留天数(0表示不限制) |
+| `MaxFiles` | `int` | `0` | 最大备份文件数量(0表示不限制) |
+| `LocalTime` | `bool` | `true` | 是否使用本地时间 |
+| `Compress` | `bool` | `false` | 是否启用日志压缩 |
 | `BatchSize` | `int` | `1000` | 批处理大小 |
 
 ### 日志记录方法
@@ -421,7 +421,7 @@ logger := fastlog.NewFastLog(fastlog.SilentConfig("logs", "silent.log"))
 config := fastlog.NewFastLogConfig("logs", "app.log")
 config.FlushInterval = 1 * time.Second    // 增加刷新间隔减少 IO
 config.LogLevel = fastlog.INFO            // 生产环境避免 DEBUG 日志
-config.MaxLogFileSize = 100               // 适当增大文件大小减少轮转频率
+config.MaxSize = 100               // 适当增大文件大小减少轮转频率
 
 // 推荐：使用格式化方法避免不必要的字符串拼接
 logger.Infof("用户 %s 执行操作 %s", username, action)  // 推荐
@@ -483,10 +483,10 @@ A: FastLog 内置了智能背压控制：
 
 A: 配置日志轮转参数：
 ```go
-config.MaxLogFileSize = 50      // 50MB 轮转
-config.MaxLogAge = 7            // 保留 7 天
-config.MaxLogBackups = 10       // 最多 10 个备份
-config.EnableCompress = true    // 启用压缩
+config.MaxSize = 50      // 50MB 轮转
+config.MaxAge = 7            // 保留 7 天
+config.MaxFiles = 10       // 最多 10 个备份
+config.Compress = true    // 启用压缩
 ```
 
 ### Q: 如何自定义日志格式？

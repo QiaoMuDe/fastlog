@@ -91,11 +91,11 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		ChanIntSize:     config.ChanIntSize,     // 通道大小
 		FlushInterval:   config.FlushInterval,   // 刷新间隔
 		LogFormat:       config.LogFormat,       // 日志格式
-		MaxLogFileSize:  config.MaxLogFileSize,  // 最大日志文件大小, 单位为MB
-		MaxLogAge:       config.MaxLogAge,       // 最大日志文件保留天数(单位为天)
-		MaxLogBackups:   config.MaxLogBackups,   // 最大日志文件保留数量(默认为0, 表示不清理)
-		IsLocalTime:     config.IsLocalTime,     // 是否使用本地时间
-		EnableCompress:  config.EnableCompress,  // 是否启用日志文件压缩
+		MaxSize:         config.MaxSize,         // 最大日志文件大小, 单位为MB
+		MaxAge:          config.MaxAge,          // 最大日志文件保留天数(单位为天)
+		MaxFiles:        config.MaxFiles,        // 最大日志文件保留数量(默认为0, 表示不清理)
+		LocalTime:       config.LocalTime,       // 是否使用本地时间
+		Compress:        config.Compress,        // 是否启用日志文件压缩
 		Color:           config.Color,           // 是否启用终端颜色
 		Bold:            config.Bold,            // 是否启用终端字体加粗
 		BatchSize:       config.BatchSize,       // 批处理数量
@@ -119,12 +119,12 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
 		// 初始化日志文件切割器
-		logger = logrotatex.New(logFilePath)  // 初始化日志文件切割器
-		logger.MaxSize = cfg.MaxLogFileSize   // 最大日志文件大小, 单位为MB
-		logger.MaxAge = cfg.MaxLogAge         // 最大日志文件保留天数
-		logger.MaxBackups = cfg.MaxLogBackups // 最大日志文件保留数量
-		logger.Compress = cfg.EnableCompress  // 是否启用日志文件压缩
-		logger.LocalTime = cfg.IsLocalTime    // 是否使用本地时间
+		logger = logrotatex.New(logFilePath) // 初始化日志文件切割器
+		logger.MaxSize = cfg.MaxSize         // 最大日志文件大小, 单位为MB
+		logger.MaxAge = cfg.MaxAge           // 最大日志文件保留天数
+		logger.MaxFiles = cfg.MaxFiles       // 最大日志文件保留数量
+		logger.Compress = cfg.Compress       // 是否启用日志文件压缩
+		logger.LocalTime = cfg.LocalTime     // 是否使用本地时间
 
 		fileWriter = logger // 初始化文件写入器
 	} else {

@@ -63,7 +63,7 @@ func TestConcurrentFastLog(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "test.log")
 	cfg.OutputToConsole = false // 控制台输出
 	cfg.OutputToFile = true     // 文件输出
-	cfg.MaxLogFileSize = 5      // 设置日志文件最大大小为5MB
+	cfg.MaxSize = 5             // 设置日志文件最大大小为5MB
 	cfg.LogFormat = Simple      // 设置日志格式
 	cfg.ChanIntSize = 100000    // 增大通道容量以支持更高并发
 

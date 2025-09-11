@@ -41,8 +41,8 @@ func TestNewFastLogConfig(t *testing.T) {
 	if cfg.FlushInterval != normalFlushInterval {
 		t.Errorf("FlushInterval expected %v, got %v", normalFlushInterval, cfg.FlushInterval)
 	}
-	if cfg.MaxLogFileSize != defaultMaxFileSize {
-		t.Errorf("MaxLogFileSize expected %d, got %d", defaultMaxFileSize, cfg.MaxLogFileSize)
+	if cfg.MaxSize != defaultMaxFileSize {
+		t.Errorf("MaxSize expected %d, got %d", defaultMaxFileSize, cfg.MaxSize)
 	}
 }
 
@@ -63,8 +63,8 @@ func TestDevConfig(t *testing.T) {
 	if cfg.LogFormat != Detailed {
 		t.Errorf("Dev mode LogFormat expected %d (Detailed), got %d", Detailed, cfg.LogFormat)
 	}
-	if cfg.MaxLogAge != developmentMaxAge {
-		t.Errorf("Dev mode MaxLogAge expected %d, got %d", developmentMaxAge, cfg.MaxLogAge)
+	if cfg.MaxAge != developmentMaxAge {
+		t.Errorf("Dev mode MaxAge expected %d, got %d", developmentMaxAge, cfg.MaxAge)
 	}
 	if !cfg.OutputToConsole || !cfg.OutputToFile {
 		t.Error("Dev mode should enable both console and file output")
@@ -93,7 +93,7 @@ func TestProdConfig(t *testing.T) {
 	if cfg.Color || cfg.Bold {
 		t.Error("Prod mode should disable color and bold")
 	}
-	if !cfg.EnableCompress {
+	if !cfg.Compress {
 		t.Error("Prod mode should enable compression")
 	}
 }
@@ -172,9 +172,9 @@ func TestValidateConfig_ValidConfigs(t *testing.T) {
 				BatchSize:       500,
 				LogLevel:        DEBUG,
 				LogFormat:       Json,
-				MaxLogFileSize:  100,
-				MaxLogAge:       30,
-				MaxLogBackups:   10,
+				MaxSize:         100,
+				MaxAge:          30,
+				MaxFiles:        10,
 			},
 		},
 	}
@@ -241,7 +241,7 @@ func TestValidateConfig_InvalidConfigs(t *testing.T) {
 			name: "MaxLogFileSize超过最大值",
 			setupConfig: func() *FastLogConfig {
 				cfg := NewFastLogConfig("logs", "test.log")
-				cfg.MaxLogFileSize = maxSingleFileSize + 1
+				cfg.MaxSize = maxSingleFileSize + 1
 				return cfg
 			},
 			expectedMsg: "exceeds maximum",
@@ -312,7 +312,7 @@ func TestValidateConfig_DefaultValues(t *testing.T) {
 	if cfg.LogFormat != Simple {
 		t.Errorf("LogFormat default expected %d (Simple), got %d", Simple, cfg.LogFormat)
 	}
-	if cfg.MaxLogFileSize != defaultMaxFileSize {
-		t.Errorf("MaxLogFileSize default expected %d, got %d", defaultMaxFileSize, cfg.MaxLogFileSize)
+	if cfg.MaxSize != defaultMaxFileSize {
+		t.Errorf("MaxSize default expected %d, got %d", defaultMaxFileSize, cfg.MaxSize)
 	}
 }

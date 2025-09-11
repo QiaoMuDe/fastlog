@@ -1393,7 +1393,7 @@ func TestFileSystemSpaceHandling(t *testing.T) {
 	t.Run("大文件写入测试", func(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "large_test.log")
 		cfg.OutputToConsole = false
-		cfg.MaxLogFileSize = 1 // 1MB限制，触发轮转
+		cfg.MaxSize = 1 // 1MB限制，触发轮转
 
 		logger := NewFastLog(cfg)
 		defer logger.Close()
@@ -1457,7 +1457,7 @@ func TestFileRotationErrors(t *testing.T) {
 	t.Run("轮转过程中的并发写入", func(t *testing.T) {
 		cfg := NewFastLogConfig("logs", "rotation_test.log")
 		cfg.OutputToConsole = false
-		cfg.MaxLogFileSize = 1 // 1MB，容易触发轮转
+		cfg.MaxSize = 1 // 1MB，容易触发轮转
 
 		logger := NewFastLog(cfg)
 		defer logger.Close()
