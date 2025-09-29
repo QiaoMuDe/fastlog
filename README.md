@@ -1,8 +1,12 @@
+<div align="center">
+
 # FastLog - 高性能 Go 日志库
 
 ![License](https://img.shields.io/badge/license-GPL-blue.svg)
 ![Go Version](https://img.shields.io/badge/go-1.24.4-blue.svg)
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QiaoMuDe/fastlog)
+
+</div>
 
 FastLog 是一个企业级高性能 Go 日志库，专为高并发场景设计。通过原子时间戳缓存、批量处理优化和资源泄漏防护等核心技术，实现了 **152.7万条/秒** 的极致吞吐量和 **0.65μs** 的超低延迟。采用依赖注入架构避免循环依赖，支持智能背压控制和优雅关闭，确保生产环境的稳定性和可靠性。
 
@@ -626,4 +630,8 @@ logger.Info("自定义格式的消息")  // 直接输出原始消息
 
 ---
 
+<div align="center">
+
 **FastLog** - 让日志记录更简单、更高效！ 🚀
+
+</div>
