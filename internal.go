@@ -134,7 +134,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	return
 }
 
-// shouldDropLogByBackpressure 根据通道背压情况判断是否应该丢弃日志
+// shouldDropLogOnBP 根据通道背压情况判断是否应该丢弃日志
 //
 // 参数:
 //   - bp: 通道背压阈值
@@ -143,7 +143,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 //
 // 返回:
 //   - bool: true表示应该丢弃该日志, false表示应该保留
-func shouldDropLogByBackpressure(bp *bpThresholds, logChan chan *logMsg, level LogLevel) bool {
+func shouldDropLogOnBP(bp *bpThresholds, logChan chan *logMsg, level LogLevel) bool {
 	// 完整的空指针和边界检查
 	if bp == nil || logChan == nil {
 		return false // 如果背压阈值或通道为nil, 不丢弃日志
@@ -259,7 +259,7 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.Line = line           // 行号
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
-	if shouldDropLogByBackpressure(f.bp, f.logChan, level) {
+	if shouldDropLogOnBP(f.bp, f.logChan, level) {
 		// 重要：如果丢弃日志，需要回收对象
 		putLogMsg(logMessage)
 		return

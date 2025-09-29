@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-// BenchmarkShouldDropLogByBackpressureOriginal 测试背压函数的性能（原始版本）
-func BenchmarkShouldDropLogByBackpressureOriginal(b *testing.B) {
+// BenchmarkShouldDropLogOnBPOriginal 测试背压函数的性能（原始版本）
+func BenchmarkShouldDropLogOnBPOriginal(b *testing.B) {
 	// 创建一个测试通道
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
@@ -29,12 +29,12 @@ func BenchmarkShouldDropLogByBackpressureOriginal(b *testing.B) {
 
 	// 基准测试
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(bp, logChan, INFO)
+		shouldDropLogOnBP(bp, logChan, INFO)
 	}
 }
 
-// BenchmarkShouldDropLogByBackpressure_HighLoad 测试高负载场景
-func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
+// BenchmarkShouldDropLogOnBP_HighLoad 测试高负载场景
+func BenchmarkShouldDropLogOnBP_HighLoad(b *testing.B) {
 	// 创建一个接近满载的通道
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
@@ -52,12 +52,12 @@ func BenchmarkShouldDropLogByBackpressure_HighLoad(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(bp, logChan, DEBUG)
+		shouldDropLogOnBP(bp, logChan, DEBUG)
 	}
 }
 
-// BenchmarkShouldDropLogByBackpressure_EmptyChannel 测试空通道场景
-func BenchmarkShouldDropLogByBackpressure_EmptyChannel(b *testing.B) {
+// BenchmarkShouldDropLogOnBP_EmptyChannel 测试空通道场景
+func BenchmarkShouldDropLogOnBP_EmptyChannel(b *testing.B) {
 	logChan := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
 		threshold80: 80,
@@ -69,7 +69,7 @@ func BenchmarkShouldDropLogByBackpressure_EmptyChannel(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(bp, logChan, INFO)
+		shouldDropLogOnBP(bp, logChan, INFO)
 	}
 }
 

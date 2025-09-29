@@ -144,7 +144,7 @@ func TestBackpressure(t *testing.T) {
 			}
 
 			// 测试背压函数（使用新的函数签名）
-			shouldDrop := shouldDropLogByBackpressure(bp, logChan, tc.level)
+			shouldDrop := shouldDropLogOnBP(bp, logChan, tc.level)
 
 			// 验证结果
 			actualLen := len(logChan)
@@ -219,7 +219,7 @@ func BenchmarkBackpressureFunction(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(bp, logChan, WARN)
+		shouldDropLogOnBP(bp, logChan, WARN)
 	}
 }
 
@@ -470,18 +470,18 @@ func TestGetCallerInfo_Comprehensive(t *testing.T) {
 	})
 }
 
-// TestShouldDropLogByBackpressure_Comprehensive 全面测试背压日志丢弃逻辑
-func TestShouldDropLogByBackpressure_Comprehensive(t *testing.T) {
+// TestShouldDropLogOnBP_Comprehensive 全面测试背压日志丢弃逻辑
+func TestShouldDropLogOnBP_Comprehensive(t *testing.T) {
 	t.Run("空指针安全测试", func(t *testing.T) {
 		// 测试nil通道
-		result := shouldDropLogByBackpressure(nil, nil, INFO)
+		result := shouldDropLogOnBP(nil, nil, INFO)
 		if result {
 			t.Error("nil通道应该返回false")
 		}
 
 		// 测试nil背压阈值
 		ch := make(chan *logMsg, 100)
-		result = shouldDropLogByBackpressure(nil, ch, INFO)
+		result = shouldDropLogOnBP(nil, ch, INFO)
 		if result {
 			t.Error("nil背压阈值应该返回false")
 		}
@@ -497,7 +497,7 @@ func TestShouldDropLogByBackpressure_Comprehensive(t *testing.T) {
 			threshold98: 0,
 		}
 
-		result := shouldDropLogByBackpressure(bp, ch, INFO)
+		result := shouldDropLogOnBP(bp, ch, INFO)
 		if !result {
 			t.Error("容量为0的通道应该丢弃日志")
 		}
@@ -512,14 +512,14 @@ func TestShouldDropLogByBackpressure_Comprehensive(t *testing.T) {
 		}
 
 		// 空通道不应该丢弃
-		result = shouldDropLogByBackpressure(bp1, ch1, DEBUG)
+		result = shouldDropLogOnBP(bp1, ch1, DEBUG)
 		if result {
 			t.Error("空通道不应该丢弃日志")
 		}
 
 		// 填满通道
 		ch1 <- &logMsg{}
-		result = shouldDropLogByBackpressure(bp1, ch1, DEBUG)
+		result = shouldDropLogOnBP(bp1, ch1, DEBUG)
 		if !result {
 			t.Error("满通道应该丢弃日志")
 		}
@@ -556,7 +556,7 @@ func TestShouldDropLogByBackpressure_Comprehensive(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			result := shouldDropLogByBackpressure(bp, ch, tc.level)
+			result := shouldDropLogOnBP(bp, ch, tc.level)
 			if result != tc.expected {
 				t.Errorf("%s: 期望%v，实际%v", tc.desc, tc.expected, result)
 			}
@@ -623,7 +623,7 @@ func TestShouldDropLogByBackpressure_Comprehensive(t *testing.T) {
 				ch <- &logMsg{}
 			}
 
-			result := shouldDropLogByBackpressure(bp, ch, scenario.level)
+			result := shouldDropLogOnBP(bp, ch, scenario.level)
 			if result != scenario.expected {
 				t.Errorf("%s: 期望%v，实际%v (通道使用率: %.1f%%)",
 					scenario.desc, scenario.expected, result,
@@ -827,8 +827,8 @@ func BenchmarkGetCallerInfo(b *testing.B) {
 	}
 }
 
-// BenchmarkShouldDropLogByBackpressure 背压判断性能基准测试
-func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
+// BenchmarkShouldDropLogOnBP 背压判断性能基准测试
+func BenchmarkShouldDropLogOnBP(b *testing.B) {
 	ch := make(chan *logMsg, 1000)
 	bp := &bpThresholds{
 		threshold80: 80000,
@@ -845,7 +845,7 @@ func BenchmarkShouldDropLogByBackpressure(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		shouldDropLogByBackpressure(bp, ch, INFO)
+		shouldDropLogOnBP(bp, ch, INFO)
 	}
 
 	// 清理
