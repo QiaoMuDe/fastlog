@@ -141,7 +141,9 @@ sequenceDiagram
     P->>SB: 归还缓冲区到对象池
     
     Note over U,CW: 5. 智能背压控制
-    alt 通道使用率 > 98%
+    alt DisableBackpressure = true
+        P->>P: 跳过背压检查，处理所有日志
+    else 通道使用率 > 98%
         P->>P: 只保留FATAL级别日志
     else 通道使用率 > 95%
         P->>P: 只保留ERROR及以上级别
@@ -339,22 +341,23 @@ Warnf 记录警告级别的日志，支持占位符，格式化
 
 ```go
 type FastLogConfig struct {
-	LogDirName      string        // 日志目录路径
-	LogFileName     string        // 日志文件名
-	OutputToConsole bool          // 是否将日志输出到控制台
-	OutputToFile    bool          // 是否将日志输出到文件
-	FlushInterval   time.Duration // 刷新间隔, 单位为time.Duration
-	LogLevel        LogLevel      // 日志级别
-	ChanIntSize     int           // 通道大小 默认10000
-	LogFormat       LogFormatType // 日志格式选项
-	Color           bool          // 是否启用终端颜色
-	Bold            bool          // 是否启用终端字体加粗
-	MaxSize  int                  // 最大日志文件大小, 单位为MB, 默认10MB
-	MaxAge       int              // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxFiles   int                // 最大日志文件保留数量, 默认为0, 表示不做限制
-	LocalTime     bool            // 是否使用本地时间 默认使用UTC时间
-	Compress  bool                // 是否启用日志文件压缩 默认不启用
-	BatchSize       int           // 批处理数量
+	LogDirName          string        // 日志目录路径
+	LogFileName         string        // 日志文件名
+	OutputToConsole     bool          // 是否将日志输出到控制台
+	OutputToFile        bool          // 是否将日志输出到文件
+	FlushInterval       time.Duration // 刷新间隔, 单位为time.Duration
+	LogLevel            LogLevel      // 日志级别
+	ChanIntSize         int           // 通道大小 默认10000
+	LogFormat           LogFormatType // 日志格式选项
+	Color               bool          // 是否启用终端颜色
+	Bold                bool          // 是否启用终端字体加粗
+	MaxSize             int           // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxAge              int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxFiles            int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	LocalTime           bool          // 是否使用本地时间 默认使用UTC时间
+	Compress            bool          // 是否启用日志文件压缩 默认不启用
+	BatchSize           int           // 批处理数量
+	DisableBackpressure bool          // 是否禁用背压控制, 默认false(即默认启用背压)
 }
 ```
 
@@ -372,6 +375,7 @@ ConsoleConfig 控制台模式配置 特点：
 - 快速响应：小缓冲区(5000)，快刷新(100ms)，小批处理(500)
 - 轻量级：INFO级别，无文件操作开销
 - 即时性：适合开发调试、脚本运行等临时场景
+- 禁用背压：DisableBackpressure=true，确保实时查看所有日志
 
 **返回值:**
 - *FastLogConfig: 控制台模式配置实例
@@ -388,6 +392,7 @@ DevConfig 开发模式配置 特点：
 - 快速响应：100ms快速刷新，立即看到日志输出
 - 彩色显示：控制台彩色+加粗，提升开发体验
 - 短期保留：7天保留期，10个备份文件，节省开发环境存储
+- 禁用背压：DisableBackpressure=true，确保调试时所有日志都被记录
 
 **参数:**
 - logDirName: 日志目录名称
@@ -408,6 +413,7 @@ FileConfig 文件模式配置 特点：
 - 中等性能：标准缓冲区和刷新间隔，平衡性能和实时性
 - 中期存储：14天保留期，30个备份文件，适合一般业务
 - 无装饰：关闭颜色和加粗，纯净文件输出
+- 启用背压：DisableBackpressure=false（默认值），保持系统稳定性
 
 **参数:**
 - logDirName: 日志目录名称
@@ -444,6 +450,7 @@ ProdConfig 生产模式配置 特点：
 - 长期存储：30天保留期，100个备份文件，满足审计要求
 - 空间优化：启用压缩减少磁盘占用
 - 无装饰：关闭颜色和加粗，纯净输出
+- 启用背压：DisableBackpressure=false（默认值），高负载时自动保护系统稳定性
 
 **参数:**
 - logDirName: 日志目录名称
@@ -465,6 +472,7 @@ SilentConfig 静默模式配置 特点：
 - 长期存储：30天保留期，50个备份文件，重要信息不丢失
 - 空间优化：启用压缩，最大化存储效率
 - 适用场景：高并发生产环境，性能敏感应用
+- 启用背压：DisableBackpressure=false（默认值），极致性能下的系统保护
 
 **参数:**
 - logDirName: 日志目录名称

@@ -13,22 +13,23 @@ import (
 
 // FastLogConfig 定义一个配置结构体, 用于配置日志记录器
 type FastLogConfig struct {
-	LogDirName      string        // 日志目录路径
-	LogFileName     string        // 日志文件名
-	OutputToConsole bool          // 是否将日志输出到控制台
-	OutputToFile    bool          // 是否将日志输出到文件
-	FlushInterval   time.Duration // 刷新间隔, 单位为time.Duration
-	LogLevel        LogLevel      // 日志级别
-	ChanIntSize     int           // 通道大小 默认10000
-	LogFormat       LogFormatType // 日志格式选项
-	Color           bool          // 是否启用终端颜色
-	Bold            bool          // 是否启用终端字体加粗
-	MaxSize         int           // 最大日志文件大小, 单位为MB, 默认10MB
-	MaxAge          int           // 最大日志文件保留天数, 默认为0, 表示不做限制
-	MaxFiles        int           // 最大日志文件保留数量, 默认为0, 表示不做限制
-	LocalTime       bool          // 是否使用本地时间 默认使用UTC时间
-	Compress        bool          // 是否启用日志文件压缩 默认不启用
-	BatchSize       int           // 批处理数量
+	LogDirName          string        // 日志目录路径
+	LogFileName         string        // 日志文件名
+	OutputToConsole     bool          // 是否将日志输出到控制台
+	OutputToFile        bool          // 是否将日志输出到文件
+	FlushInterval       time.Duration // 刷新间隔, 单位为time.Duration
+	LogLevel            LogLevel      // 日志级别
+	ChanIntSize         int           // 通道大小 默认10000
+	LogFormat           LogFormatType // 日志格式选项
+	Color               bool          // 是否启用终端颜色
+	Bold                bool          // 是否启用终端字体加粗
+	MaxSize             int           // 最大日志文件大小, 单位为MB, 默认10MB
+	MaxAge              int           // 最大日志文件保留天数, 默认为0, 表示不做限制
+	MaxFiles            int           // 最大日志文件保留数量, 默认为0, 表示不做限制
+	LocalTime           bool          // 是否使用本地时间 默认使用UTC时间
+	Compress            bool          // 是否启用日志文件压缩 默认不启用
+	BatchSize           int           // 批处理数量
+	DisableBackpressure bool          // 是否禁用背压控制, 默认false(即默认启用背压)
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -42,22 +43,23 @@ type FastLogConfig struct {
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:      logDirName,          // 日志目录名称
-		LogFileName:     logFileName,         // 日志文件名称
-		OutputToConsole: true,                // 是否将日志输出到控制台
-		OutputToFile:    true,                // 是否将日志输出到文件
-		LogLevel:        INFO,                // 日志级别 默认INFO
-		ChanIntSize:     defaultChanSize,     // 通道大小 默认10000
-		FlushInterval:   normalFlushInterval, // 刷新间隔 默认500毫秒
-		LogFormat:       Simple,              // 日志格式选项
-		MaxSize:         defaultMaxFileSize,  // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxAge:          0,                   // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxFiles:        0,                   // 最大日志文件保留数量, 默认为0, 表示不做限制
-		LocalTime:       true,                // 是否使用本地时间 默认使用本地时间
-		Compress:        false,               // 是否启用日志文件压缩 默认不启用
-		Color:           true,                // 是否启用终端颜色
-		Bold:            true,                // 是否启用终端字体加粗
-		BatchSize:       defaultBatchSize,    // 批处理数量
+		LogDirName:          logDirName,          // 日志目录名称
+		LogFileName:         logFileName,         // 日志文件名称
+		OutputToConsole:     true,                // 是否将日志输出到控制台
+		OutputToFile:        true,                // 是否将日志输出到文件
+		LogLevel:            INFO,                // 日志级别 默认INFO
+		ChanIntSize:         defaultChanSize,     // 通道大小 默认10000
+		FlushInterval:       normalFlushInterval, // 刷新间隔 默认500毫秒
+		LogFormat:           Simple,              // 日志格式选项
+		MaxSize:             defaultMaxFileSize,  // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxAge:              0,                   // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxFiles:            0,                   // 最大日志文件保留数量, 默认为0, 表示不做限制
+		LocalTime:           true,                // 是否使用本地时间 默认使用本地时间
+		Compress:            false,               // 是否启用日志文件压缩 默认不启用
+		Color:               true,                // 是否启用终端颜色
+		Bold:                true,                // 是否启用终端字体加粗
+		BatchSize:           defaultBatchSize,    // 批处理数量
+		DisableBackpressure: false,               // 是否禁用背压控制, 默认false(即默认启用背压)
 	}
 }
 
@@ -88,6 +90,7 @@ func DevConfig(logDirName, logFileName string) *FastLogConfig {
 	config.LogFormat = Detailed              // 开发模式详细信息
 	config.MaxAge = developmentMaxAge        // 开发模式默认7天保留
 	config.MaxFiles = developmentMaxBackups  // 开发模式默认10个备份文件
+	config.DisableBackpressure = true        // 开发模式禁用背压，便于调试
 
 	return config
 }
@@ -146,6 +149,7 @@ func ConsoleConfig() *FastLogConfig {
 	config.MaxAge = 0                        // 控制台模式无文件
 	config.MaxFiles = 0                      // 控制台模式无文件
 	config.BatchSize = defaultBatchSize / 2  // 控制台模式小批处理
+	config.DisableBackpressure = true        // 控制台模式禁用背压，便于实时查看
 
 	return config
 }

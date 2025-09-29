@@ -122,11 +122,11 @@ func main() {
 
 #### 可用的预设配置模式
 
-- `DevConfig(logDir, logFile)` - 开发模式：双输出、详细信息、快速响应、彩色显示、短期保留
-- `ProdConfig(logDir, logFile)` - 生产模式：高性能、结构化、合理级别、长期存储、空间优化、无装饰
-- `ConsoleConfig()` - 控制台模式：纯控制台、视觉友好、快速响应、轻量级、即时性
-- `FileConfig(logDir, logFile)` - 文件模式：纯文件、结构化、中等性能、中期存储、无装饰
-- `SilentConfig(logDir, logFile)` - 静默模式：最小输出、极致性能、高效格式、长期存储、空间优化
+- `DevConfig(logDir, logFile)` - 开发模式：双输出、详细信息、快速响应、彩色显示、短期保留、**禁用背压**（确保调试时所有日志都被记录）
+- `ProdConfig(logDir, logFile)` - 生产模式：高性能、结构化、合理级别、长期存储、空间优化、无装饰、**启用背压**（高负载时自动保护系统稳定性）
+- `ConsoleConfig()` - 控制台模式：纯控制台、视觉友好、快速响应、轻量级、即时性、**禁用背压**（确保实时查看所有日志）
+- `FileConfig(logDir, logFile)` - 文件模式：纯文件、结构化、中等性能、中期存储、无装饰、**启用背压**（保持系统稳定性）
+- `SilentConfig(logDir, logFile)` - 静默模式：最小输出、极致性能、高效格式、长期存储、空间优化、**启用背压**（极致性能下的系统保护）
 
 ### 简化创建方式
 
@@ -294,11 +294,32 @@ FastLog 实现了智能背压控制机制，根据日志通道的使用率自动
 - **98%+ 使用率**: 只保留 FATAL 级别日志
 - **95%+ 使用率**: 只保留 ERROR 及以上级别日志
 - **90%+ 使用率**: 只保留 WARN 及以上级别日志
-- **80%+ 使用率**: 只保留 SUCCESS 及以上级别日志
-- **70%+ 使用率**: 丢弃 DEBUG 级别日志
-- **正常情况**: 处理所有级别日志
+- **80%+ 使用率**: 只保留 INFO 及以上级别日志
 
 这确保了在高负载情况下系统的稳定性，避免日志积压导致的内存问题。
+
+
+#### 禁用背压控制
+
+在某些场景下（如调试、开发环境），你可能需要确保所有日志都被记录，可以通过以下方式禁用背压控制：
+
+```go
+// 方式1: 使用预设配置（推荐）
+// 开发模式和控制台模式默认禁用背压
+devLogger := fastlog.DevConfig("logs", "debug.log")
+consoleLogger := fastlog.ConsoleConfig()
+
+// 方式2: 手动配置
+config := fastlog.NewFastLogConfig("logs", "debug.log")
+config.DisableBackpressure = true  // 禁用背压控制
+logger := fastlog.NewFastLog(config)
+
+// 现在即使在高负载下，所有日志都会被记录
+logger.Debug("这条调试日志不会被丢弃")
+logger.Info("这条信息日志也会被完整记录")
+```
+
+**注意**: 禁用背压控制可能在极高负载下导致内存占用增加，建议仅在开发调试环境中使用。
 
 ### 批量处理优化
 
@@ -358,6 +379,7 @@ config.Compress = true          // 启用压缩功能
 | `LocalTime` | `bool` | `true` | 是否使用本地时间 |
 | `Compress` | `bool` | `false` | 是否启用日志压缩 |
 | `BatchSize` | `int` | `1000` | 批处理大小 |
+| `DisableBackpressure` | `bool` | `false` | 是否禁用背压控制(默认启用背压保护) |
 
 ### 日志记录方法
 

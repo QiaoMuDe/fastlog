@@ -83,22 +83,23 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 
 	// 克隆配置结构体防止原配置被意外修改
 	cfg := &FastLogConfig{
-		LogDirName:      config.LogDirName,      // 日志目录名称
-		LogFileName:     config.LogFileName,     // 日志文件名称
-		OutputToConsole: config.OutputToConsole, // 是否将日志输出到控制台
-		OutputToFile:    config.OutputToFile,    // 是否将日志输出到文件
-		LogLevel:        config.LogLevel,        // 日志级别
-		ChanIntSize:     config.ChanIntSize,     // 通道大小
-		FlushInterval:   config.FlushInterval,   // 刷新间隔
-		LogFormat:       config.LogFormat,       // 日志格式
-		MaxSize:         config.MaxSize,         // 最大日志文件大小, 单位为MB
-		MaxAge:          config.MaxAge,          // 最大日志文件保留天数(单位为天)
-		MaxFiles:        config.MaxFiles,        // 最大日志文件保留数量(默认为0, 表示不清理)
-		LocalTime:       config.LocalTime,       // 是否使用本地时间
-		Compress:        config.Compress,        // 是否启用日志文件压缩
-		Color:           config.Color,           // 是否启用终端颜色
-		Bold:            config.Bold,            // 是否启用终端字体加粗
-		BatchSize:       config.BatchSize,       // 批处理数量
+		LogDirName:          config.LogDirName,          // 日志目录名称
+		LogFileName:         config.LogFileName,         // 日志文件名称
+		OutputToConsole:     config.OutputToConsole,     // 是否将日志输出到控制台
+		OutputToFile:        config.OutputToFile,        // 是否将日志输出到文件
+		LogLevel:            config.LogLevel,            // 日志级别
+		ChanIntSize:         config.ChanIntSize,         // 通道大小
+		FlushInterval:       config.FlushInterval,       // 刷新间隔
+		LogFormat:           config.LogFormat,           // 日志格式
+		MaxSize:             config.MaxSize,             // 最大日志文件大小, 单位为MB
+		MaxAge:              config.MaxAge,              // 最大日志文件保留天数(单位为天)
+		MaxFiles:            config.MaxFiles,            // 最大日志文件保留数量(默认为0, 表示不清理)
+		LocalTime:           config.LocalTime,           // 是否使用本地时间
+		Compress:            config.Compress,            // 是否启用日志文件压缩
+		Color:               config.Color,               // 是否启用终端颜色
+		Bold:                config.Bold,                // 是否启用终端字体加粗
+		BatchSize:           config.BatchSize,           // 批处理数量
+		DisableBackpressure: config.DisableBackpressure, // 是否禁用背压控制
 	}
 
 	// 初始化写入器

@@ -258,11 +258,13 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.FuncName = funcName   // 函数名
 	logMessage.Line = line           // 行号
 
-	// 多级背压处理: 根据通道使用率丢弃低级别日志消息
-	if shouldDropLogOnBP(f.bp, f.logChan, level) {
-		// 重要：如果丢弃日志，需要回收对象
-		putLogMsg(logMessage)
-		return
+	// 多级背压处理: 根据通道使用率丢弃低级别日志消息(仅在未禁用背压时执行)
+	if !f.config.DisableBackpressure {
+		if shouldDropLogOnBP(f.bp, f.logChan, level) {
+			// 重要：如果丢弃日志，需要回收对象
+			putLogMsg(logMessage)
+			return
+		}
 	}
 
 	// 安全发送日志 - 使用select避免阻塞
