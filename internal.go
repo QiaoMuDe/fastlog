@@ -383,13 +383,13 @@ func (f *FastLog) getCloseTimeout() time.Duration {
 // 参数:
 //   - ctx: 上下文对象，用于控制关闭过程
 func (f *FastLog) gracefulShutdown(ctx context.Context) {
-	// 1. 先取消处理器上下文，通知所有组件停止工作
+	// 1. 取消上下文，通知停止发送新日志
 	f.cancel()
 
-	// 2. 等待一小段时间，让正在进行的操作完成
-	time.Sleep(10 * time.Millisecond)
+	// 2. 关闭通道，此时不应该有新的发送者
+	close(f.logChan)
 
-	// 3. 等待处理器完成剩余工作
+	// 3. 等待处理器处理完通道中剩余的所有数据
 	shutdownComplete := make(chan struct{})
 	go func() {
 		defer close(shutdownComplete)
@@ -399,13 +399,10 @@ func (f *FastLog) gracefulShutdown(ctx context.Context) {
 	// 4. 等待完成或超时
 	select {
 	case <-shutdownComplete:
-		// 正常关闭完成
+		// 正常关闭完成，所有通道中的日志都已处理完毕
 	case <-ctx.Done():
-		// 超时，但不打印警告(因为会强制清理)
+		// 超时，但此时大部分日志应该已经处理完成
 	}
-
-	// 5. 关闭日志通道，停止接收新日志
-	close(f.logChan)
 }
 
 // calculateBufferSize 根据批处理数量计算缓冲区大小

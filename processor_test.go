@@ -22,8 +22,8 @@ import (
 const (
 	TestWan         = 10000         // 用于快捷计算的标准单位(万)
 	TestDuration    = 3             // 测试时长（秒）
-	TestRate        = 100 * TestWan // 每秒生成多少条日志
-	TaskChannelSize = 10000         // 任务通道缓冲区大小
+	TestRate        = 100 * TestWan // 每秒生成多少条日志（降低到100万避免过度压力）
+	TaskChannelSize = 100000        // 任务通道缓冲区大小
 )
 
 var (
@@ -61,11 +61,12 @@ func TestConcurrentFastLog(t *testing.T) {
 
 	// 创建日志配置
 	cfg := NewFastLogConfig("logs", "test.log")
-	cfg.OutputToConsole = false // 控制台输出
-	cfg.OutputToFile = true     // 文件输出
-	cfg.MaxSize = 5             // 设置日志文件最大大小为5MB
-	cfg.LogFormat = Simple      // 设置日志格式
-	cfg.ChanIntSize = 100000    // 增大通道容量以支持更高并发
+	cfg.OutputToConsole = false       // 控制台输出
+	cfg.OutputToFile = true           // 文件输出
+	cfg.MaxSize = 5                   // 设置日志文件最大大小为5MB
+	cfg.LogFormat = Simple            // 设置日志格式
+	cfg.ChanIntSize = TaskChannelSize // 增大通道容量以支持更高并发
+	cfg.DisableBackpressure = false   // 禁用背压
 
 	// 创建日志记录器
 	log := NewFastLog(cfg)
@@ -82,9 +83,18 @@ func TestConcurrentFastLog(t *testing.T) {
 		// 停止内存监控
 		close(stopMonitoring)
 
+		// 等待通道中的日志被处理完成
+		waitStart := time.Now()
+		maxWaitTime := 10 * time.Second // 最大等待10秒
+
+		// 等待通道中的日志数量降到合理范围（批处理大小的一半）
+		for len(log.logChan) > cfg.BatchSize/2 && time.Since(waitStart) < maxWaitTime {
+			time.Sleep(100 * time.Millisecond)
+		}
+
 		// 关闭日志器并等待处理完成
 		log.Close()
-		time.Sleep(200 * time.Millisecond) // 等待日志处理完成
+		time.Sleep(500 * time.Millisecond) // 增加等待时间确保处理完成
 
 		// 记录结束时间和内存状态
 		stats.EndTime = time.Now()
@@ -311,23 +321,37 @@ func highConcurrencyRandomLogWithStats(log *FastLog, duration int, rate int, sta
 	// 等待所有工作完成
 	wg.Wait()
 
-	// 等待一段时间确保所有日志都被处理
-	time.Sleep(500 * time.Millisecond)
+	// 等待一段时间让日志进入通道
+	time.Sleep(200 * time.Millisecond)
 
-	// 验证日志文件内容
-	content, err := os.ReadFile(filepath.Join("logs", "test.log"))
+	// 🔍 验证所有日志文件内容（包括轮转文件）
+	validLines := int64(0)
+	logDir := "logs"
+
+	// 读取日志目录中的所有文件
+	files, err := filepath.Glob(filepath.Join(logDir, "test*.log"))
 	if err != nil {
-		t.Logf("读取日志文件失败: %v", err)
+		t.Logf("读取日志目录失败: %v", err)
 		stats.ValidLogLines = 0
 		return actualLogsSent
 	}
 
-	lines := strings.Split(string(content), "\n")
-	validLines := int64(0)
-	for _, line := range lines {
-		if strings.Contains(line, "这是一个高并发测试日志") {
-			validLines++
+	// 统计所有日志文件中的有效行数
+	for _, file := range files {
+		content, err := os.ReadFile(file)
+		if err != nil {
+			t.Logf("读取日志文件 %s 失败: %v", file, err)
+			continue
 		}
+
+		lines := strings.Split(string(content), "\n")
+		fileValidLines := int64(0)
+		for _, line := range lines {
+			if strings.Contains(line, "这是一个高并发测试日志") {
+				fileValidLines++
+			}
+		}
+		validLines += fileValidLines
 	}
 
 	stats.ValidLogLines = validLines
