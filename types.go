@@ -5,12 +5,7 @@ types.go - 日志系统核心类型定义
 package fastlog
 
 import (
-	"context"
-	"io"
 	"sync"
-	"time"
-
-	"gitee.com/MM-Q/colorlib"
 )
 
 // 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
@@ -34,43 +29,13 @@ var logLevelPaddedStringMap = map[LogLevel]string{
 }
 
 const (
-	// 默认批量处理大小
-	defaultBatchSize = 1000
-
-	// 每条日志的估算字节数常量
-	bytesPerLogEntry = 256
-
-	// 通道大小配置常量
-	defaultChanSize = 10000 // 默认通道大小
-	largeChanSize   = 20000 // 大通道大小（生产/静默模式）
-	smallChanSize   = 5000  // 小通道大小（控制台模式）
-
-	// 刷新间隔配置常量
-	fastFlushInterval   = 100 * time.Millisecond  // 快速刷新（开发/控制台模式）
-	normalFlushInterval = 500 * time.Millisecond  // 正常刷新（默认/文件模式）
-	slowFlushInterval   = 1000 * time.Millisecond // 慢速刷新（生产/静默模式）
-
 	// 文件大小配置常量
 	defaultMaxFileSize = 10 // 默认最大文件大小（MB）
 
-	// 文件保留配置常量
-	developmentMaxAge     = 7   // 开发模式保留天数
-	developmentMaxBackups = 10  // 开发模式保留文件数
-	productionMaxAge      = 30  // 生产模式保留天数
-	productionMaxBackups  = 100 // 生产模式保留文件数
-	fileMaxAge            = 14  // 文件模式保留天数
-	fileMaxBackups        = 30  // 文件模式保留文件数
-	silentMaxAge          = 30  // 静默模式保留天数
-	silentMaxBackups      = 50  // 静默模式保留文件数
-
 	// 系统资源限制常量
-	maxChanSize       = 1000000          // 最大通道大小限制
-	maxSingleFileSize = 2048             // 最大单文件大小限制（MB）- 2GB
-	minFlushInterval  = time.Microsecond // 最小刷新间隔
-	maxFlushInterval  = 30 * time.Second // 最大刷新间隔
-	maxBatchSize      = 5000             // 最大批处理大小
-	maxRetentionDays  = 3650             // 最大保留天数（10年）
-	maxRetentionFiles = 1000             // 最大保留文件数
+	maxSingleFileSize = 2048 // 最大单文件大小限制（MB）- 2GB
+	maxRetentionDays  = 3650 // 最大保留天数（10年）
+	maxRetentionFiles = 1000 // 最大保留文件数
 )
 
 // 日志级别枚举
@@ -234,43 +199,3 @@ var (
 	charReplacement    = "_"          // 非法字符替换符
 	truncateReserve    = 10           // 路径截断预留长度
 )
-
-// processorDependencies 定义处理器所需的最小依赖接口
-// 通过接口隔离原则，processor 只能访问必要的功能，避免持有完整的 FastLog 引用
-type processorDependencies interface {
-	// getConfig 获取日志配置
-	getConfig() *FastLogConfig
-
-	// getFileWriter 获取文件写入器
-	getFileWriter() io.Writer
-
-	// getConsoleWriter 获取控制台写入器
-	getConsoleWriter() io.Writer
-
-	// getColorLib 获取颜色库实例
-	getColorLib() *colorlib.ColorLib
-
-	// getContext 获取上下文，用于控制处理器生命周期
-	getContext() context.Context
-
-	// getLogChannel 获取日志消息通道
-	getLogChannel() <-chan *logMsg
-
-	// notifyProcessorDone 通知处理器完成工作
-	notifyProcessorDone()
-
-	// getBufferSize 获取缓冲区大小
-	getBufferSize() int
-}
-
-// WriterPair 写入器对，用于批量传递写入器
-type WriterPair struct {
-	FileWriter    io.Writer
-	ConsoleWriter io.Writer
-}
-
-// ProcessorConfig 处理器配置结构
-type ProcessorConfig struct {
-	BatchSize     int           // 批量处理大小
-	FlushInterval time.Duration // 刷新间隔
-}

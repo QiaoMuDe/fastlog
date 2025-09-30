@@ -6,17 +6,18 @@ internal.go - FastLog内部实现文件
 package fastlog
 
 import (
-	"context"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
 
-	"gitee.com/MM-Q/colorlib"
+	"gitee.com/MM-Q/go-kit/pool"
 )
 
 // 优化的时间戳缓存结构，使用原子操作 + 读写锁的混合方案
@@ -134,91 +135,42 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	return
 }
 
-// shouldDropLogOnBP 根据通道背压情况判断是否应该丢弃日志
-//
+// logFatal Fatal级别的特殊处理方法
+
 // 参数:
-//   - bp: 通道背压阈值
-//   - logChan: 日志通道
-//   - level: 日志级别
-//
-// 返回:
-//   - bool: true表示应该丢弃该日志, false表示应该保留
-func shouldDropLogOnBP(bp *bpThresholds, logChan chan *logMsg, level LogLevel) bool {
-	// 完整的空指针和边界检查
-	if bp == nil || logChan == nil {
-		return false // 如果背压阈值或通道为nil, 不丢弃日志
+//   - message: 格式化后的消息
+func (f *FastLog) logFatal(message string) {
+	// Fatal方法的特殊处理 - 即使FastLog为nil也要记录错误并退出
+	if f == nil {
+		// 如果日志器为nil，直接输出到stderr并退出
+		fmt.Fprintf(os.Stderr, "FATAL: %s\n", message)
+		os.Exit(1)
+		return
 	}
 
-	// 提前获取通道长度和容量, 供后续复用
-	chanLen := len(logChan)
-	chanCap := cap(logChan)
+	// 先记录日志
+	f.processLog(FATAL, message)
 
-	// 边界条件检查: 防止除零错误和异常情况
-	if chanCap <= 0 {
-		return true // 容量为0或负数的通道应该丢弃日志
-	}
+	// 关闭日志记录器
+	f.Close()
 
-	// 通道长度不能为负数
-	if chanLen < 0 {
-		return false
-	}
-
-	// 当通道满了, 立即丢弃所有新日志
-	if chanLen >= chanCap {
-		return true
-	}
-
-	// 关键优化: 避免除法，使用数学等价比较
-	// 原理: chanLen/chanCap >= X% 等价于 chanLen*100 >= chanCap*X
-	chanLen100 := chanLen * 100 // 预计算，避免重复乘法
-
-	// 根据通道使用率判断是否丢弃日志
-	switch {
-	case chanLen100 >= bp.threshold98: // 98%+ 只保留FATAL
-		return level < FATAL
-	case chanLen100 >= bp.threshold95: // 95%+ 只保留ERROR及以上
-		return level < ERROR
-	case chanLen100 >= bp.threshold90: // 90%+ 只保留WARN及以上
-		return level < WARN
-	case chanLen100 >= bp.threshold80: // 80%+ 只保留INFO及以上
-		return level < INFO
-	default: // 80%以下不丢弃任何日志
-		return false
-	}
+	// 终止程序（非0退出码表示错误）
+	os.Exit(1)
 }
 
-// logWithLevel 通用日志记录方法
+// processLog 内部用于处理日志消息的方法
 //
 // 参数:
 //   - level: 日志级别
-//   - message: 格式化后的消息
-//   - skipFrames: 跳过的调用栈帧数（用于获取正确的调用者信息）
-func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
-	// 关键路径空指针检查 - 防止panic
-	if f == nil {
-		return
-	}
-
+//   - msg: 日志消息
+func (f *FastLog) processLog(level LogLevel, msg string) {
 	// 检查核心组件是否已初始化
-	if f.config == nil || f.logChan == nil {
+	if f == nil || f.config == nil || msg == "" {
 		return
-	}
-
-	// 检查日志通道是否已关闭 - 复用现有的协调机制
-	select {
-	case <-f.ctx.Done():
-		return // 上下文已取消，直接返回
-	default:
-		// 继续执行
 	}
 
 	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
 	if level < f.config.LogLevel {
-		return
-	}
-
-	// 验证消息内容 - 空消息直接返回
-	if message == "" {
 		return
 	}
 
@@ -232,7 +184,7 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	// 仅当需要文件信息时才获取调用者信息
 	if needsFileInfo(f.config.LogFormat) {
 		var ok bool
-		fileName, funcName, line, ok = getCallerInfo(skipFrames)
+		fileName, funcName, line, ok = getCallerInfo(3)
 		if !ok {
 			fileName = "unknown"
 			funcName = "unknown"
@@ -245,188 +197,193 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 
 	// 从对象池获取日志消息对象，增加安全检查
 	logMessage := getLogMsg()
-	if logMessage == nil {
-		// 对象池异常，创建新对象作为fallback
-		logMessage = &logMsg{}
-	}
+	defer putLogMsg(logMessage) // 确保在函数返回时回收对象
 
 	// 安全地填充日志消息字段
 	logMessage.Timestamp = timestamp // 时间戳
 	logMessage.Level = level         // 日志级别
-	logMessage.Message = message     // 日志消息
+	logMessage.Message = msg         // 日志消息
 	logMessage.FileName = fileName   // 文件名
 	logMessage.FuncName = funcName   // 函数名
 	logMessage.Line = line           // 行号
 
-	// 多级背压处理: 根据通道使用率丢弃低级别日志消息(仅在未禁用背压时执行)
-	if !f.config.DisableBackpressure && shouldDropLogOnBP(f.bp, f.logChan, level) {
-		// 重要：如果丢弃日志，需要回收对象
-		putLogMsg(logMessage)
+	// 获取缓冲区
+	buf := pool.GetBuf()
+	defer pool.PutBuf(buf)
+
+	// 根据日志格式格式化到缓冲区
+	f.formatLogToBuffer(buf, logMessage)
+
+	// 控制台输出 - 直接使用 colorlib 打印
+	if f.config.OutputToConsole {
+		srcString := buf.String()
+
+		// 直接调用 colorlib 的打印方法（自带换行）
+		switch logMessage.Level {
+		case INFO:
+			f.cl.Blue(srcString)
+		case WARN:
+			f.cl.Yellow(srcString)
+		case ERROR:
+			f.cl.Red(srcString)
+		case DEBUG:
+			f.cl.Magenta(srcString)
+		case FATAL:
+			f.cl.Red(srcString)
+		default:
+			fmt.Println(srcString) // 默认打印
+		}
+	}
+
+	// 将缓冲区中的日志消息写入日志文件
+	if f.config.OutputToFile && f.fileWriter != nil {
+		buf.WriteString("\n") // 添加换行符，确保每条日志单独一行
+		if _, err := f.fileWriter.Write(buf.Bytes()); err != nil {
+			fmt.Printf("Error writing to log file: %v\n", err)
+		}
+	}
+
+}
+
+// formatLogToBuffer 将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
+//
+// 参数:
+//   - buf: 目标缓冲区
+//   - logmsg: 日志消息
+func (f *FastLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
+	// 检查参数有效性
+	if buf == nil || logmsg == nil {
 		return
 	}
 
-	// 禁用背压：阻塞等待，确保日志不丢失
-	if f.config.DisableBackpressure {
-		select {
-		case <-f.ctx.Done():
-			putLogMsg(logMessage) // 上下文已取消
+	// 如果时间戳为空，使用缓存的时间戳
+	if logmsg.Timestamp == "" {
+		logmsg.Timestamp = getCachedTimestamp()
+	}
 
-		case f.logChan <- logMessage:
-			// 成功发送，无需default分支
+	// 检查关键字段是否为空，设置默认值
+	if logmsg.Message == "" {
+		return // 消息为空直接返回
+	}
+	if logmsg.FileName == "" {
+		logmsg.FileName = "unknown-file"
+	}
+	if logmsg.FuncName == "" {
+		logmsg.FuncName = "unknown-func"
+	}
+
+	// 根据日志格式直接格式化到目标缓冲区
+	switch f.config.LogFormat {
+	// JSON格式
+	case Json:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(logmsg); err == nil {
+			buf.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(buf,
+				logFormatMap[Json],
+				logmsg.Timestamp, logLevelToString(logmsg.Level), "unknown", "unknown", 0,
+				fmt.Sprintf("Failed to serialize original message: %v | Original content: %s", err, logmsg.Message),
+			)
 		}
 
-		return
-	}
+	// JsonSimple格式（无文件信息）
+	case JsonSimple:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(simpleLogMsg{
+			Timestamp: logmsg.Timestamp,
+			Level:     logmsg.Level,
+			Message:   logmsg.Message,
+		}); err == nil {
+			buf.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(buf, logFormatMap[JsonSimple],
+				logmsg.Timestamp, logLevelToString(logmsg.Level), fmt.Sprintf("Failed to serialize: %v | Original: %s", err, logmsg.Message))
+		}
 
-	// 启用背压：非阻塞发送，可能丢弃
-	select {
-	case <-f.ctx.Done():
-		putLogMsg(logMessage) // 上下文已取消
+	// 详细格式
+	case Detailed:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" | ")
+		levelStr := logLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString(" | ")
+		buf.WriteString(logmsg.FileName) // 文件信息
+		buf.WriteByte(':')
+		buf.WriteString(logmsg.FuncName) // 函数
+		buf.WriteByte(':')
+		buf.WriteString(strconv.Itoa(int(logmsg.Line))) // 行号
+		buf.WriteString(" - ")
+		buf.WriteString(logmsg.Message) // 消息
 
-	case f.logChan <- logMessage:
-		// 成功发送，无需default分支
+	// 简约格式
+	case Simple:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" | ")
+		levelStr := logLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString(" | ")
+		buf.WriteString(logmsg.Message) // 消息
 
+	// 结构化格式
+	case Structured:
+		buf.WriteString("T:") // 时间戳
+		buf.WriteString(logmsg.Timestamp)
+		buf.WriteString("|L:")                           // 日志级别
+		levelStr := logLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString("|F:") // 文件信息
+		buf.WriteString(logmsg.FileName)
+		buf.WriteByte(':')
+		buf.WriteString(logmsg.FuncName)
+		buf.WriteByte(':')
+		buf.WriteString(strconv.Itoa(int(logmsg.Line)))
+		buf.WriteString("|M:") // 消息
+		buf.WriteString(logmsg.Message)
+
+	// 基础结构化格式(无文件信息)
+	case BasicStructured:
+		buf.WriteString("T:") // 时间戳
+		buf.WriteString(logmsg.Timestamp)
+		buf.WriteString("|L:")                           // 日志级别
+		levelStr := logLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString("|M:") // 消息
+		buf.WriteString(logmsg.Message)
+
+	// 简单时间格式
+	case SimpleTimestamp:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" ")
+		levelStr := logLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)                        // 日志级别
+		buf.WriteString(" ")
+		buf.WriteString(logmsg.Message) // 消息
+
+	// 自定义格式
+	case Custom:
+		buf.WriteString(logmsg.Message)
+
+	// 默认情况
 	default:
-		putLogMsg(logMessage) // 通道满时，直接丢弃日志
+		buf.WriteString("Unrecognized log format option: ")
+		fmt.Fprintf(buf, "%v", f.config.LogFormat)
 	}
 }
 
-// logFatal Fatal级别的特殊处理方法
+// logLevelToPaddedString 将 LogLevel 转换为带填充的字符串（用于文本格式化）
 //
-// 参数:
-//   - message: 格式化后的消息
-//   - skipFrames: 跳过的调用栈帧数
-func (f *FastLog) logFatal(message string, skipFrames int) {
-	// Fatal方法的特殊处理 - 即使FastLog为nil也要记录错误并退出
-	if f == nil {
-		// 如果日志器为nil，直接输出到stderr并退出
-		fmt.Fprintf(os.Stderr, "FATAL: %s\n", message)
-		os.Exit(1)
-		return
-	}
-
-	// 先记录日志
-	f.logWithLevel(FATAL, message, skipFrames)
-
-	// 关闭日志记录器
-	f.Close()
-
-	// 终止程序（非0退出码表示错误）
-	os.Exit(1)
-}
-
-// ===== 实现 processorDependencies 接口 =====
-
-// getConfig 获取日志配置
-func (f *FastLog) getConfig() *FastLogConfig {
-	return f.config
-}
-
-// getFileWriter 获取文件写入器
-func (f *FastLog) getFileWriter() io.Writer {
-	return f.fileWriter
-}
-
-// getConsoleWriter 获取控制台写入器
-func (f *FastLog) getConsoleWriter() io.Writer {
-	return f.consoleWriter
-}
-
-// getColorLib 获取颜色库实例
-func (f *FastLog) getColorLib() *colorlib.ColorLib {
-	return f.cl
-}
-
-// getContext 获取上下文
-func (f *FastLog) getContext() context.Context {
-	return f.ctx
-}
-
-// getLogChannel 获取日志消息通道（只读）
-func (f *FastLog) getLogChannel() <-chan *logMsg {
-	return f.logChan
-}
-
-// notifyProcessorDone 通知处理器完成工作
-func (f *FastLog) notifyProcessorDone() {
-	f.logWait.Done()
-}
-
-// getBufferSize 获取缓冲区大小
-func (f *FastLog) getBufferSize() int {
-	return f.bufferSize
-}
-
-// getCloseTimeout 计算并返回日志记录器关闭时的合理超时时间
+// 参数：
+//   - level: 要转换的日志级别
 //
-// 返回值:
-//   - time.Duration: 计算后的关闭超时时间，范围在3-10秒之间
-//
-// 实现逻辑:
-//  1. 基于配置的刷新间隔(FlushInterval)乘以10作为基础超时时间
-//  2. 确保最小超时为3秒，避免过短的超时导致日志丢失
-//  3. 确保最大超时为10秒，避免过长的等待影响程序退出
-func (f *FastLog) getCloseTimeout() time.Duration {
-	// 基于刷新间隔计算合理的超时时间
-	baseTimeout := f.config.FlushInterval * 10
-	if baseTimeout < 3*time.Second {
-		baseTimeout = 3 * time.Second
+// 返回值：
+//   - string: 对应的带填充的日志级别字符串（7个字符），如果 level 无效, 则返回 "UNKNOWN"
+func logLevelToPaddedString(level LogLevel) string {
+	// 使用预构建的带填充映射表进行O(1)查询（适用于文本格式）
+	if str, exists := logLevelPaddedStringMap[level]; exists {
+		return str
 	}
-	if baseTimeout > 10*time.Second {
-		baseTimeout = 10 * time.Second
-	}
-	return baseTimeout
-}
-
-// gracefulShutdown 优雅关闭日志记录器
-//
-// 参数:
-//   - ctx: 上下文对象，用于控制关闭过程
-func (f *FastLog) gracefulShutdown(ctx context.Context) {
-	// 1. 取消上下文，通知停止发送新日志
-	f.cancel()
-
-	// 2. 关闭通道，此时不应该有新的发送者
-	close(f.logChan)
-
-	// 3. 等待处理器处理完通道中剩余的所有数据
-	shutdownComplete := make(chan struct{})
-	go func() {
-		defer close(shutdownComplete)
-		f.logWait.Wait()
-	}()
-
-	// 4. 等待完成或超时
-	select {
-	case <-shutdownComplete:
-		// 正常关闭完成，所有通道中的日志都已处理完毕
-	case <-ctx.Done():
-		// 超时，但此时大部分日志应该已经处理完成
-	}
-}
-
-// calculateBufferSize 根据批处理数量计算缓冲区大小
-// 保证最小16KB和最大1MB的范围
-//
-// 参数:
-//   - batchSize: 批处理数量
-//
-// 返回值:
-//   - int: 缓冲区大小（字节）
-func calculateBufferSize(batchSize int) int {
-	if batchSize <= 0 {
-		return 16 * 1024 // 16KB
-	}
-
-	size := batchSize * bytesPerLogEntry
-
-	// 最小16KB，最大1MB
-	if size < 16*1024 {
-		return 16 * 1024
-	}
-	if size > 1024*1024 {
-		return 1024 * 1024
-	}
-
-	return size
+	return "UNKNOWN"
 }
