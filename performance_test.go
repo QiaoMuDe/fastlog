@@ -7,7 +7,6 @@ package fastlog
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -153,9 +152,7 @@ func TestFastLogPerformance(t *testing.T) {
 	)
 
 	// 创建测试目录
-	testDir := "test_logs"
-	os.RemoveAll(testDir)       // 清理之前的测试文件
-	defer os.RemoveAll(testDir) // 测试完成后清理
+	testDir := "logs"
 
 	// 配置日志记录器
 	config := NewFastLogConfig(testDir, "performance_test.log")
@@ -299,9 +296,7 @@ func TestFastLogPerformance(t *testing.T) {
 // BenchmarkFastLogConcurrent 基准测试 - 并发写入
 func BenchmarkFastLogConcurrent(b *testing.B) {
 	// 创建测试目录
-	testDir := "bench_logs"
-	os.RemoveAll(testDir)
-	defer os.RemoveAll(testDir)
+	testDir := "logs"
 
 	// 配置日志记录器
 	config := NewFastLogConfig(testDir, "benchmark.log")
@@ -324,9 +319,7 @@ func BenchmarkFastLogConcurrent(b *testing.B) {
 // BenchmarkFastLogSingle 基准测试 - 单线程写入
 func BenchmarkFastLogSingle(b *testing.B) {
 	// 创建测试目录
-	testDir := "bench_single_logs"
-	os.RemoveAll(testDir)
-	defer os.RemoveAll(testDir)
+	testDir := "logs"
 
 	// 配置日志记录器
 	config := NewFastLogConfig(testDir, "benchmark_single.log")
