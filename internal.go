@@ -259,27 +259,35 @@ func (f *FastLog) logWithLevel(level LogLevel, message string, skipFrames int) {
 	logMessage.Line = line           // 行号
 
 	// 多级背压处理: 根据通道使用率丢弃低级别日志消息(仅在未禁用背压时执行)
-	if !f.config.DisableBackpressure {
-		if shouldDropLogOnBP(f.bp, f.logChan, level) {
-			// 重要：如果丢弃日志，需要回收对象
-			putLogMsg(logMessage)
-			return
-		}
+	if !f.config.DisableBackpressure && shouldDropLogOnBP(f.bp, f.logChan, level) {
+		// 重要：如果丢弃日志，需要回收对象
+		putLogMsg(logMessage)
+		return
 	}
 
-	// 安全发送日志 - 使用select避免阻塞
+	// 禁用背压：阻塞等待，确保日志不丢失
+	if f.config.DisableBackpressure {
+		select {
+		case <-f.ctx.Done():
+			putLogMsg(logMessage) // 上下文已取消
+
+		case f.logChan <- logMessage:
+			// 成功发送，无需default分支
+		}
+
+		return
+	}
+
+	// 启用背压：非阻塞发送，可能丢弃
 	select {
-	// 上下文已取消，回收对象
 	case <-f.ctx.Done():
-		putLogMsg(logMessage)
+		putLogMsg(logMessage) // 上下文已取消
 
-	// 成功发送
 	case f.logChan <- logMessage:
-		// 无操作
+		// 成功发送，无需default分支
 
-	// 通道满，回收对象并丢弃日志
 	default:
-		putLogMsg(logMessage)
+		putLogMsg(logMessage) // 通道满时，直接丢弃日志
 	}
 }
 
