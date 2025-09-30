@@ -212,6 +212,8 @@ func TestFastLogPerformance(t *testing.T) {
 			}
 		}
 	}()
+	// 使用固定的测试日志消息，避免字符串格式化开销影响性能测试结果
+	const message = "这是一条性能测试日志消息"
 
 	// 启动多个 Goroutine 并发写入日志
 	for i := 0; i < goroutineCount; i++ {
@@ -219,10 +221,6 @@ func TestFastLogPerformance(t *testing.T) {
 			defer wg.Done()
 
 			for j := 0; j < logsPerRoutine; j++ {
-				// 生成测试日志消息
-				message := fmt.Sprintf("Goroutine-%d Log-%d: 这是一条性能测试日志消息，用于测试高并发场景下的日志写入性能",
-					routineID, j)
-
 				// 写入不同级别的日志
 				switch j % 4 {
 				case 0:
@@ -317,10 +315,8 @@ func BenchmarkFastLogConcurrent(b *testing.B) {
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
-		i := 0
 		for pb.Next() {
-			logger.Info("Benchmark log message", i)
-			i++
+			logger.Info("Benchmark concurrent log message for performance testing")
 		}
 	})
 }
@@ -344,6 +340,6 @@ func BenchmarkFastLogSingle(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		logger.Info("Benchmark single log message", i)
+		logger.Info("Benchmark single thread log message for performance testing")
 	}
 }

@@ -216,22 +216,20 @@ func (f *FastLog) processLog(level LogLevel, msg string) {
 
 	// 控制台输出 - 直接使用 colorlib 打印
 	if f.config.OutputToConsole {
-		srcString := buf.String()
-
 		// 直接调用 colorlib 的打印方法（自带换行）
 		switch logMessage.Level {
 		case INFO:
-			f.cl.Blue(srcString)
+			f.cl.Blue(buf.String())
 		case WARN:
-			f.cl.Yellow(srcString)
+			f.cl.Yellow(buf.String())
 		case ERROR:
-			f.cl.Red(srcString)
+			f.cl.Red(buf.String())
 		case DEBUG:
-			f.cl.Magenta(srcString)
+			f.cl.Magenta(buf.String())
 		case FATAL:
-			f.cl.Red(srcString)
+			f.cl.Red(buf.String())
 		default:
-			fmt.Println(srcString) // 默认打印
+			fmt.Println(buf.String()) // 默认打印
 		}
 	}
 
