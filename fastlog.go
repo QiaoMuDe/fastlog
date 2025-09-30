@@ -39,7 +39,7 @@ var (
 
 // FastLog 日志记录器
 type FastLog struct {
-	fileWriter io.Writer              // 文件写入器
+	fileWriter io.Writer              // 文件写入器 (现在可能是BufferedWriter)
 	cl         *colorlib.ColorLib     // 提供终端颜色输出的库
 	logger     *logrotatex.LogRotateX // logrotatex 日志文件切割
 	config     *FastLogConfig         // 嵌入的配置结构体
@@ -80,23 +80,23 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 	}
 
 	// 初始化写入器
-	var fileWriter io.Writer // 文件写入器
+	var fileWriter io.Writer          // 文件写入器
+	var logger *logrotatex.LogRotateX // 日志文件切割器
 
-	// 如果允许将日志输出到文件, 则初始化日志文件写入器。
-	var logger *logrotatex.LogRotateX
+	// 如果允许将日志输出到文件, 则初始化带缓冲的文件写入器
 	if cfg.OutputToFile {
 		// 拼接日志文件路径
 		logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
 		// 初始化日志文件切割器
-		logger = logrotatex.New(logFilePath) // 初始化日志文件切割器
-		logger.MaxSize = cfg.MaxSize         // 最大日志文件大小, 单位为MB
-		logger.MaxAge = cfg.MaxAge           // 最大日志文件保留天数
-		logger.MaxFiles = cfg.MaxFiles       // 最大日志文件保留数量
-		logger.Compress = cfg.Compress       // 是否启用日志文件压缩
-		logger.LocalTime = cfg.LocalTime     // 是否使用本地时间
+		logger := logrotatex.New(logFilePath) // 初始化日志文件切割器
+		logger.MaxSize = cfg.MaxSize          // 最大日志文件大小, 单位为MB
+		logger.MaxAge = cfg.MaxAge            // 最大日志文件保留天数
+		logger.MaxFiles = cfg.MaxFiles        // 最大日志文件保留数量
+		logger.Compress = cfg.Compress        // 是否启用日志文件压缩
+		logger.LocalTime = cfg.LocalTime      // 是否使用本地时间
+		fileWriter = logger                   // 初始化文件写入器
 
-		fileWriter = logger // 初始化文件写入器
 	} else {
 		fileWriter = io.Discard // 不允许将日志输出到文件, 则直接丢弃
 	}
@@ -104,7 +104,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
 		logger:     logger,                 // 日志文件切割器
-		fileWriter: fileWriter,             // 文件写入器, 用于将日志写入文件
+		fileWriter: fileWriter,             // 文件写入器
 		cl:         colorlib.NewColorLib(), // 颜色库实例, 用于在终端中显示颜色
 		config:     cfg,                    // 配置结构体
 		closed:     atomic.Bool{},          // 标记日志处理器是否已关闭

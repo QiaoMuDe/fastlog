@@ -207,8 +207,8 @@ func (f *FastLog) processLog(level LogLevel, msg string) {
 	logMessage.FuncName = funcName   // 函数名
 	logMessage.Line = line           // 行号
 
-	// 获取缓冲区
-	buf := pool.GetBuf()
+	// 获取预分配的缓冲区，避免动态内存分配
+	buf := pool.GetBufCap(256)
 	defer pool.PutBuf(buf)
 
 	// 根据日志格式格式化到缓冲区
