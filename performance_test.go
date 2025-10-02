@@ -161,7 +161,7 @@ func TestFastLogPerformance(t *testing.T) {
 	config.LogLevel = INFO         // 限制日志级别
 	config.LogFormat = Simple      // 简单日志格式
 	config.MaxSize = 100           // 100MB
-	config.Color = false           // 关闭颜色输出
+	config.Color = true            // 关闭颜色输出
 
 	// 创建日志记录器
 	logger := NewFastLog(config)

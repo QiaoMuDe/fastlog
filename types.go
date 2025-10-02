@@ -6,6 +6,7 @@ package fastlog
 
 import (
 	"sync"
+	"time"
 )
 
 // 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
@@ -36,6 +37,11 @@ const (
 	maxSingleFileSize = 2048 // 最大单文件大小限制（MB）- 2GB
 	maxRetentionDays  = 3650 // 最大保留天数（10年）
 	maxRetentionFiles = 1000 // 最大保留文件数
+
+	// 默认文件写入器配置
+	defaultMaxBufferSize = 64 * 1024       // 默认最大缓冲区大小（64KB）
+	defaultMaxWriteCount = 500             // 默认最大写入次数（500次）
+	defaultFlushInterval = 1 * time.Second // 默认最大刷新间隔（1秒）
 )
 
 // 日志级别枚举

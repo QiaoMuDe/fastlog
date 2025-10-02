@@ -7,7 +7,6 @@ package fastlog
 
 import (
 	"fmt"
-	"io"
 	"path/filepath"
 	"sync/atomic"
 
@@ -39,10 +38,10 @@ var (
 
 // FastLog 日志记录器
 type FastLog struct {
-	fileWriter io.Writer          // 文件写入器 (现在可能是BufferedWriter)
-	cl         *colorlib.ColorLib // 提供终端颜色输出的库
-	config     *FastLogConfig     // 嵌入的配置结构体
-	closed     atomic.Bool        // 标记日志处理器是否已关闭
+	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
+	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
+	config     *FastLogConfig             // 嵌入的配置结构体
+	closed     atomic.Bool                // 标记日志处理器是否已关闭
 }
 
 // NewFastLog 创建一个新的FastLog实例, 用于记录日志。
@@ -76,10 +75,13 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		Compress:        config.Compress,        // 是否启用日志文件压缩
 		Color:           config.Color,           // 是否启用终端颜色
 		Bold:            config.Bold,            // 是否启用终端字体加粗
+		FlushInterval:   config.FlushInterval,   // 刷新间隔, 单位为秒, 默认为0, 表示不做限制
+		MaxBufferSize:   config.MaxBufferSize,   // 缓冲区最大容量, 单位为字节
+		MaxWriteCount:   config.MaxWriteCount,   // 最大写入次数, 默认为0, 表示不做限制
 	}
 
 	// 初始化写入器
-	var fileWriter io.Writer // 文件写入器
+	var fileWriter *logrotatex.BufferedWriter
 
 	// 如果允许将日志输出到文件, 则初始化带缓冲的文件写入器
 	if cfg.OutputToFile {
@@ -87,23 +89,26 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
 		// 初始化日志文件切割器
-		logger := logrotatex.New(logFilePath) // 初始化日志文件切割器
-		logger.MaxSize = cfg.MaxSize          // 最大日志文件大小, 单位为MB
-		logger.MaxAge = cfg.MaxAge            // 最大日志文件保留天数
-		logger.MaxFiles = cfg.MaxFiles        // 最大日志文件保留数量
-		logger.Compress = cfg.Compress        // 是否启用日志文件压缩
-		logger.LocalTime = cfg.LocalTime      // 是否使用本地时间
+		logger := logrotatex.NewLogRotateX(logFilePath) // 初始化日志文件切割器
+		logger.MaxSize = cfg.MaxSize                    // 最大日志文件大小, 单位为MB
+		logger.MaxAge = cfg.MaxAge                      // 最大日志文件保留天数
+		logger.MaxFiles = cfg.MaxFiles                  // 最大日志文件保留数量
+		logger.Compress = cfg.Compress                  // 是否启用日志文件压缩
+		logger.LocalTime = cfg.LocalTime                // 是否使用本地时间
+
+		// 初始化缓冲区配置
+		bufCfg := logrotatex.DefBufCfg()
+		bufCfg.FlushInterval = cfg.FlushInterval // 刷新间隔, 单位为秒, 默认为0, 表示不做限制
+		bufCfg.MaxBufferSize = cfg.MaxBufferSize // 缓冲区最大容量, 单位为字节
+		bufCfg.MaxWriteCount = cfg.MaxWriteCount // 最大写入次数, 默认为0, 表示不做限制
 
 		// 创建带缓冲的批量写入器，嵌入日志切割器
-		bufferedConfig := DefaultBufferedWriterConfig()
-		fileWriter = NewBufferedWriter(logger, bufferedConfig)
-	} else {
-		fileWriter = io.Discard // 不允许将日志输出到文件, 则直接丢弃
+		fileWriter = logrotatex.NewBufferedWriter(logger, bufCfg)
 	}
 
 	// 创建一个新的FastLog实例, 将配置和缓冲区赋值给实例。
 	f := &FastLog{
-		fileWriter: fileWriter,             // 文件写入器 (现在是BufferedWriter)
+		fileWriter: fileWriter,             // 带缓冲的文件写入器
 		cl:         colorlib.NewColorLib(), // 颜色库实例, 用于在终端中显示颜色
 		config:     cfg,                    // 配置结构体
 		closed:     atomic.Bool{},          // 标记日志处理器是否已关闭
@@ -133,7 +138,9 @@ func (f *FastLog) Close() {
 
 	// 如果启用了文件写入器，则尝试关闭它。
 	if f.config.OutputToFile && f.fileWriter != nil {
-		_ = f.fileWriter.(io.Closer).Close()
+		if err := f.fileWriter.Close(); err != nil {
+			fmt.Println(err)
+		}
 	}
 }
 

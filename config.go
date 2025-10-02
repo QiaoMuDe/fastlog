@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // FastLogConfig 定义一个配置结构体, 用于配置日志记录器
@@ -25,6 +26,9 @@ type FastLogConfig struct {
 	MaxFiles        int           // 最大日志文件保留数量, 默认为0, 表示不做限制
 	LocalTime       bool          // 是否使用本地时间 默认使用UTC时间
 	Compress        bool          // 是否启用日志文件压缩 默认不启用
+	MaxBufferSize   int           // 缓冲区大小, 单位为字节, 默认64KB
+	MaxWriteCount   int           // 最大写入次数, 默认500次
+	FlushInterval   time.Duration // 刷新间隔, 默认1秒
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -38,19 +42,22 @@ type FastLogConfig struct {
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
-		LogDirName:      logDirName,         // 日志目录名称
-		LogFileName:     logFileName,        // 日志文件名称
-		OutputToConsole: true,               // 是否将日志输出到控制台
-		OutputToFile:    true,               // 是否将日志输出到文件
-		LogLevel:        INFO,               // 日志级别 默认INFO
-		LogFormat:       Simple,             // 日志格式选项
-		MaxSize:         defaultMaxFileSize, // 最大日志文件大小, 单位为MB, 默认10MB
-		MaxAge:          0,                  // 最大日志文件保留天数, 默认为0, 表示不做限制
-		MaxFiles:        0,                  // 最大日志文件保留数量, 默认为0, 表示不做限制
-		LocalTime:       true,               // 是否使用本地时间 默认使用本地时间
-		Compress:        false,              // 是否启用日志文件压缩 默认不启用
-		Color:           true,               // 是否启用终端颜色
-		Bold:            true,               // 是否启用终端字体加粗
+		LogDirName:      logDirName,           // 日志目录名称
+		LogFileName:     logFileName,          // 日志文件名称
+		OutputToConsole: true,                 // 是否将日志输出到控制台
+		OutputToFile:    true,                 // 是否将日志输出到文件
+		LogLevel:        INFO,                 // 日志级别 默认INFO
+		LogFormat:       Simple,               // 日志格式选项
+		MaxSize:         defaultMaxFileSize,   // 最大日志文件大小, 单位为MB, 默认10MB
+		MaxAge:          0,                    // 最大日志文件保留天数, 默认为0, 表示不做限制
+		MaxFiles:        0,                    // 最大日志文件保留数量, 默认为0, 表示不做限制
+		LocalTime:       true,                 // 是否使用本地时间 默认使用本地时间
+		Compress:        false,                // 是否启用日志文件压缩 默认不启用
+		Color:           true,                 // 是否启用终端颜色
+		Bold:            true,                 // 是否启用终端字体加粗
+		MaxBufferSize:   defaultMaxBufferSize, // 缓冲区大小, 单位为字节, 默认64KB
+		MaxWriteCount:   defaultMaxWriteCount, // 最大写入次数, 默认500次
+		FlushInterval:   defaultFlushInterval, // 刷新间隔, 默认1秒
 	}
 }
 

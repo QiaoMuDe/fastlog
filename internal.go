@@ -240,7 +240,6 @@ func (f *FastLog) processLog(level LogLevel, msg string) {
 			fmt.Printf("Error writing to log file: %v\n", err)
 		}
 	}
-
 }
 
 // formatLogToBuffer 将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
