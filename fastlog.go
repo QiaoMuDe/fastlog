@@ -128,8 +128,8 @@ func (f *FastLog) Close() {
 		return
 	}
 
-	// 确保日志处理器只关闭一次
-	if f.closed.Load() {
+	// 确保日志处理器只关闭一次（原子操作）
+	if !f.closed.CompareAndSwap(false, true) {
 		return
 	}
 
@@ -226,8 +226,8 @@ func (f *FastLog) Error(v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
+	// 确保日志处理器只关闭一次（原子操作）
+	if !f.closed.CompareAndSwap(false, true) {
 		return
 	}
 
