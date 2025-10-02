@@ -184,24 +184,3 @@ var logFormatMap = map[LogFormatType]string{
 	BasicStructured: `T:%s|L:%-7s|M:%s`,                                                                  // 基础结构化格式(无文件信息)
 	SimpleTimestamp: `%s %s %s`,                                                                          // 简单时间格式
 }
-
-// 文件名验证相关常量
-var (
-	// Windows和Unix系统中文件名不能包含的字符
-	invalidFileChars = []string{
-		"<", ">", ":", "\"", "|", "?", "*",
-		"\x00", "\x01", "\x02", "\x03", "\x04", "\x05", "\x06", "\x07",
-		"\x08", "\x09", "\x0a", "\x0b", "\x0c", "\x0d", "\x0e", "\x0f",
-		"\x10", "\x11", "\x12", "\x13", "\x14", "\x15", "\x16", "\x17",
-		"\x18", "\x19", "\x1a", "\x1b", "\x1c", "\x1d", "\x1e", "\x1f",
-	}
-	maxFileNameLength = 255  // 大多数文件系统的文件名长度限制
-	maxPathLength     = 4096 // 大多数系统的路径长度限制
-
-	// 文件处理字符串常量
-	defaultLogDir      = "logs"       // 默认日志目录名
-	defaultLogFileName = "app.log"    // 默认日志文件名
-	truncatedSuffix    = "_truncated" // 路径截断后缀
-	charReplacement    = "_"          // 非法字符替换符
-	truncateReserve    = 10           // 路径截断预留长度
-)

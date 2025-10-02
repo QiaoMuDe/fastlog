@@ -6,7 +6,6 @@ package fastlog
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -73,38 +72,7 @@ func (c *FastLogConfig) validateConfig() {
 		panic("FastLogConfig cannot be nil")
 	}
 
-	// ========================================================================
-	// 第一步：设置所有默认值
-	// ========================================================================
-
-	// 设置日志级别默认值
-	if c.LogLevel == 0 {
-		c.LogLevel = INFO
-	}
-
-	// 设置日志格式默认值
-	if c.LogFormat == 0 {
-		c.LogFormat = Simple
-	}
-
-	// 设置文件大小默认值
-	if c.MaxSize == 0 {
-		c.MaxSize = defaultMaxFileSize
-	}
-
-	// 设置文件相关默认值（仅在启用文件输出时）
-	if c.OutputToFile {
-		if strings.TrimSpace(c.LogDirName) == "" {
-			c.LogDirName = defaultLogDir
-		}
-		if strings.TrimSpace(c.LogFileName) == "" {
-			c.LogFileName = defaultLogFileName
-		}
-	}
-
-	// ========================================================================
-	// 第二步：验证所有配置值
-	// ========================================================================
+	// 仅进行只读校验，不做任何字段修改
 
 	// 必须启用至少一种输出方式
 	if !c.OutputToConsole && !c.OutputToFile {
@@ -145,84 +113,21 @@ func (c *FastLogConfig) validateConfig() {
 		panic(fmt.Sprintf("MaxFiles %d exceeds maximum %d files", c.MaxFiles, maxRetentionFiles))
 	}
 
-	// 验证文件输出相关配置
+	// 文件输出相关校验（只校验不更改）
 	if c.OutputToFile {
-		// 验证路径安全性
+		// 必填项
+		if strings.TrimSpace(c.LogDirName) == "" {
+			panic("LogDirName cannot be empty when OutputToFile is enabled")
+		}
+		if strings.TrimSpace(c.LogFileName) == "" {
+			panic("LogFileName cannot be empty when OutputToFile is enabled")
+		}
+		// 路径穿越检测
 		if strings.Contains(c.LogDirName, "..") {
 			panic("LogDirName contains path traversal '..'")
 		}
 		if strings.Contains(c.LogFileName, "..") {
 			panic("LogFileName contains path traversal '..'")
 		}
-
-		// 清理文件名
-		c.LogDirName = cleanFileName(c.LogDirName)
-		c.LogFileName = cleanFileName(c.LogFileName)
 	}
-}
-
-// cleanFileName 清理文件名中的非法字符和格式问题
-//
-// 参数:
-//   - filename: 原始文件名（可能包含路径）
-//
-// 返回:
-//   - string: 清理后的文件名
-func cleanFileName(filename string) string {
-	// 处理空字符串
-	if strings.TrimSpace(filename) == "" {
-		return defaultLogFileName
-	}
-
-	// 1. 使用 filepath.Clean 进行路径规范化
-	// 这会自动处理 "./"、多余的分隔符等问题
-	cleaned := filepath.Clean(filename)
-
-	// 2. 安全检查：移除上级目录引用
-	if strings.Contains(cleaned, "..") {
-		// 如果包含 ".."，只保留文件名部分
-		cleaned = filepath.Base(cleaned)
-	}
-
-	// 3. 分离目录和文件名
-	dir := filepath.Dir(cleaned)
-	actualFileName := filepath.Base(cleaned)
-
-	// 4. 清理文件名中的非法字符
-	for _, char := range invalidFileChars {
-		actualFileName = strings.ReplaceAll(actualFileName, char, charReplacement)
-	}
-
-	// 5. 移除文件名开头/结尾的点和空格
-	actualFileName = strings.Trim(actualFileName, ". ")
-
-	// 6. 处理文件名长度限制
-	if len(actualFileName) > maxFileNameLength {
-		ext := filepath.Ext(actualFileName)
-		maxNameLen := maxFileNameLength - len(ext)
-		if maxNameLen > 0 {
-			actualFileName = actualFileName[:maxNameLen] + ext
-		} else {
-			actualFileName = actualFileName[:maxFileNameLength]
-		}
-	}
-
-	// 7. 确保文件名不为空
-	if actualFileName == "" {
-		actualFileName = defaultLogFileName
-	}
-
-	// 8. 重新组合路径
-	if dir == "." {
-		cleaned = actualFileName
-	} else {
-		cleaned = filepath.Join(dir, actualFileName)
-	}
-
-	// 9. 最终路径长度检查
-	if len(cleaned) > maxPathLength {
-		cleaned = cleaned[:maxPathLength-truncateReserve] + truncatedSuffix
-	}
-
-	return cleaned
 }
