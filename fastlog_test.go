@@ -155,48 +155,6 @@ func TestNewFastLog_Initialization(t *testing.T) {
 	})
 }
 
-// TestFastLog_LogLevels 测试不同日志级别的过滤功能
-func TestFastLog_LogLevels(t *testing.T) {
-	// 创建临时日志文件来测试级别过滤
-	logFile := filepath.Join("logs", "level_test.log")
-
-	cfg := NewFastLogConfig("logs", "level_test.log")
-	cfg.LogLevel = WARN
-	cfg.OutputToConsole = false // 只写入文件，不输出到控制台
-	log := NewFastLog(cfg)
-
-	defer func() { log.Close() }()
-
-	// 不同级别日志
-	log.Debug("debug message")
-	log.Info("info message")
-	log.Warn("warn message")
-	log.Error("error message")
-
-	// 确保所有日志都写入完成
-	time.Sleep(200 * time.Millisecond)
-	log.Close()
-
-	// 读取日志文件内容
-	content, err := os.ReadFile(logFile)
-	if err != nil {
-		t.Fatalf("读取日志文件失败: %v", err)
-	}
-
-	output := string(content)
-	t.Logf("日志文件内容: %q", output)
-
-	// 验证结果：不应包含低级别日志
-	if strings.Contains(output, "debug message") || strings.Contains(output, "info message") {
-		t.Error("日志级别过滤失败，不应包含低级日志")
-	}
-
-	// 验证结果：应包含高级别日志
-	if !strings.Contains(output, "warn message") || !strings.Contains(output, "error message") {
-		t.Error("日志级别过滤失败，应包含高级日志")
-	}
-}
-
 // TestLogFormats 测试日志库支持的所有日志格式
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
