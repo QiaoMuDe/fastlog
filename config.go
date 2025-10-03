@@ -155,24 +155,15 @@ func (c *FastLogConfig) validateConfig() {
 	if c.MaxSize < 0 {
 		panic("MaxSize cannot be negative")
 	}
-	if c.MaxSize > maxSingleFileSize {
-		panic(fmt.Sprintf("MaxSize %d exceeds maximum %d MB", c.MaxSize, maxSingleFileSize))
-	}
 
 	// 验证保留天数
 	if c.MaxAge < 0 {
 		panic("MaxAge cannot be negative")
 	}
-	if c.MaxAge > maxRetentionDays {
-		panic(fmt.Sprintf("MaxAge %d exceeds maximum %d days", c.MaxAge, maxRetentionDays))
-	}
 
 	// 验证保留文件数
 	if c.MaxFiles < 0 {
 		panic("MaxFiles cannot be negative")
-	}
-	if c.MaxFiles > maxRetentionFiles {
-		panic(fmt.Sprintf("MaxFiles %d exceeds maximum %d files", c.MaxFiles, maxRetentionFiles))
 	}
 
 	// 文件输出相关校验（只校验不更改）

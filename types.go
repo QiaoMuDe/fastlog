@@ -33,11 +33,6 @@ const (
 	// 文件大小配置常量
 	defaultMaxFileSize = 10 // 默认最大文件大小（MB）
 
-	// 系统资源限制常量
-	maxSingleFileSize = 2048 // 最大单文件大小限制（MB）- 2GB
-	maxRetentionDays  = 3650 // 最大保留天数（10年）
-	maxRetentionFiles = 1000 // 最大保留文件数
-
 	// 默认文件写入器配置
 	defaultMaxBufferSize = 64 * 1024       // 默认最大缓冲区大小（64KB）
 	defaultMaxWriteCount = 500             // 默认最大写入次数（500次）
