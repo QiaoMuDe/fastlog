@@ -136,7 +136,7 @@ func getCallerInfo(skip int) (fileName string, functionName string, line uint16,
 }
 
 // logFatal Fatal级别的特殊处理方法
-
+//
 // 参数:
 //   - message: 格式化后的消息
 func (f *FastLog) logFatal(message string) {
@@ -152,7 +152,10 @@ func (f *FastLog) logFatal(message string) {
 	f.processLog(FATAL, message)
 
 	// 关闭日志记录器
-	f.Close()
+	if err := f.Close(); err != nil {
+		// 如果关闭失败，记录到stderr
+		fmt.Printf("FATAL: failed to close logger: %v\n", err)
+	}
 
 	// 终止程序（非0退出码表示错误）
 	os.Exit(1)

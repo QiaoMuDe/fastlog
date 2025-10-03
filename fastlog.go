@@ -57,7 +57,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		panic("FastLogConfig cannot be nil")
 	}
 
-	// 最终配置修正: 直接在原始配置上修正所有不合理的值
+	// 最终验证
 	config.validateConfig()
 
 	// 克隆配置结构体防止原配置被意外修改
@@ -122,15 +122,18 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 	return f
 }
 
-// Close 安全关闭日志记录器
-func (f *FastLog) Close() {
+// Close 关闭日志记录器
+//
+// 返回值:
+//   - error: 如果关闭过程中发生错误, 返回错误信息; 否则返回nil
+func (f *FastLog) Close() error {
 	if f == nil {
-		return
+		return nil
 	}
 
 	// 确保日志处理器只关闭一次（原子操作）
 	if !f.closed.CompareAndSwap(false, true) {
-		return
+		return nil
 	}
 
 	// 记录关闭日志
@@ -139,9 +142,11 @@ func (f *FastLog) Close() {
 	// 如果启用了文件写入器，则尝试关闭它。
 	if f.config.OutputToFile && f.fileWriter != nil {
 		if err := f.fileWriter.Close(); err != nil {
-			fmt.Println(err)
+			return err
 		}
 	}
+
+	return nil
 }
 
 /* ====== 不带占位符方法 ======*/
@@ -226,8 +231,8 @@ func (f *FastLog) Error(v ...any) {
 		return
 	}
 
-	// 确保日志处理器只关闭一次（原子操作）
-	if !f.closed.CompareAndSwap(false, true) {
+	// 检查是否已关闭日志记录器
+	if f.closed.Load() {
 		return
 	}
 
