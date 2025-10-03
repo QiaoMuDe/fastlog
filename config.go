@@ -60,6 +60,68 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	}
 }
 
+// DevConfig 创建一个开发环境下的FastLogConfig实例
+//
+// 参数:
+//   - logDirName: 日志目录名
+//   - logFileName: 日志文件名
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+//
+// 特性:
+//   - 启用详细日志格式
+//   - 设置日志级别为DEBUG
+//   - 设置最大日志文件保留数量为5
+//   - 设置最大日志文件保留天数为7天
+func DevConfig(logDirName string, logFileName string) *FastLogConfig {
+	// 创建一个新的FastLogConfig实例
+	cfg := NewFastLogConfig(logDirName, logFileName)
+	cfg.LogLevel = DEBUG     // 设置日志级别为DEBUG
+	cfg.LogFormat = Detailed // 设置日志格式为详细格式
+	cfg.MaxFiles = 5         // 设置最大日志文件保留数量为5
+	cfg.MaxAge = 7           // 设置最大日志文件保留天数为7天
+	return cfg
+}
+
+// ProdConfig 创建一个生产环境下的FastLogConfig实例
+//
+// 参数:
+//   - logDirName: 日志目录名
+//   - logFileName: 日志文件名
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+//
+// 特性:
+//   - 启用日志文件压缩
+//   - 禁用控制台输出
+//   - 设置最大日志文件保留天数为30天
+//   - 设置最大日志文件保留数量为24个
+func ProdConfig(logDirName string, logFileName string) *FastLogConfig {
+	cfg := NewFastLogConfig(logDirName, logFileName)
+	cfg.MaxAge = 30             // 设置最大日志文件保留天数为30天
+	cfg.MaxFiles = 24           // 设置最大日志文件保留数量为24个
+	cfg.Compress = true         // 启用日志文件压缩
+	cfg.OutputToConsole = false // 禁用控制台输出
+	return cfg
+}
+
+// ConsoleConfig 创建一个控制台环境下的FastLogConfig实例
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+//
+// 特性:
+//   - 禁用文件输出
+//   - 设置日志级别为DEBUG
+func ConsoleConfig() *FastLogConfig {
+	cfg := NewFastLogConfig("", "")
+	cfg.OutputToFile = false // 禁用文件输出
+	cfg.LogLevel = DEBUG     // 设置日志级别为DEBUG
+	return cfg
+}
+
 // ========================================================================
 // 内部辅助函数
 // ========================================================================
