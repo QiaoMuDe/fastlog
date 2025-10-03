@@ -165,7 +165,7 @@ func TestFastLogPerformance(t *testing.T) {
 
 	// 创建日志记录器
 	logger := NewFastLog(config)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// 初始化性能统计
 	stats := &PerformanceStats{
@@ -306,7 +306,7 @@ func BenchmarkFastLogConcurrent(b *testing.B) {
 	config.LogFormat = Simple
 
 	logger := NewFastLog(config)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	b.ResetTimer()
 	b.RunParallel(func(pb *testing.PB) {
@@ -329,7 +329,7 @@ func BenchmarkFastLogSingle(b *testing.B) {
 	config.LogFormat = Simple
 
 	logger := NewFastLog(config)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

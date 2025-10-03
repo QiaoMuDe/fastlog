@@ -62,7 +62,7 @@ func TestCustomFormat(t *testing.T) {
 
 	// 创建日志记录器
 	log := NewFastLog(cfg)
-	defer func() { log.Close() }()
+	defer func() { _ = log.Close() }()
 
 	// 定义web应用程序日志格式
 	webAppLogFormat := `%s [%s] %s %s %s %d %d %s %s %dms`
@@ -84,7 +84,7 @@ func TestNoColor(t *testing.T) {
 	// 创建日志记录器
 	log := NewFastLog(cfg)
 
-	defer func() { log.Close() }()
+	defer func() { _ = log.Close() }()
 
 	// 打印测试日志
 	log.Info("测试无颜色日志")
@@ -104,7 +104,7 @@ func TestNoBold(t *testing.T) {
 	// 创建日志记录器
 	log := NewFastLog(cfg)
 
-	defer func() { log.Close() }()
+	defer func() { _ = log.Close() }()
 
 	// 打印测试日志
 	log.Info("测试无加粗日志")
@@ -145,7 +145,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 		// 给processor一些时间完成初始化和处理
 		time.Sleep(100 * time.Millisecond)
 
-		log.Close()
+		_ = log.Close()
 
 		// 验证日志文件是否创建成功
 		logFile := filepath.Join("logs", "init_test.log")
@@ -181,7 +181,7 @@ func TestLogFormats(t *testing.T) {
 
 			// 创建日志记录器
 			log := NewFastLog(cfg)
-			defer func() { log.Close() }()
+			defer func() { _ = log.Close() }()
 
 			// 测试所有日志级别
 			// 对于Custom格式，需要外部格式化
@@ -265,7 +265,7 @@ func TestFatalf(t *testing.T) {
 	if os.Getenv("TEST_MODE") == testName {
 		config := NewFastLogConfig("logs", "fatalf_test.log")
 		log := NewFastLog(config)
-		defer log.Close()
+		defer func() { _ = log.Close() }()
 
 		log.Fatalf("fatalf_test %s message", "formatted")
 		return
