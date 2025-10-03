@@ -21,12 +21,12 @@ var logLevelStringMap = map[LogLevel]string{
 
 // 预构建的日志级别到字符串的映射表（带填充，用于文本格式化）
 var logLevelPaddedStringMap = map[LogLevel]string{
-	DEBUG: "DEBUG ", // 6个字符(预填充空格)
-	INFO:  "INFO  ", // 6个字符
-	WARN:  "WARN  ", // 6个字符
-	ERROR: "ERROR ", // 6个字符
-	FATAL: "FATAL ", // 6个字符
-	NONE:  "NONE  ", // 6个字符
+	DEBUG: "DEBUG", // 5个字符(预填充空格)
+	INFO:  "INFO ", // 5个字符
+	WARN:  "WARN ", // 5个字符
+	ERROR: "ERROR", // 5个字符
+	FATAL: "FATAL", // 5个字符
+	NONE:  "NONE ", // 5个字符
 }
 
 const (
@@ -173,9 +173,9 @@ var fileInfoRequiredFormats = map[LogFormatType]struct{}{
 var logFormatMap = map[LogFormatType]string{
 	Json:            `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d","message":"%s"}`, // Json格式
 	JsonSimple:      `{"time":"%s","level":"%s","message":"%s"}`,                                         // Json简化格式(无文件信息)
-	Detailed:        `%s | %-7s | %s:%s:%d - %s`,                                                         // 详细格式
-	Simple:          `%s | %-7s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
-	Structured:      `T:%s|L:%-7s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
-	BasicStructured: `T:%s|L:%-7s|M:%s`,                                                                  // 基础结构化格式(无文件信息)
+	Detailed:        `%s | %-6s | %s:%s:%d - %s`,                                                         // 详细格式
+	Simple:          `%s | %-6s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
+	Structured:      `T:%s|L:%-6s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
+	BasicStructured: `T:%s|L:%-6s|M:%s`,                                                                  // 基础结构化格式(无文件信息)
 	SimpleTimestamp: `%s %s %s`,                                                                          // 简单时间格式
 }
