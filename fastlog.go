@@ -131,13 +131,13 @@ func (f *FastLog) Close() error {
 		return nil
 	}
 
-	// 确保日志处理器只关闭一次（原子操作）
+	// 记录关闭日志
+	f.Info("stop logging...")
+
+	// 确保日志处理器只关闭一次 (原子操作)
 	if !f.closed.CompareAndSwap(false, true) {
 		return nil
 	}
-
-	// 记录关闭日志
-	f.Info("stop logging...")
 
 	// 如果启用了文件写入器，则尝试关闭它。
 	if f.config.OutputToFile && f.fileWriter != nil {
