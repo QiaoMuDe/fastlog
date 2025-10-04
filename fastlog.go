@@ -78,6 +78,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		FlushInterval:   config.FlushInterval,   // 刷新间隔, 单位为秒, 默认为0, 表示不做限制
 		MaxBufferSize:   config.MaxBufferSize,   // 缓冲区最大容量, 单位为字节
 		MaxWriteCount:   config.MaxWriteCount,   // 最大写入次数, 默认为0, 表示不做限制
+		Async:           config.Async,           // 是否异步清理日志, 默认同步清理
 	}
 
 	// 初始化写入器
@@ -95,6 +96,7 @@ func NewFastLog(config *FastLogConfig) *FastLog {
 		logger.MaxFiles = cfg.MaxFiles                  // 最大日志文件保留数量
 		logger.Compress = cfg.Compress                  // 是否启用日志文件压缩
 		logger.LocalTime = cfg.LocalTime                // 是否使用本地时间
+		logger.Async = cfg.Async                        // 是否异步清理日志
 
 		// 初始化缓冲区配置
 		bufCfg := logrotatex.DefBufCfg()

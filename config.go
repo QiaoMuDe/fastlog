@@ -28,6 +28,7 @@ type FastLogConfig struct {
 	MaxBufferSize   int           // 缓冲区大小, 单位为字节, 默认64KB
 	MaxWriteCount   int           // 最大写入次数, 默认500次
 	FlushInterval   time.Duration // 刷新间隔, 默认1秒
+	Async           bool          // 是否异步清理日志, 默认同步清理
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -57,6 +58,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		MaxBufferSize:   defaultMaxBufferSize, // 缓冲区大小, 单位为字节, 默认64KB
 		MaxWriteCount:   defaultMaxWriteCount, // 最大写入次数, 默认500次
 		FlushInterval:   defaultFlushInterval, // 刷新间隔, 默认1秒
+		Async:           false,                // 是否异步清理日志, 默认同步清理
 	}
 }
 
