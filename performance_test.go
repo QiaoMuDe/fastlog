@@ -160,7 +160,7 @@ func TestFastLogPerformance(t *testing.T) {
 	config.OutputToConsole = false // 关闭控制台输出以提高性能
 	config.LogLevel = INFO         // 限制日志级别
 	config.LogFormat = Simple      // 简单日志格式
-	config.MaxSize = 100           // 100MB
+	config.MaxSize = 10            // 10MB
 	config.Color = true            // 关闭颜色输出
 
 	// 创建日志记录器
