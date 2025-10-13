@@ -1,9 +1,4 @@
-/*
-fastlog_test.go - FastLog核心功能测试文件
-包含对日志记录器初始化、并发日志处理、日志格式、日志级别过滤和文件切割等核心功能的单元测试，
-验证FastLog在各种使用场景下的正确性和稳定性。
-*/
-package fastlog
+package stdlog
 
 import (
 	"flag"
@@ -14,6 +9,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"gitee.com/MM-Q/fastlog/internal/config"
+	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
 // TestMain 全局测试入口，控制非verbose模式下的输出重定向
@@ -56,12 +54,12 @@ func TestMain(m *testing.M) {
 // TestCustomFormat 测试自定义日志格式
 func TestCustomFormat(t *testing.T) {
 	// 创建日志配置
-	cfg := NewFastLogConfig("logs", "custom.log")
-	cfg.LogLevel = DEBUG
-	cfg.LogFormat = Custom
+	cfg := config.NewFastLogConfig("logs", "custom.log")
+	cfg.LogLevel = types.DEBUG
+	cfg.LogFormat = types.Custom
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewStdLog(cfg)
 	defer func() { _ = log.Close() }()
 
 	// 定义web应用程序日志格式
@@ -77,12 +75,12 @@ func TestCustomFormat(t *testing.T) {
 // TestNoColor 测试无颜色日志
 func TestNoColor(t *testing.T) {
 	// 创建日志配置
-	cfg := NewFastLogConfig("logs", "nocolor.log")
-	cfg.LogLevel = DEBUG
+	cfg := config.NewFastLogConfig("logs", "nocolor.log")
+	cfg.LogLevel = types.DEBUG
 	cfg.Color = false // 禁用终端颜色
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewStdLog(cfg)
 
 	defer func() { _ = log.Close() }()
 
@@ -96,13 +94,13 @@ func TestNoColor(t *testing.T) {
 // TestNoBold 测试无加粗日志
 func TestNoBold(t *testing.T) {
 	// 创建日志配置
-	cfg := NewFastLogConfig("logs", "nobold.log")
-	cfg.LogLevel = DEBUG
+	cfg := config.NewFastLogConfig("logs", "nobold.log")
+	cfg.LogLevel = types.DEBUG
 	cfg.Bold = false // 禁用终端字体加粗
 	cfg.Color = false
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewStdLog(cfg)
 
 	defer func() { _ = log.Close() }()
 
@@ -123,16 +121,16 @@ func TestNewFastLog_Initialization(t *testing.T) {
 			}
 		}()
 		// 这行代码应该会panic
-		_ = NewFastLog(nil)
+		_ = NewStdLog(nil)
 	})
 
 	// 测试正常初始化 - 使用临时目录避免文件冲突
 	t.Run("normal initialization", func(t *testing.T) {
-		cfg := NewFastLogConfig("logs", "init_test.log")
+		cfg := config.NewFastLogConfig("logs", "init_test.log")
 		cfg.OutputToConsole = false // 禁用控制台输出，避免测试干扰
 		cfg.OutputToFile = true     // 只测试文件输出
 
-		log := NewFastLog(cfg)
+		log := NewStdLog(cfg)
 
 		// 验证日志实例是否正确创建
 		if log == nil {
@@ -158,34 +156,34 @@ func TestNewFastLog_Initialization(t *testing.T) {
 // TestLogFormats 测试日志库支持的所有日志格式
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
-	formats := map[LogFormatType]string{
-		Detailed:        "detailed.log",
-		Json:            "json.log",
-		Structured:      "structured.log",
-		Simple:          "simple.log",
-		BasicStructured: "basic_structured.log",
-		SimpleTimestamp: "simple_timestamp.log",
-		JsonSimple:      "json_simple.log",
+	formats := map[types.LogFormatType]string{
+		types.Detailed:        "detailed.log",
+		types.Json:            "json.log",
+		types.Structured:      "structured.log",
+		types.Simple:          "simple.log",
+		types.BasicStructured: "basic_structured.log",
+		types.SimpleTimestamp: "simple_timestamp.log",
+		types.JsonSimple:      "json_simple.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
-		Custom: "custom.log",
+		types.Custom: "custom.log",
 	}
 
 	// 为每种格式创建日志记录器并测试所有日志级别
 	for format, filename := range formats {
 		t.Run(fmt.Sprintf("Format_%s", filename), func(t *testing.T) {
 			// 创建日志配置
-			cfg := NewFastLogConfig("logs", filename)
-			cfg.LogLevel = DEBUG
+			cfg := config.NewFastLogConfig("logs", filename)
+			cfg.LogLevel = types.DEBUG
 			cfg.LogFormat = format
 			cfg.OutputToConsole = true
 
 			// 创建日志记录器
-			log := NewFastLog(cfg)
+			log := NewStdLog(cfg)
 			defer func() { _ = log.Close() }()
 
 			// 测试所有日志级别
 			// 对于Custom格式，需要外部格式化
-			if format == Custom {
+			if format == types.Custom {
 				log.Debugf("[自定义格式] [%s] %s", "DEBUG", "这是一条调试日志")
 				log.Infof("[自定义格式] [%s] %s", "INFO", "这是一条信息日志")
 				log.Warnf("[自定义格式] [%s] %s", "WARN", "这是一条警告日志")
@@ -210,11 +208,11 @@ func TestFatal(t *testing.T) {
 
 	// 子进程模式：执行实际的Fatal调用
 	if os.Getenv("TEST_MODE") == testName {
-		config := NewFastLogConfig("test-logs", "fatal_test.log")
+		config := config.NewFastLogConfig("test-logs", "fatal_test.log")
 		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
 			panic(err)
 		}
-		log := NewFastLog(config)
+		log := NewStdLog(config)
 		log.Fatal("fatal_test message")
 		return
 	}
@@ -263,8 +261,8 @@ func TestFatalf(t *testing.T) {
 
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
-		config := NewFastLogConfig("logs", "fatalf_test.log")
-		log := NewFastLog(config)
+		config := config.NewFastLogConfig("logs", "fatalf_test.log")
+		log := NewStdLog(config)
 		defer func() { _ = log.Close() }()
 
 		log.Fatalf("fatalf_test %s message", "formatted")

@@ -1,0 +1,250 @@
+package stdlog
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"os"
+	"strconv"
+
+	"gitee.com/MM-Q/fastlog/internal/types"
+	"gitee.com/MM-Q/go-kit/pool"
+)
+
+// logFatal Fatal级别的特殊处理方法
+//
+// 参数:
+//   - message: 格式化后的消息
+func (f *StdLog) logFatal(message string) {
+	// Fatal方法的特殊处理 - 即使StdLog为nil也要记录错误并退出
+	if f == nil {
+		// 如果日志器为nil，直接输出到stderr并退出
+		fmt.Printf("FATAL: %s\n", message)
+		os.Exit(1)
+		return
+	}
+
+	// 先记录日志
+	f.processLog(types.FATAL, message)
+
+	// 关闭日志记录器
+	if err := f.Close(); err != nil {
+		// 如果关闭失败，记录到stderr
+		fmt.Printf("FATAL: failed to close logger: %v\n", err)
+	}
+
+	// 终止程序（非0退出码表示错误）
+	os.Exit(1)
+}
+
+// processLog 内部用于处理日志消息的方法
+//
+// 参数:
+//   - level: 日志级别
+//   - msg: 日志消息
+func (f *StdLog) processLog(level types.LogLevel, msg string) {
+	// 检查核心组件是否已初始化
+	if f == nil || f.cfg == nil || msg == "" {
+		return
+	}
+
+	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
+	if level < f.cfg.LogLevel {
+		return
+	}
+
+	// 调用者信息获取逻辑
+	var (
+		fileName = "unknown"
+		funcName = "unknown"
+		line     uint16
+	)
+
+	// 仅当需要文件信息时才获取调用者信息
+	if types.NeedsFileInfo(f.cfg.LogFormat) {
+		var ok bool
+		fileName, funcName, line, ok = types.GetCallerInfo(3)
+		if !ok {
+			fileName = "unknown"
+			funcName = "unknown"
+			line = 0
+		}
+	}
+
+	// 使用缓存的时间戳，减少重复的时间格式化开销
+	timestamp := types.GetCachedTimestamp()
+
+	// 从对象池获取日志消息对象，增加安全检查
+	logMessage := types.GetLogMsg()
+	defer types.PutLogMsg(logMessage) // 确保在函数返回时回收对象
+
+	// 安全地填充日志消息字段
+	logMessage.Timestamp = timestamp // 时间戳
+	logMessage.Level = level         // 日志级别
+	logMessage.Message = msg         // 日志消息
+	logMessage.FileName = fileName   // 文件名
+	logMessage.FuncName = funcName   // 函数名
+	logMessage.Line = line           // 行号
+
+	// 获取预分配的缓冲区，避免动态内存分配
+	buf := pool.GetBufCap(256)
+	defer pool.PutBuf(buf)
+
+	// 根据日志格式格式化到缓冲区
+	f.formatLogToBuffer(buf, logMessage)
+
+	// 控制台输出 - 直接使用 colorlib 打印
+	if f.cfg.OutputToConsole {
+		// 直接调用 colorlib 的打印方法（自带换行）
+		switch logMessage.Level {
+		case types.INFO:
+			f.cl.Blue(buf.String())
+		case types.WARN:
+			f.cl.Yellow(buf.String())
+		case types.ERROR:
+			f.cl.Red(buf.String())
+		case types.DEBUG:
+			f.cl.Magenta(buf.String())
+		case types.FATAL:
+			f.cl.Red(buf.String())
+		default:
+			fmt.Println(buf.String()) // 默认打印
+		}
+	}
+
+	// 将缓冲区中的日志消息写入日志文件
+	if f.cfg.OutputToFile && f.fileWriter != nil {
+		buf.WriteString("\n") // 添加换行符，确保每条日志单独一行
+		if _, err := f.fileWriter.Write(buf.Bytes()); err != nil {
+			fmt.Printf("Error writing to log file: %v\n", err)
+		}
+	}
+}
+
+// formatLogToBuffer 将日志消息格式化到缓冲区，避免创建中间字符串（零拷贝优化）
+//
+// 参数:
+//   - buf: 目标缓冲区
+//   - logmsg: 日志消息
+func (f *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
+	// 检查参数有效性
+	if buf == nil || logmsg == nil {
+		return
+	}
+
+	// 如果时间戳为空，使用缓存的时间戳
+	if logmsg.Timestamp == "" {
+		logmsg.Timestamp = types.GetCachedTimestamp()
+	}
+
+	// 检查关键字段是否为空，设置默认值
+	if logmsg.Message == "" {
+		return // 消息为空直接返回
+	}
+	if logmsg.FileName == "" {
+		logmsg.FileName = "unknown-file"
+	}
+	if logmsg.FuncName == "" {
+		logmsg.FuncName = "unknown-func"
+	}
+
+	// 根据日志格式直接格式化到目标缓冲区
+	switch f.cfg.LogFormat {
+	// JSON格式
+	case types.Json:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(logmsg); err == nil {
+			buf.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(buf,
+				types.LogFormatMap[types.Json],
+				logmsg.Timestamp, types.LogLevelToString(logmsg.Level), "unknown", "unknown", 0,
+				fmt.Sprintf("Failed to serialize original message: %v | Original content: %s", err, logmsg.Message),
+			)
+		}
+
+	// JsonSimple格式（无文件信息）
+	case types.JsonSimple:
+		// 序列化为JSON并直接写入缓冲区
+		if jsonBytes, err := json.Marshal(types.SimpleLogMsg{
+			Timestamp: logmsg.Timestamp,
+			Level:     logmsg.Level,
+			Message:   logmsg.Message,
+		}); err == nil {
+			buf.Write(jsonBytes)
+		} else {
+			// JSON序列化失败时的降级处理
+			fmt.Fprintf(buf, types.LogFormatMap[types.JsonSimple],
+				logmsg.Timestamp, types.LogLevelToString(logmsg.Level), fmt.Sprintf("Failed to serialize: %v | Original: %s", err, logmsg.Message))
+		}
+
+	// 详细格式
+	case types.Detailed:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" | ")
+		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString(" | ")
+		buf.WriteString(logmsg.FileName) // 文件信息
+		buf.WriteByte(':')
+		buf.WriteString(logmsg.FuncName) // 函数
+		buf.WriteByte(':')
+		buf.WriteString(strconv.Itoa(int(logmsg.Line))) // 行号
+		buf.WriteString(" - ")
+		buf.WriteString(logmsg.Message) // 消息
+
+	// 简约格式
+	case types.Simple:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" | ")
+		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString(" | ")
+		buf.WriteString(logmsg.Message) // 消息
+
+	// 结构化格式
+	case types.Structured:
+		buf.WriteString("T:") // 时间戳
+		buf.WriteString(logmsg.Timestamp)
+		buf.WriteString("|L:")                                 // 日志级别
+		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString("|F:") // 文件信息
+		buf.WriteString(logmsg.FileName)
+		buf.WriteByte(':')
+		buf.WriteString(logmsg.FuncName)
+		buf.WriteByte(':')
+		buf.WriteString(strconv.Itoa(int(logmsg.Line)))
+		buf.WriteString("|M:") // 消息
+		buf.WriteString(logmsg.Message)
+
+	// 基础结构化格式(无文件信息)
+	case types.BasicStructured:
+		buf.WriteString("T:") // 时间戳
+		buf.WriteString(logmsg.Timestamp)
+		buf.WriteString("|L:")                                 // 日志级别
+		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)
+		buf.WriteString("|M:") // 消息
+		buf.WriteString(logmsg.Message)
+
+	// 简单时间格式
+	case types.SimpleTimestamp:
+		buf.WriteString(logmsg.Timestamp) // 时间戳
+		buf.WriteString(" ")
+		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
+		buf.WriteString(levelStr)                              // 日志级别
+		buf.WriteString(" ")
+		buf.WriteString(logmsg.Message) // 消息
+
+	// 自定义格式
+	case types.Custom:
+		buf.WriteString(logmsg.Message)
+
+	// 默认情况
+	default:
+		buf.WriteString("Unrecognized log format option: ")
+		fmt.Fprintf(buf, "%v", f.cfg.LogFormat)
+	}
+}

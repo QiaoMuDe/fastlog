@@ -1,8 +1,10 @@
-package fastlog
+package config
 
 import (
 	"testing"
 	"time"
+
+	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
 // helper: 断言调用发生 panic
@@ -29,10 +31,10 @@ func TestNewFastLogConfig_Defaults(t *testing.T) {
 	if !cfg.OutputToFile {
 		t.Error("默认应启用文件输出")
 	}
-	if cfg.LogLevel != INFO {
+	if cfg.LogLevel != types.INFO {
 		t.Errorf("默认 LogLevel 应为 INFO，得到 %v", cfg.LogLevel)
 	}
-	if cfg.LogFormat != Simple {
+	if cfg.LogFormat != types.Simple {
 		t.Errorf("默认 LogFormat 应为 Simple，得到 %v", cfg.LogFormat)
 	}
 	if !cfg.Color {
@@ -64,8 +66,8 @@ func TestNewFastLogConfig_Defaults(t *testing.T) {
 	if cfg.MaxWriteCount <= 0 {
 		t.Error("MaxWriteCount 应为正数")
 	}
-	if cfg.FlushInterval != defaultFlushInterval {
-		t.Errorf("默认 FlushInterval 应为 %v，得到 %v", defaultFlushInterval, cfg.FlushInterval)
+	if cfg.FlushInterval != types.DefaultFlushInterval {
+		t.Errorf("默认 FlushInterval 应为 %v，得到 %v", types.DefaultFlushInterval, cfg.FlushInterval)
 	}
 }
 
@@ -75,10 +77,10 @@ func TestNewFastLogConfig_Defaults(t *testing.T) {
 func TestDevConfig(t *testing.T) {
 	cfg := DevConfig("logs", "dev.log")
 
-	if cfg.LogLevel != DEBUG {
+	if cfg.LogLevel != types.DEBUG {
 		t.Errorf("DevConfig: LogLevel 应为 DEBUG，得到 %v", cfg.LogLevel)
 	}
-	if cfg.LogFormat != Detailed {
+	if cfg.LogFormat != types.Detailed {
 		t.Errorf("DevConfig: LogFormat 应为 Detailed，得到 %v", cfg.LogFormat)
 	}
 	if cfg.MaxFiles != 5 {
@@ -120,7 +122,7 @@ func TestConsoleConfig(t *testing.T) {
 	if cfg.OutputToFile != false {
 		t.Error("ConsoleConfig: 应禁用文件输出")
 	}
-	if cfg.LogLevel != DEBUG {
+	if cfg.LogLevel != types.DEBUG {
 		t.Errorf("ConsoleConfig: LogLevel 应为 DEBUG，得到 %v", cfg.LogLevel)
 	}
 	// 目录与文件名在控制台模式可为空，但 validateConfig 不会校验（因为未输出到文件）
@@ -137,7 +139,7 @@ func TestValidateConfig_OutputTargetsRequired(t *testing.T) {
 	cfg.OutputToConsole = false
 	cfg.OutputToFile = false
 	mustPanic(t, "输出目标至少启用一个", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 }
 
@@ -145,9 +147,9 @@ func TestValidateConfig_InvalidLevels(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "app.log")
 
 	// 非法级别（下界：小于 DEBUG）
-	cfg.LogLevel = LogLevel(0)
+	cfg.LogLevel = types.LogLevel(0)
 	mustPanic(t, "非法 LogLevel（下界）", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 }
 
@@ -155,9 +157,9 @@ func TestValidateConfig_InvalidFormats(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "app.log")
 
 	// 非法格式（上界：大于 Custom）
-	cfg.LogFormat = Custom + 1
+	cfg.LogFormat = types.Custom + 1
 	mustPanic(t, "非法 LogFormat（上界）", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 }
 
@@ -168,27 +170,27 @@ func TestValidateConfig_FileOutputRequirements(t *testing.T) {
 	// 空目录
 	cfg.LogDirName = "   "
 	mustPanic(t, "启用文件输出时目录不能为空", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 	cfg.LogDirName = "logs"
 
 	// 空文件名
 	cfg.LogFileName = " "
 	mustPanic(t, "启用文件输出时文件名不能为空", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 	cfg.LogFileName = "app.log"
 
 	// 路径穿越检测
 	cfg.LogDirName = "../logs"
 	mustPanic(t, "目录包含路径穿越", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 	cfg.LogDirName = "logs"
 
 	cfg.LogFileName = "app../log"
 	mustPanic(t, "文件名包含路径穿越", func() {
-		cfg.validateConfig()
+		cfg.ValidateConfig()
 	})
 	cfg.LogFileName = "app.log"
 }
@@ -198,17 +200,17 @@ func TestValidateConfig_ValidExample(t *testing.T) {
 	// 一个典型的生产配置示例（应通过）
 	cfg.OutputToConsole = false
 	cfg.OutputToFile = true
-	cfg.LogLevel = INFO
-	cfg.LogFormat = Structured
+	cfg.LogLevel = types.INFO
+	cfg.LogFormat = types.Structured
 	cfg.MaxSize = 100
 	cfg.MaxAge = 30
 	cfg.MaxFiles = 24
 	cfg.LocalTime = true
 	cfg.Compress = true
-	cfg.MaxBufferSize = defaultMaxBufferSize
-	cfg.MaxWriteCount = defaultMaxWriteCount
+	cfg.MaxBufferSize = types.DefaultMaxBufferSize
+	cfg.MaxWriteCount = types.DefaultMaxWriteCount
 	cfg.FlushInterval = 1 * time.Second
 
 	// 不应 panic
-	cfg.validateConfig()
+	cfg.ValidateConfig()
 }
