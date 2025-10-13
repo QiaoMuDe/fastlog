@@ -15,9 +15,9 @@ import (
 //
 // 参数:
 //   - message: 格式化后的消息
-func (f *StdLog) logFatal(message string) {
+func (s *StdLog) logFatal(message string) {
 	// Fatal方法的特殊处理 - 即使StdLog为nil也要记录错误并退出
-	if f == nil {
+	if s == nil {
 		// 如果日志器为nil，直接输出到stderr并退出
 		fmt.Printf("FATAL: %s\n", message)
 		os.Exit(1)
@@ -25,10 +25,10 @@ func (f *StdLog) logFatal(message string) {
 	}
 
 	// 先记录日志
-	f.processLog(types.FATAL, message)
+	s.processLog(types.FATAL, message)
 
 	// 关闭日志记录器
-	if err := f.Close(); err != nil {
+	if err := s.Close(); err != nil {
 		// 如果关闭失败，记录到stderr
 		fmt.Printf("FATAL: failed to close logger: %v\n", err)
 	}
@@ -42,14 +42,14 @@ func (f *StdLog) logFatal(message string) {
 // 参数:
 //   - level: 日志级别
 //   - msg: 日志消息
-func (f *StdLog) processLog(level types.LogLevel, msg string) {
+func (s *StdLog) processLog(level types.LogLevel, msg string) {
 	// 检查核心组件是否已初始化
-	if f == nil || f.cfg == nil || msg == "" {
+	if s == nil || s.cfg == nil || msg == "" {
 		return
 	}
 
 	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
-	if level < f.cfg.LogLevel {
+	if level < s.cfg.LogLevel {
 		return
 	}
 
@@ -61,7 +61,7 @@ func (f *StdLog) processLog(level types.LogLevel, msg string) {
 	)
 
 	// 仅当需要文件信息时才获取调用者信息
-	if types.NeedsFileInfo(f.cfg.LogFormat) {
+	if types.NeedsFileInfo(s.cfg.LogFormat) {
 		var ok bool
 		fileName, funcName, line, ok = types.GetCallerInfo(3)
 		if !ok {
@@ -91,31 +91,31 @@ func (f *StdLog) processLog(level types.LogLevel, msg string) {
 	defer pool.PutBuf(buf)
 
 	// 根据日志格式格式化到缓冲区
-	f.formatLogToBuffer(buf, logMessage)
+	s.formatLogToBuffer(buf, logMessage)
 
 	// 控制台输出 - 直接使用 colorlib 打印
-	if f.cfg.OutputToConsole {
+	if s.cfg.OutputToConsole {
 		// 直接调用 colorlib 的打印方法（自带换行）
 		switch logMessage.Level {
 		case types.INFO:
-			f.cl.Blue(buf.String())
+			s.cl.Blue(buf.String())
 		case types.WARN:
-			f.cl.Yellow(buf.String())
+			s.cl.Yellow(buf.String())
 		case types.ERROR:
-			f.cl.Red(buf.String())
+			s.cl.Red(buf.String())
 		case types.DEBUG:
-			f.cl.Magenta(buf.String())
+			s.cl.Magenta(buf.String())
 		case types.FATAL:
-			f.cl.Red(buf.String())
+			s.cl.Red(buf.String())
 		default:
 			fmt.Println(buf.String()) // 默认打印
 		}
 	}
 
 	// 将缓冲区中的日志消息写入日志文件
-	if f.cfg.OutputToFile && f.fileWriter != nil {
+	if s.cfg.OutputToFile && s.fileWriter != nil {
 		buf.WriteString("\n") // 添加换行符，确保每条日志单独一行
-		if _, err := f.fileWriter.Write(buf.Bytes()); err != nil {
+		if _, err := s.fileWriter.Write(buf.Bytes()); err != nil {
 			fmt.Printf("Error writing to log file: %v\n", err)
 		}
 	}
@@ -126,7 +126,7 @@ func (f *StdLog) processLog(level types.LogLevel, msg string) {
 // 参数:
 //   - buf: 目标缓冲区
 //   - logmsg: 日志消息
-func (f *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
+func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
 	// 检查参数有效性
 	if buf == nil || logmsg == nil {
 		return
@@ -149,7 +149,7 @@ func (f *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
 	}
 
 	// 根据日志格式直接格式化到目标缓冲区
-	switch f.cfg.LogFormat {
+	switch s.cfg.LogFormat {
 	// JSON格式
 	case types.Json:
 		// 序列化为JSON并直接写入缓冲区
@@ -245,6 +245,6 @@ func (f *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
 	// 默认情况
 	default:
 		buf.WriteString("Unrecognized log format option: ")
-		fmt.Fprintf(buf, "%v", f.cfg.LogFormat)
+		fmt.Fprintf(buf, "%v", s.cfg.LogFormat)
 	}
 }

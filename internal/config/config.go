@@ -2,10 +2,12 @@ package config
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"gitee.com/MM-Q/fastlog/internal/types"
+	"gitee.com/MM-Q/logrotatex"
 )
 
 // FastLogConfig 定义一个配置结构体, 用于配置日志记录器
@@ -183,4 +185,65 @@ func (c *FastLogConfig) ValidateConfig() {
 			panic("LogFileName contains path traversal '..'")
 		}
 	}
+}
+
+// Clone 创建一个FastLogConfig的副本
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针，该实例是当前实例的副本。
+func (c *FastLogConfig) Clone() *FastLogConfig {
+	return &FastLogConfig{
+		LogDirName:      c.LogDirName,
+		LogFileName:     c.LogFileName,
+		LogLevel:        c.LogLevel,
+		LogFormat:       c.LogFormat,
+		Color:           c.Color,
+		Bold:            c.Bold,
+		OutputToFile:    c.OutputToFile,
+		OutputToConsole: c.OutputToConsole,
+		MaxSize:         c.MaxSize,
+		MaxAge:          c.MaxAge,
+		MaxFiles:        c.MaxFiles,
+		Compress:        c.Compress,
+		Async:           c.Async,
+		LocalTime:       c.LocalTime,
+		MaxBufferSize:   c.MaxBufferSize,
+		MaxWriteCount:   c.MaxWriteCount,
+		FlushInterval:   c.FlushInterval,
+	}
+}
+
+// CreateBufferedWriter 根据配置创建一个带缓冲的文件写入器
+//
+// 参数:
+//   - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
+//
+// 返回值:
+//   - *logrotatex.BufferedWriter: 一个指向BufferedWriter实例的指针。
+func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
+	// 如果不允许将日志输出到文件, 则返回nil
+	if !cfg.OutputToFile {
+		return nil
+	}
+
+	// 拼接日志文件路径
+	logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
+
+	// 初始化日志文件切割器
+	logger := logrotatex.NewLogRotateX(logFilePath) // 初始化日志文件切割器
+	logger.MaxSize = cfg.MaxSize                    // 最大日志文件大小, 单位为MB
+	logger.MaxAge = cfg.MaxAge                      // 最大日志文件保留天数
+	logger.MaxFiles = cfg.MaxFiles                  // 最大日志文件保留数量
+	logger.Compress = cfg.Compress                  // 是否启用日志文件压缩
+	logger.LocalTime = cfg.LocalTime                // 是否使用本地时间
+	logger.Async = cfg.Async                        // 是否异步清理日志
+
+	// 初始化缓冲区配置
+	bufCfg := logrotatex.DefBufCfg()
+	bufCfg.FlushInterval = cfg.FlushInterval // 刷新间隔, 单位为秒, 默认为0, 表示不做限制
+	bufCfg.MaxBufferSize = cfg.MaxBufferSize // 缓冲区最大容量, 单位为字节
+	bufCfg.MaxWriteCount = cfg.MaxWriteCount // 最大写入次数, 默认为0, 表示不做限制
+
+	// 创建带缓冲的批量写入器，嵌入日志切割器
+	return logrotatex.NewBufferedWriter(logger, bufCfg)
 }
