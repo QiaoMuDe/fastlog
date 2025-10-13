@@ -5,7 +5,6 @@ import (
 
 	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/fastlog/internal/config"
-	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/logrotatex"
 )
 
@@ -54,9 +53,4 @@ func NewFlog(cfg *config.FastLogConfig) *Flog {
 
 	// 返回Flog实例
 	return f
-}
-
-// WithFields 创建一个字段日志构建器
-func (f *Flog) WithFields(level types.LogLevel) *FieldLogger {
-	return nil
 }
