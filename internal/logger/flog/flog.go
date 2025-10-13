@@ -5,6 +5,7 @@ import (
 
 	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/fastlog/internal/config"
+	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/logrotatex"
 )
 
@@ -14,7 +15,6 @@ type Flog struct {
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
 	cfg        *config.FastLogConfig      // 嵌入的配置结构体
 	closed     atomic.Bool                // 标记日志处理器是否已关闭
-	fields     map[string]interface{}     // 自定义字段, 用于在日志中添加额外的上下文信息
 }
 
 // NewFlog 创建一个新的Flog实例, 用于记录日志。
@@ -54,4 +54,9 @@ func NewFlog(cfg *config.FastLogConfig) *Flog {
 
 	// 返回Flog实例
 	return f
+}
+
+// WithFields 创建一个字段日志构建器
+func (f *Flog) WithFields(level types.LogLevel) *FieldLogger {
+	return nil
 }

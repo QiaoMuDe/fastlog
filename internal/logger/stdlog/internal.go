@@ -75,8 +75,8 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 	timestamp := types.GetCachedTimestamp()
 
 	// 从对象池获取日志消息对象，增加安全检查
-	logMessage := types.GetLogMsg()
-	defer types.PutLogMsg(logMessage) // 确保在函数返回时回收对象
+	logMessage := getLogMsg()
+	defer putLogMsg(logMessage) // 确保在函数返回时回收对象
 
 	// 安全地填充日志消息字段
 	logMessage.Timestamp = timestamp // 时间戳
@@ -126,7 +126,7 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 // 参数:
 //   - buf: 目标缓冲区
 //   - logmsg: 日志消息
-func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *types.LogMsg) {
+func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 	// 检查参数有效性
 	if buf == nil || logmsg == nil {
 		return
