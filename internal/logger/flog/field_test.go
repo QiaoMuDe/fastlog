@@ -23,10 +23,13 @@ func TestStringField(t *testing.T) {
 		t.Errorf("Expected value 'test', got '%s'", field.Value())
 	}
 
-	// 空key情况
+	// 空key情况 - 空key也会返回字段对象
 	emptyField := String("", "test")
-	if emptyField != nil {
-		t.Error("Expected nil for empty key")
+	if emptyField == nil {
+		t.Error("Expected non-nil field for empty key")
+	}
+	if emptyField.Key() != "" {
+		t.Errorf("Expected empty key, got '%s'", emptyField.Key())
 	}
 }
 
@@ -46,10 +49,13 @@ func TestIntField(t *testing.T) {
 		t.Errorf("Expected value '42', got '%s'", field.Value())
 	}
 
-	// 空key情况
+	// 空key情况 - 空key也会返回字段对象
 	emptyField := Int("", 42)
-	if emptyField != nil {
-		t.Error("Expected nil for empty key")
+	if emptyField == nil {
+		t.Error("Expected non-nil field for empty key")
+	}
+	if emptyField.Key() != "" {
+		t.Errorf("Expected empty key, got '%s'", emptyField.Key())
 	}
 }
 

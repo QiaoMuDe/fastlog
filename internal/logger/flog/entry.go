@@ -156,6 +156,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			if len(e.fields) > 0 {
 				b.Write([]byte(" "))
 				for _, field := range e.fields {
+					b.Write([]byte(" "))
 					b.WriteString(field.Key())
 					b.Write([]byte("="))
 					b.WriteString(field.Value())
@@ -175,6 +176,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			if len(e.fields) > 0 {
 				b.Write([]byte(" "))
 				for _, field := range e.fields {
+					b.Write([]byte(" "))
 					b.WriteString(field.Key())
 					b.Write([]byte("="))
 					b.WriteString(field.Value())
@@ -247,6 +249,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			if len(e.fields) > 0 {
 				b.Write([]byte(" "))
 				for _, field := range e.fields {
+					b.Write([]byte(" "))
 					b.WriteString(field.Key())
 					b.Write([]byte("="))
 					b.WriteString(field.Value())
