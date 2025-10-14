@@ -27,7 +27,7 @@ func TestBuildLogFormats(t *testing.T) {
 	// 使用NewEntry构造函数创建测试Entry
 	entry := NewEntry(true, types.INFO, "用户登录成功", fields...)
 
-	// 定义所有支持的日志格式
+	// 定义支持的日志格式（目前仅支持Json和JsonSimple）
 	formats := []struct {
 		formatType  types.LogFormatType
 		name        string
@@ -45,42 +45,6 @@ func TestBuildLogFormats(t *testing.T) {
 			name:        "JSON简单格式",
 			contains:    []string{"{", `"time":"` + testTime, `"level":"INFO"`, `"msg":"用户登录成功"`, `"user_id":"12345"`, `"age":"25"`, `"action":"login"`, "}"},
 			notContains: []string{`"caller"`}, // 不应该包含caller字段
-		},
-		{
-			formatType:  types.Detailed,
-			name:        "详细格式",
-			contains:    []string{testTime, "INFO", "用户登录成功", "user_id=12345", "age=25", "action=login"},
-			notContains: []string{"main.go:main:15"}, // 不应该包含硬编码的caller信息
-		},
-		{
-			formatType:  types.Simple,
-			name:        "简约格式",
-			contains:    []string{testTime, "INFO", "用户登录成功", "user_id=12345", "age=25", "action=login"},
-			notContains: []string{},
-		},
-		{
-			formatType:  types.Structured,
-			name:        "结构化格式",
-			contains:    []string{"T:" + testTime, "L:INFO", "M:用户登录成功", "user_id=12345", "age=25", "action=login"},
-			notContains: []string{"C:main.go:main:15"}, // 不应该包含硬编码的caller信息
-		},
-		{
-			formatType:  types.BasicStructured,
-			name:        "基础结构化格式",
-			contains:    []string{"T:" + testTime, "L:INFO", "M:用户登录成功", "user_id=12345", "age=25", "action=login"},
-			notContains: []string{},
-		},
-		{
-			formatType:  types.SimpleTimestamp,
-			name:        "简单时间戳格式",
-			contains:    []string{testTime, "INFO", "用户登录成功"},
-			notContains: []string{},
-		},
-		{
-			formatType:  types.Custom,
-			name:        "自定义格式",
-			contains:    []string{testTime, "INFO", "用户登录成功", "user_id=12345", "age=25", "action=login"},
-			notContains: []string{},
 		},
 	}
 
@@ -145,6 +109,7 @@ func TestBuildLogEdgeCases(t *testing.T) {
 	t.Run("无字段", func(t *testing.T) {
 		entry := NewEntry(true, types.INFO, "测试消息")
 
+		// 测试Json格式
 		cfg.LogFormat = types.Json
 		result := buildLog(cfg, entry)
 		resultStr := string(result)
@@ -202,7 +167,7 @@ func TestBuildLogEdgeCases(t *testing.T) {
 			t.Run(level.levelStr, func(t *testing.T) {
 				entry := NewEntry(true, level.level, "测试消息")
 
-				cfg.LogFormat = types.Simple
+				cfg.LogFormat = types.JsonSimple
 				result := buildLog(cfg, entry)
 				resultStr := string(result)
 

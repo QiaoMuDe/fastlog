@@ -76,6 +76,9 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 //
 // 返回值：
 //   - []byte: 构建的日志消息。
+//
+// 注意:
+//   - flog仅支持Json和JsonSimple格式。
 func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 	if cfg == nil || e == nil {
 		return []byte{}
@@ -142,118 +145,32 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			}
 		})
 
-	case types.Detailed: // 详细格式
+	default: // 默认格式为简洁JSON
 		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte(" | "))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte(" | "))
-			b.Write(e.caller) // 调用者信息
-			b.Write([]byte(" - "))
-			b.WriteString(e.msg) // 日志消息
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(" "))
-				for _, field := range e.fields {
-					b.Write([]byte(" "))
-					b.WriteString(field.Key())
-					b.Write([]byte("="))
-					b.WriteString(field.Value())
-				}
-			}
-		})
-
-	case types.Simple, types.Custom: // 简约格式 | 自定义格式
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte(" | "))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte(" | "))
-			b.WriteString(e.msg) // 日志消息
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(" "))
-				for _, field := range e.fields {
-					b.Write([]byte(" "))
-					b.WriteString(field.Key())
-					b.Write([]byte("="))
-					b.WriteString(field.Value())
-				}
-			}
-		})
-
-	case types.Structured: // 结构化格式
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.Write([]byte("T:"))
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte("|L:"))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte("|C:"))
-			b.Write(e.caller)      // 调用者信息
-			b.Write([]byte("|M:")) // 日志消息
+			b.Write([]byte(`{"time":"`))
+			b.WriteString(e.time)
+			b.Write([]byte(`","level":"`))
+			b.WriteString(types.LogLevelToString(e.level))
+			b.Write([]byte(`","msg":"`))
 			b.WriteString(e.msg)
+			b.Write([]byte(`"`))
 
 			// 添加字段
 			if len(e.fields) > 0 {
-				b.Write([]byte("|"))
-				for _, field := range e.fields {
-					b.Write([]byte(" "))
+				b.Write([]byte(`,`))
+				for i, field := range e.fields {
+					if i > 0 {
+						b.Write([]byte(`,`))
+					}
+					b.Write([]byte(`"`))
 					b.WriteString(field.Key())
-					b.Write([]byte("="))
+					b.Write([]byte(`":"`))
 					b.WriteString(field.Value())
+					b.Write([]byte(`"`))
 				}
-			}
-		})
-
-	case types.BasicStructured: // 简单结构化格式
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.Write([]byte("T:"))
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte("|L:"))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte("|M:"))                         // 日志消息
-			b.WriteString(e.msg)
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte("|"))
-				for _, field := range e.fields {
-					b.Write([]byte(" "))
-					b.WriteString(field.Key())
-					b.Write([]byte("="))
-					b.WriteString(field.Value())
-				}
-			}
-		})
-
-	case types.SimpleTimestamp: // 简单时间戳格式
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte(" "))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte(" "))
-			b.WriteString(e.msg) // 日志消息
-		})
-
-	default: // 默认情况
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.WriteString(e.time) // 时间戳
-			b.Write([]byte(" | "))
-			b.WriteString(types.LogLevelToString(e.level)) // 日志级别
-			b.Write([]byte(" | "))
-			b.WriteString(e.msg) // 日志消息
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(" "))
-				for _, field := range e.fields {
-					b.Write([]byte(" "))
-					b.WriteString(field.Key())
-					b.Write([]byte("="))
-					b.WriteString(field.Value())
-				}
+				b.Write([]byte(`}`))
+			} else {
+				b.Write([]byte(`}`))
 			}
 		})
 	}
