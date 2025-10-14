@@ -5,6 +5,7 @@ import (
 
 	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/fastlog/internal/config"
+	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/logrotatex"
 )
 
@@ -53,4 +54,29 @@ func NewFlog(cfg *config.FastLogConfig) *Flog {
 
 	// 返回Flog实例
 	return f
+}
+
+// log 记录日志
+//
+// 参数：
+//   - level: 日志级别。
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) log(level types.LogLevel, msg string, fields ...*Field) {
+	if f != nil && f.cfg != nil {
+		return
+	}
+
+	// 检查日志处理器是否已关闭
+	if f.closed.Load() {
+		return
+	}
+
+	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
+	if level < f.cfg.LogLevel {
+		return
+	}
+
+	_ = NewEntry(types.NeedsFileInfo(f.cfg.LogFormat), level, msg, fields...)
+
 }

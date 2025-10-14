@@ -2,10 +2,8 @@ package stdlog
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
-	"strconv"
 
 	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/go-kit/pool"
@@ -53,24 +51,6 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 		return
 	}
 
-	// 调用者信息获取逻辑
-	var (
-		fileName = "unknown"
-		funcName = "unknown"
-		line     uint16
-	)
-
-	// 仅当需要文件信息时才获取调用者信息
-	if types.NeedsFileInfo(s.cfg.LogFormat) {
-		var ok bool
-		fileName, funcName, line, ok = types.GetCallerInfo(3)
-		if !ok {
-			fileName = "unknown"
-			funcName = "unknown"
-			line = 0
-		}
-	}
-
 	// 使用缓存的时间戳，减少重复的时间格式化开销
 	timestamp := types.GetCachedTimestamp()
 
@@ -82,9 +62,11 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 	logMessage.Timestamp = timestamp // 时间戳
 	logMessage.Level = level         // 日志级别
 	logMessage.Message = msg         // 日志消息
-	logMessage.FileName = fileName   // 文件名
-	logMessage.FuncName = funcName   // 函数名
-	logMessage.Line = line           // 行号
+
+	// 仅当需要文件信息时才获取调用者信息
+	if types.NeedsFileInfo(s.cfg.LogFormat) {
+		logMessage.Caller = types.GetCallerInfo(3)
+	}
 
 	// 获取预分配的缓冲区，避免动态内存分配
 	buf := pool.GetBufCap(256)
@@ -132,65 +114,37 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 		return
 	}
 
-	// 如果时间戳为空，使用缓存的时间戳
-	if logmsg.Timestamp == "" {
-		logmsg.Timestamp = types.GetCachedTimestamp()
-	}
-
 	// 检查关键字段是否为空，设置默认值
 	if logmsg.Message == "" {
 		return // 消息为空直接返回
 	}
-	if logmsg.FileName == "" {
-		logmsg.FileName = "unknown-file"
-	}
-	if logmsg.FuncName == "" {
-		logmsg.FuncName = "unknown-func"
+
+	// 如果时间戳为空，使用缓存的时间戳
+	if logmsg.Timestamp == "" {
+		logmsg.Timestamp = types.GetCachedTimestamp()
 	}
 
 	// 根据日志格式直接格式化到目标缓冲区
 	switch s.cfg.LogFormat {
 	// JSON格式
 	case types.Json:
-		// 序列化为JSON并直接写入缓冲区
-		if jsonBytes, err := json.Marshal(logmsg); err == nil {
-			buf.Write(jsonBytes)
-		} else {
-			// JSON序列化失败时的降级处理
-			fmt.Fprintf(buf,
-				types.LogFormatMap[types.Json],
-				logmsg.Timestamp, types.LogLevelToString(logmsg.Level), "unknown", "unknown", 0,
-				fmt.Sprintf("Failed to serialize original message: %v | Original content: %s", err, logmsg.Message),
-			)
-		}
+		fmt.Fprintf(buf,
+			types.LogFormatMap[types.Json],
+			logmsg.Timestamp, types.LogLevelToString(logmsg.Level), string(logmsg.Caller), logmsg.Message)
 
 	// JsonSimple格式（无文件信息）
 	case types.JsonSimple:
-		// 序列化为JSON并直接写入缓冲区
-		if jsonBytes, err := json.Marshal(types.SimpleLogMsg{
-			Timestamp: logmsg.Timestamp,
-			Level:     logmsg.Level,
-			Message:   logmsg.Message,
-		}); err == nil {
-			buf.Write(jsonBytes)
-		} else {
-			// JSON序列化失败时的降级处理
-			fmt.Fprintf(buf, types.LogFormatMap[types.JsonSimple],
-				logmsg.Timestamp, types.LogLevelToString(logmsg.Level), fmt.Sprintf("Failed to serialize: %v | Original: %s", err, logmsg.Message))
-		}
+		fmt.Fprintf(buf,
+			types.LogFormatMap[types.JsonSimple],
+			logmsg.Timestamp, types.LogLevelToString(logmsg.Level), logmsg.Message)
 
 	// 详细格式
 	case types.Detailed:
 		buf.WriteString(logmsg.Timestamp) // 时间戳
 		buf.WriteString(" | ")
-		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
-		buf.WriteString(levelStr)
+		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 		buf.WriteString(" | ")
-		buf.WriteString(logmsg.FileName) // 文件信息
-		buf.WriteByte(':')
-		buf.WriteString(logmsg.FuncName) // 函数
-		buf.WriteByte(':')
-		buf.WriteString(strconv.Itoa(int(logmsg.Line))) // 行号
+		buf.Write(logmsg.Caller) // 调用者信息
 		buf.WriteString(" - ")
 		buf.WriteString(logmsg.Message) // 消息
 
@@ -198,8 +152,7 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 	case types.Simple:
 		buf.WriteString(logmsg.Timestamp) // 时间戳
 		buf.WriteString(" | ")
-		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
-		buf.WriteString(levelStr)
+		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 		buf.WriteString(" | ")
 		buf.WriteString(logmsg.Message) // 消息
 
@@ -207,15 +160,10 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 	case types.Structured:
 		buf.WriteString("T:") // 时间戳
 		buf.WriteString(logmsg.Timestamp)
-		buf.WriteString("|L:")                                 // 日志级别
-		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
-		buf.WriteString(levelStr)
-		buf.WriteString("|F:") // 文件信息
-		buf.WriteString(logmsg.FileName)
-		buf.WriteByte(':')
-		buf.WriteString(logmsg.FuncName)
-		buf.WriteByte(':')
-		buf.WriteString(strconv.Itoa(int(logmsg.Line)))
+		buf.WriteString("|L:") // 日志级别
+		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+		buf.WriteString("|C:") // 调用者信息
+		buf.Write(logmsg.Caller)
 		buf.WriteString("|M:") // 消息
 		buf.WriteString(logmsg.Message)
 
@@ -223,9 +171,8 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 	case types.BasicStructured:
 		buf.WriteString("T:") // 时间戳
 		buf.WriteString(logmsg.Timestamp)
-		buf.WriteString("|L:")                                 // 日志级别
-		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
-		buf.WriteString(levelStr)
+		buf.WriteString("|L:") // 日志级别
+		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 		buf.WriteString("|M:") // 消息
 		buf.WriteString(logmsg.Message)
 
@@ -233,8 +180,7 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 	case types.SimpleTimestamp:
 		buf.WriteString(logmsg.Timestamp) // 时间戳
 		buf.WriteString(" ")
-		levelStr := types.LogLevelToPaddedString(logmsg.Level) // 使用预填充的日志级别字符串
-		buf.WriteString(levelStr)                              // 日志级别
+		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level)) // 日志级别
 		buf.WriteString(" ")
 		buf.WriteString(logmsg.Message) // 消息
 

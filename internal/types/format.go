@@ -42,11 +42,11 @@ var FileInfoRequiredFormats = map[LogFormatType]struct{}{
 
 // 定义日志格式
 var LogFormatMap = map[LogFormatType]string{
-	Json:            `{"time":"%s","level":"%s","file":"%s","function":"%s","line":"%d","message":"%s"}`, // Json格式
-	JsonSimple:      `{"time":"%s","level":"%s","message":"%s"}`,                                         // Json简化格式(无文件信息)
-	Detailed:        `%s | %-6s | %s:%s:%d - %s`,                                                         // 详细格式
-	Simple:          `%s | %-6s | %s`,                                                                    // 简约格式                                                                                                // 自定义格式
-	Structured:      `T:%s|L:%-6s|F:%s:%s:%d|M:%s`,                                                       // 结构化格式
-	BasicStructured: `T:%s|L:%-6s|M:%s`,                                                                  // 基础结构化格式(无文件信息)
-	SimpleTimestamp: `%s %s %s`,                                                                          // 简单时间格式
+	Json:            `{"time":"%s","level":"%s","caller":"%s","message":"%s"}`, // Json格式
+	JsonSimple:      `{"time":"%s","level":"%s","message":"%s"}`,               // Json简化格式(无文件信息)
+	Detailed:        `%s | %-6s | %s - %s`,                                     // 详细格式
+	Simple:          `%s | %-6s | %s`,                                          // 简约格式                                                                                                // 自定义格式
+	Structured:      `T:%s|L:%-6s|C:%s|M:%s`,                                   // 结构化格式
+	BasicStructured: `T:%s|L:%-6s|M:%s`,                                        // 基础结构化格式(无文件信息)
+	SimpleTimestamp: `%s %s %s`,                                                // 简单时间格式
 }

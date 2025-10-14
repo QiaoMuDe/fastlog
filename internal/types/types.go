@@ -1,11 +1,15 @@
 package types
 
 import (
+	"bytes"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"gitee.com/MM-Q/go-kit/pool"
 )
 
 const (
@@ -92,27 +96,19 @@ func NeedsFileInfo(format LogFormatType) bool {
 //   - skip: 跳过的调用层数（通常设置为1或2, 具体取决于调用链的深度）
 //
 // 返回值：
-//   - fileName: 调用者的文件名（不包含路径）
-//   - functionName: 调用者的函数名
-//   - line: 调用者的行号
-//   - ok: 是否成功获取到调用者信息
-func GetCallerInfo(skip int) (fileName string, functionName string, line uint16, ok bool) {
+//   - []byte: 调用者的信息，格式为 "file:function:line"
+func GetCallerInfo(skip int) []byte {
 	// 获取调用者信息, 跳过指定的调用层数
 	pc, file, lineInt, ok := runtime.Caller(skip)
 	if !ok {
-		line = 0
-		return
+		return []byte("?:?:?")
 	}
 
-	// 行号转换和边界检查
-	if lineInt >= 0 && lineInt <= 65535 {
-		line = uint16(lineInt)
-	} else {
-		line = 0 // 超出范围使用默认值
-	}
+	// 行号转换
+	line := strconv.Itoa(lineInt)
 
 	// 优化：使用缓存获取文件名，避免重复的 filepath.Base() 调用
-	// 尝试从缓存中获取文件名
+	var fileName string
 	if cached, exists := fileNameCache.Load(file); exists {
 		// 缓存命中：直接使用缓存的文件名（性能提升5-10倍）
 		fileName = cached.(string)
@@ -123,12 +119,20 @@ func GetCallerInfo(skip int) (fileName string, functionName string, line uint16,
 	}
 
 	// 获取函数名（保持原有逻辑）
+	var functionName string
 	function := runtime.FuncForPC(pc)
 	if function != nil {
 		functionName = function.Name()
 	} else {
-		functionName = "???"
+		functionName = "?"
 	}
 
-	return
+	// 返回调用者信息字符串
+	return pool.WithBuf(func(b *bytes.Buffer) {
+		b.Write([]byte(fileName))
+		b.Write([]byte(":"))
+		b.Write([]byte(functionName))
+		b.Write([]byte(":"))
+		b.Write([]byte(line))
+	})
 }

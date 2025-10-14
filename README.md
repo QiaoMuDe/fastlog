@@ -150,8 +150,8 @@ FastLog 支持八种不同的日志格式：
 
 #### 2. JSON 格式
 ```json
-{"time":"2025-01-15 10:30:45","level":"INFO","file":"main.go","function":"main","line":15,"message":"用户登录成功"}
-{"time":"2025-01-15 10:30:46","level":"ERROR","file":"database.go","function":"Connect","line":23,"message":"数据库连接失败"}
+{"time":"2025-01-15 10:30:45","level":"INFO","caller":"main.go:main:15","message":"用户登录成功"}
+{"time":"2025-01-15 10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
 ```
 
 #### 3. JsonSimple 格式
@@ -168,8 +168,8 @@ FastLog 支持八种不同的日志格式：
 
 #### 5. Structured 格式
 ```
-T:2025-01-15 10:30:45|L:INFO   |F:main.go:main:15|M:用户登录成功
-T:2025-01-15 10:30:46|L:ERROR  |F:database.go:Connect:23|M:数据库连接失败
+T:2025-01-15 10:30:45|L:INFO   |C:main.go:main:15|M:用户登录成功
+T:2025-01-15 10:30:46|L:ERROR  |C:database.go:Connect:23|M:数据库连接失败
 ```
 
 #### 6. BasicStructured 格式
