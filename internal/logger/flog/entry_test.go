@@ -117,6 +117,7 @@ func TestBuildLogEdgeCases(t *testing.T) {
 
 		// 测试Json格式
 		cfg.LogFormat = types.Json
+		cfg.CallerInfo = true
 		result := buildLog(cfg, entry)
 		resultStr := string(result)
 

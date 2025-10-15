@@ -51,10 +51,14 @@ func (f *Flog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
 			fmt.Println(string(log)) // 默认打印
 		}
 	}
+	fmt.Println("控制台日志:")
+	fmt.Println(string(log)) // 默认打印
 
 	// 写入到文件
-	log = append(log, '\n')
-	if _, err := f.fileWriter.Write(log); err != nil {
-		fmt.Printf("fastlog: failed to write log: %v\n", err)
+	if f.cfg.OutputToFile {
+		log = append(log, '\n')
+		if _, err := f.fileWriter.Write(log); err != nil {
+			fmt.Printf("fastlog: failed to write log: %v\n", err)
+		}
 	}
 }

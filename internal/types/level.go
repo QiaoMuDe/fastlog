@@ -23,24 +23,17 @@ var LogLevelPaddedStringMap = map[LogLevel]string{
 // 日志级别枚举
 type LogLevel uint8
 
-// 将日志级别转换为字符串
-func (l LogLevel) MarshalJSON() ([]byte, error) {
-	return []byte(`"` + LogLevelToString(l) + `"`), nil
-}
-
-// LogLevelToString 将 LogLevel 转换为对应的字符串（不带填充，用于JSON序列化）
-//
-// 参数：
-//   - level: 要转换的日志级别
-//
-// 返回值：
-//   - string: 对应的日志级别字符串, 如果 level 无效, 则返回 "UNKNOWN"
-func LogLevelToString(level LogLevel) string {
+func (l LogLevel) String() string {
 	// 使用预构建的映射表进行O(1)查询(不带填充，适用于JSON)
-	if str, exists := LogLevelStringMap[level]; exists {
+	if str, exists := LogLevelStringMap[l]; exists {
 		return str
 	}
 	return "UNKNOWN"
+}
+
+// 将日志级别转换为字符串
+func (l LogLevel) MarshalJSON() ([]byte, error) {
+	return []byte(`"` + l.String() + `"`), nil
 }
 
 // 定义日志级别
