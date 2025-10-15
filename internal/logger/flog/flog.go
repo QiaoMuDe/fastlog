@@ -58,38 +58,10 @@ func NewFlog(cfg *config.FastLogConfig) *Flog {
 	return f
 }
 
-// log 记录日志
-//
-// 参数：
-//   - level: 日志级别。
-//   - msg: 日志消息。
-//   - fields: 日志字段，可变参数。
-func (f *Flog) log(level types.LogLevel, msg string, fields ...*Field) {
-	if f != nil && f.cfg != nil {
-		return
-	}
-
-	// 检查日志处理器是否已关闭
-	if f.closed.Load() {
-		return
-	}
-
-	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
-	if level < f.cfg.LogLevel {
-		return
-	}
-
-	// 创建日志条目
-	e := NewEntry(f.cfg.CallerInfo, level, msg, fields...)
-	defer putEntry(e) // 确保在函数返回前归还Entry实例到对象池
-
-	// 构建并写入日志条目
-	if _, err := f.fileWriter.Write(buildLog(f.cfg, e)); err != nil {
-		fmt.Printf("fastlog: failed to write log: %v\n", err)
-	}
-}
-
 // Close 关闭日志处理器
+//
+// 返回值：
+//   - error: 如果关闭过程中发生错误, 返回错误信息; 否则返回 nil。
 func (f *Flog) Close() error {
 	if f == nil || f.cfg == nil {
 		return fmt.Errorf("fastlog: cannot close nil logger")
@@ -116,7 +88,7 @@ func (f *Flog) Close() error {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Info(msg string, fields ...*Field) {
-	f.log(types.INFO, msg, fields...)
+	f.handleLog(types.INFO, msg, fields...)
 }
 
 // Warn 记录Warn级别的日志
@@ -125,7 +97,7 @@ func (f *Flog) Info(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Warn(msg string, fields ...*Field) {
-	f.log(types.WARN, msg, fields...)
+	f.handleLog(types.WARN, msg, fields...)
 }
 
 // Error 记录Error级别的日志
@@ -134,7 +106,7 @@ func (f *Flog) Warn(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Error(msg string, fields ...*Field) {
-	f.log(types.ERROR, msg, fields...)
+	f.handleLog(types.ERROR, msg, fields...)
 }
 
 // Fatal 记录Fatal级别的日志并触发程序退出
@@ -143,7 +115,7 @@ func (f *Flog) Error(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Fatal(msg string, fields ...*Field) {
-	f.log(types.FATAL, msg, fields...)
+	f.handleLog(types.FATAL, msg, fields...)
 
 	// 关闭日志处理器
 	if err := f.Close(); err != nil {
@@ -160,5 +132,5 @@ func (f *Flog) Fatal(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Debug(msg string, fields ...*Field) {
-	f.log(types.DEBUG, msg, fields...)
+	f.handleLog(types.DEBUG, msg, fields...)
 }
