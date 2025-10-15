@@ -1,6 +1,8 @@
 package flog
 
 import (
+	"fmt"
+	"os"
 	"sync/atomic"
 
 	"gitee.com/MM-Q/colorlib"
@@ -77,6 +79,86 @@ func (f *Flog) log(level types.LogLevel, msg string, fields ...*Field) {
 		return
 	}
 
-	//_ = NewEntry(types.NeedsFileInfo(f.cfg.LogFormat), level, msg, fields...)
+	// 创建日志条目
+	e := NewEntry(f.cfg.CallerInfo, level, msg, fields...)
+	defer putEntry(e) // 确保在函数返回前归还Entry实例到对象池
 
+	// 构建并写入日志条目
+	if _, err := f.fileWriter.Write(buildLog(f.cfg, e)); err != nil {
+		fmt.Printf("fastlog: failed to write log: %v\n", err)
+	}
+}
+
+// Close 关闭日志处理器
+func (f *Flog) Close() error {
+	if f == nil || f.cfg == nil {
+		return fmt.Errorf("fastlog: cannot close nil logger")
+	}
+
+	// 确保日志处理器只关闭一次 (原子操作)
+	if !f.closed.CompareAndSwap(false, true) {
+		return nil
+	}
+
+	// 如果启用了文件写入器，则尝试关闭它。
+	if f.cfg.OutputToFile && f.fileWriter != nil {
+		if err := f.fileWriter.Close(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Info 记录Info级别的日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Info(msg string, fields ...*Field) {
+	f.log(types.INFO, msg, fields...)
+}
+
+// Warn 记录Warn级别的日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Warn(msg string, fields ...*Field) {
+	f.log(types.WARN, msg, fields...)
+}
+
+// Error 记录Error级别的日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Error(msg string, fields ...*Field) {
+	f.log(types.ERROR, msg, fields...)
+}
+
+// Fatal 记录Fatal级别的日志并触发程序退出
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Fatal(msg string, fields ...*Field) {
+	f.log(types.FATAL, msg, fields...)
+
+	// 关闭日志处理器
+	if err := f.Close(); err != nil {
+		fmt.Printf("fastlog: failed to close logger: %v\n", err)
+	}
+
+	// 退出程序
+	os.Exit(1)
+}
+
+// Debug 记录Debug级别的日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Debug(msg string, fields ...*Field) {
+	f.log(types.DEBUG, msg, fields...)
 }
