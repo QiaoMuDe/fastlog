@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/fastlog/internal/config"
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
@@ -66,6 +67,7 @@ func TestBuildLogFormats(t *testing.T) {
 
 			t.Logf("格式: %s", format.name)
 			t.Logf("输出: %s", resultStr)
+			colorlib.GetCL().Green(resultStr)
 
 			// 检查是否包含期望的字符串片段
 			for _, expected := range format.contains {

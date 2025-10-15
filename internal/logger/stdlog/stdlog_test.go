@@ -173,6 +173,7 @@ func TestLogFormats(t *testing.T) {
 			cfg.LogLevel = types.DEBUG
 			cfg.LogFormat = format
 			cfg.OutputToConsole = true
+			cfg.CallerInfo = false
 
 			// 创建日志记录器
 			log := NewStdLog(cfg)

@@ -14,9 +14,42 @@ import (
 var entryPool = sync.Pool{
 	New: func() interface{} {
 		return &Entry{
-			fields: make([]Field, 0, 8), // 预分配字段切片容量
+			fields: make([]*Field, 0, 8), // 预分配字段切片容量
 		}
 	},
+}
+
+// getEntry 从对象池获取Entry实例
+//
+// 返回值：
+//   - *Entry: 一个重置过的Entry实例
+func getEntry() *Entry {
+	return entryPool.Get().(*Entry)
+}
+
+// putEntry 将Entry实例归还到对象池
+//
+// 参数：
+//   - e: 要归还的Entry实例
+func putEntry(e *Entry) {
+	if e == nil {
+		return
+	}
+
+	// 归还字段到对象池
+	for _, field := range e.fields {
+		if field != nil {
+			putField(field)
+		}
+	}
+
+	// 清空字段，避免内存泄漏
+	e.time = ""
+	e.level = 0
+	e.msg = ""
+	e.caller = []byte("")
+	e.fields = e.fields[:0] // 清空切片但保留容量
+	entryPool.Put(e)
 }
 
 // Entry 定义了日志条目的结构体
@@ -25,7 +58,7 @@ type Entry struct {
 	level  types.LogLevel // 日志级别
 	msg    string         // 日志消息
 	caller []byte         // 调用者信息
-	fields []Field        // 日志字段
+	fields []*Field       // 日志字段
 }
 
 // NewEntry 创建一个新的日志条目（使用对象池优化）
@@ -46,11 +79,11 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 	e.level = level
 	e.msg = msg
 
-	// 复制字段切片（避免外部修改影响池化实例）
+	// 复制字段指针切片 (避免外部修改影响池化实例）
 	if len(fields) > 0 {
 		for _, field := range fields {
 			if field != nil {
-				e.fields = append(e.fields, *field)
+				e.fields = append(e.fields, field)
 			}
 		}
 	}
@@ -82,90 +115,38 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 		return []byte{}
 	}
 
-	// 根据是否需要文件信息，选择不同的Json格式
-	if cfg.CallerInfo {
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.Write([]byte(`{"time":"`))
-			b.WriteString(e.time)
-			b.Write([]byte(`","level":"`))
-			b.WriteString(e.level.String())
+	return pool.WithBuf(func(b *bytes.Buffer) {
+		b.Write([]byte(`{"time":"`))
+		b.WriteString(e.time)
+		b.Write([]byte(`","level":"`))
+		b.WriteString(e.level.String())
+		if cfg.CallerInfo {
+			// 仅当需要文件信息时才添加caller字段
 			b.Write([]byte(`","caller":"`))
 			b.Write(e.caller)
-			b.Write([]byte(`","msg":"`))
-			b.WriteString(utils.QuoteString(e.msg))
-			b.Write([]byte(`"`))
+		}
+		b.Write([]byte(`","msg":"`))
+		b.WriteString(utils.QuoteString(e.msg))
+		b.Write([]byte(`"`))
 
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(`,`))
-				for i, field := range e.fields {
-					if i > 0 {
-						b.Write([]byte(`,`))
-					}
-					b.Write([]byte(`"`))
+		// 添加字段
+		if len(e.fields) > 0 {
+			for _, field := range e.fields {
+				// 检查字段是否有效
+				if field != nil && field.Key() != "" {
+					b.Write([]byte(`,"`))
 					b.WriteString(utils.QuoteString(field.Key()))
 					b.Write([]byte(`":"`))
 					b.WriteString(utils.QuoteString(field.Value()))
 					b.Write([]byte(`"`))
+
+				} else if field != nil {
+					// key为空的字段直接回收
+					putField(field)
 				}
-				b.Write([]byte(`}`))
-			} else {
-				b.Write([]byte(`}`))
 			}
-		})
-	} else {
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.Write([]byte(`{"time":"`))
-			b.WriteString(e.time)
-			b.Write([]byte(`","level":"`))
-			b.WriteString(e.level.String())
-			b.Write([]byte(`","msg":"`))
-			b.WriteString(utils.QuoteString(e.msg))
-			b.Write([]byte(`"`))
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(`,`))
-				for i, field := range e.fields {
-					if i > 0 {
-						b.Write([]byte(`,`))
-					}
-					b.Write([]byte(`"`))
-					b.WriteString(utils.QuoteString(field.Key()))
-					b.Write([]byte(`":"`))
-					b.WriteString(utils.QuoteString(field.Value()))
-					b.Write([]byte(`"`))
-				}
-				b.Write([]byte(`}`))
-			} else {
-				b.Write([]byte(`}`))
-			}
-		})
-	}
-}
-
-// getEntry 从对象池获取Entry实例
-//
-// 返回值：
-//   - *Entry: 一个重置过的Entry实例
-func getEntry() *Entry {
-	return entryPool.Get().(*Entry)
-}
-
-// putEntry 将Entry实例归还到对象池
-//
-// 参数：
-//   - e: 要归还的Entry实例
-func putEntry(e *Entry) {
-	if e == nil {
-		return
-	}
-
-	// 清空字段，避免内存泄漏
-	e.time = ""
-	e.level = 0
-	e.msg = ""
-	e.caller = []byte("")
-	e.fields = e.fields[:0] // 清空切片但保留容量
-	entryPool.Put(e)
+		}
+		// 最后添加右大括号
+		b.Write([]byte(`}`))
+	})
 }

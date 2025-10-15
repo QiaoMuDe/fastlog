@@ -2,6 +2,7 @@ package flog
 
 import (
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -122,6 +123,29 @@ func (f *Field) Value() string {
 	}
 }
 
+// fieldPool Field对象池，用于重用Field实例
+var fieldPool = sync.Pool{
+	New: func() interface{} {
+		return &Field{}
+	},
+}
+
+// getField 从对象池获取Field实例
+func getField() *Field {
+	return fieldPool.Get().(*Field)
+}
+
+// putField 将Field实例归还到对象池
+func putField(f *Field) {
+	if f == nil {
+		return
+	}
+
+	// 重置字段值
+	*f = Field{}
+	fieldPool.Put(f)
+}
+
 // String 添加字符串字段
 //
 // 参数:
@@ -131,12 +155,11 @@ func (f *Field) Value() string {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func String(key string, value string) *Field {
-
-	return &Field{
-		key:    key,
-		typ:    StringType,
-		strVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = StringType
+	f.strVal = value
+	return f
 }
 
 // Int 添加整数字段
@@ -148,12 +171,11 @@ func String(key string, value string) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Int(key string, value int) *Field {
-
-	return &Field{
-		key:    key,
-		typ:    IntType,
-		intVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = IntType
+	f.intVal = value
+	return f
 }
 
 // Int64 添加64位整数字段
@@ -165,12 +187,11 @@ func Int(key string, value int) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Int64(key string, value int64) *Field {
-
-	return &Field{
-		key:      key,
-		typ:      Int64Type,
-		int64Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Int64Type
+	f.int64Val = value
+	return f
 }
 
 // Float64 添加64位浮点数字段
@@ -182,12 +203,11 @@ func Int64(key string, value int64) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Float64(key string, value float64) *Field {
-
-	return &Field{
-		key:        key,
-		typ:        Float64Type,
-		float64Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Float64Type
+	f.float64Val = value
+	return f
 }
 
 // Bool 添加布尔字段
@@ -199,12 +219,11 @@ func Float64(key string, value float64) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Bool(key string, value bool) *Field {
-
-	return &Field{
-		key:     key,
-		typ:     BoolType,
-		boolVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = BoolType
+	f.boolVal = value
+	return f
 }
 
 // Time 添加时间字段
@@ -216,12 +235,11 @@ func Bool(key string, value bool) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Time(key string, value time.Time) *Field {
-
-	return &Field{
-		key:     key,
-		typ:     TimeType,
-		timeVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = TimeType
+	f.timeVal = value
+	return f
 }
 
 // Duration 添加持续时间字段
@@ -233,12 +251,11 @@ func Time(key string, value time.Time) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Duration(key string, value time.Duration) *Field {
-
-	return &Field{
-		key:         key,
-		typ:         DurationType,
-		durationVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = DurationType
+	f.durationVal = value
+	return f
 }
 
 // Uint64 添加64位无符号整数字段
@@ -250,12 +267,11 @@ func Duration(key string, value time.Duration) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Uint64(key string, value uint64) *Field {
-
-	return &Field{
-		key:       key,
-		typ:       Uint64Type,
-		uint64Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Uint64Type
+	f.uint64Val = value
+	return f
 }
 
 // Uint32 添加32位无符号整数字段
@@ -267,12 +283,11 @@ func Uint64(key string, value uint64) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Uint32(key string, value uint32) *Field {
-
-	return &Field{
-		key:       key,
-		typ:       Uint32Type,
-		uint32Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Uint32Type
+	f.uint32Val = value
+	return f
 }
 
 // Uint16 添加16位无符号整数字段
@@ -284,12 +299,11 @@ func Uint32(key string, value uint32) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Uint16(key string, value uint16) *Field {
-
-	return &Field{
-		key:       key,
-		typ:       Uint16Type,
-		uint16Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Uint16Type
+	f.uint16Val = value
+	return f
 }
 
 // Uint8 添加8位无符号整数字段
@@ -301,12 +315,11 @@ func Uint16(key string, value uint16) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Uint8(key string, value uint8) *Field {
-
-	return &Field{
-		key:      key,
-		typ:      Uint8Type,
-		uint8Val: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = Uint8Type
+	f.uint8Val = value
+	return f
 }
 
 // Error 添加错误字段
@@ -318,10 +331,9 @@ func Uint8(key string, value uint8) *Field {
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
 func Error(key string, value error) *Field {
-
-	return &Field{
-		key:      key,
-		typ:      ErrorType,
-		errorVal: value,
-	}
+	f := getField()
+	f.key = key
+	f.typ = ErrorType
+	f.errorVal = value
+	return f
 }
