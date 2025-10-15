@@ -143,16 +143,6 @@ func TestValidateConfig_OutputTargetsRequired(t *testing.T) {
 	})
 }
 
-func TestValidateConfig_InvalidLevels(t *testing.T) {
-	cfg := NewFastLogConfig("logs", "app.log")
-
-	// 非法级别（下界：小于 DEBUG）
-	cfg.LogLevel = types.LogLevel(0)
-	mustPanic(t, "非法 LogLevel（下界）", func() {
-		cfg.ValidateConfig()
-	})
-}
-
 func TestValidateConfig_InvalidFormats(t *testing.T) {
 	cfg := NewFastLogConfig("logs", "app.log")
 

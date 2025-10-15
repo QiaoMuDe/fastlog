@@ -88,7 +88,7 @@ func (f *Flog) Close() error {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Info(msg string, fields ...*Field) {
-	f.handleLog(types.INFO, msg, fields...)
+	f.handleLog(types.INFO_Mask, msg, fields...)
 }
 
 // Warn 记录Warn级别的日志
@@ -97,7 +97,7 @@ func (f *Flog) Info(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Warn(msg string, fields ...*Field) {
-	f.handleLog(types.WARN, msg, fields...)
+	f.handleLog(types.WARN_Mask, msg, fields...)
 }
 
 // Error 记录Error级别的日志
@@ -106,24 +106,7 @@ func (f *Flog) Warn(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Error(msg string, fields ...*Field) {
-	f.handleLog(types.ERROR, msg, fields...)
-}
-
-// Fatal 记录Fatal级别的日志并触发程序退出
-//
-// 参数：
-//   - msg: 日志消息。
-//   - fields: 日志字段，可变参数。
-func (f *Flog) Fatal(msg string, fields ...*Field) {
-	f.handleLog(types.FATAL, msg, fields...)
-
-	// 关闭日志处理器
-	if err := f.Close(); err != nil {
-		fmt.Printf("fastlog: failed to close logger: %v\n", err)
-	}
-
-	// 退出程序
-	os.Exit(1)
+	f.handleLog(types.ERROR_Mask, msg, fields...)
 }
 
 // Debug 记录Debug级别的日志
@@ -132,5 +115,22 @@ func (f *Flog) Fatal(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) Debug(msg string, fields ...*Field) {
-	f.handleLog(types.DEBUG, msg, fields...)
+	f.handleLog(types.DEBUG_Mask, msg, fields...)
+}
+
+// Fatal 记录Fatal级别的日志并触发程序退出
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *Flog) Fatal(msg string, fields ...*Field) {
+	f.handleLog(types.FATAL_Mask, msg, fields...)
+
+	// 关闭日志处理器
+	if err := f.Close(); err != nil {
+		fmt.Printf("fastlog: failed to close logger: %v\n", err)
+	}
+
+	// 退出程序
+	os.Exit(1)
 }

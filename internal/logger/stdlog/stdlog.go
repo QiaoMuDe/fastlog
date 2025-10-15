@@ -106,7 +106,7 @@ func (s *StdLog) Info(v ...any) {
 	}
 
 	// 调用processLog方法记录日志
-	s.processLog(types.INFO, fmt.Sprint(v...))
+	s.processLog(types.INFO_Mask, fmt.Sprint(v...))
 }
 
 // Debug 记录调试级别的日志，不支持占位符
@@ -129,7 +129,7 @@ func (s *StdLog) Debug(v ...any) {
 		return
 	}
 
-	s.processLog(types.DEBUG, fmt.Sprint(v...))
+	s.processLog(types.DEBUG_Mask, fmt.Sprint(v...))
 }
 
 // Warn 记录警告级别的日志，不支持占位符
@@ -152,7 +152,7 @@ func (s *StdLog) Warn(v ...any) {
 		return
 	}
 
-	s.processLog(types.WARN, fmt.Sprint(v...))
+	s.processLog(types.WARN_Mask, fmt.Sprint(v...))
 }
 
 // Error 记录错误级别的日志，不支持占位符
@@ -175,7 +175,7 @@ func (s *StdLog) Error(v ...any) {
 		return
 	}
 
-	s.processLog(types.ERROR, fmt.Sprint(v...))
+	s.processLog(types.ERROR_Mask, fmt.Sprint(v...))
 }
 
 // Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
@@ -224,7 +224,7 @@ func (s *StdLog) Infof(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.INFO, fmt.Sprintf(format, v...))
+	s.processLog(types.INFO_Mask, fmt.Sprintf(format, v...))
 }
 
 // Debugf 记录调试级别的日志，支持占位符，格式化
@@ -248,7 +248,7 @@ func (s *StdLog) Debugf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.DEBUG, fmt.Sprintf(format, v...))
+	s.processLog(types.DEBUG_Mask, fmt.Sprintf(format, v...))
 }
 
 // Warnf 记录警告级别的日志，支持占位符，格式化
@@ -272,7 +272,7 @@ func (s *StdLog) Warnf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.WARN, fmt.Sprintf(format, v...))
+	s.processLog(types.WARN_Mask, fmt.Sprintf(format, v...))
 }
 
 // Errorf 记录错误级别的日志，支持占位符，格式化
@@ -296,7 +296,7 @@ func (s *StdLog) Errorf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.ERROR, fmt.Sprintf(format, v...))
+	s.processLog(types.ERROR_Mask, fmt.Sprintf(format, v...))
 }
 
 // Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器

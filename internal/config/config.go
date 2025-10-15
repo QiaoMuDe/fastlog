@@ -140,16 +140,9 @@ func (c *FastLogConfig) ValidateConfig() {
 		panic("FastLogConfig cannot be nil")
 	}
 
-	// 仅进行只读校验，不做任何字段修改
-
 	// 必须启用至少一种输出方式
 	if !c.OutputToConsole && !c.OutputToFile {
 		panic("at least one output method must be enabled: OutputToConsole or OutputToFile")
-	}
-
-	// 验证日志级别
-	if c.LogLevel < types.DEBUG || c.LogLevel > types.NONE {
-		panic(fmt.Sprintf("invalid LogLevel %d, must be %d-%d", c.LogLevel, types.DEBUG, types.NONE))
 	}
 
 	// 验证日志格式

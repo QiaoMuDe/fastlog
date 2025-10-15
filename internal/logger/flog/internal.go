@@ -37,24 +37,28 @@ func (f *Flog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
 	// 写入到终端
 	if f.cfg.OutputToConsole {
 		switch level {
-		case types.INFO:
+		case types.INFO_Mask:
 			f.cl.Blue(string(log))
-		case types.WARN:
+		case types.WARN_Mask:
 			f.cl.Yellow(string(log))
-		case types.ERROR:
+		case types.ERROR_Mask:
 			f.cl.Red(string(log))
-		case types.DEBUG:
+		case types.DEBUG_Mask:
 			f.cl.Magenta(string(log))
-		case types.FATAL:
+		case types.FATAL_Mask:
 			f.cl.Red(string(log))
 		default:
-			fmt.Println(string(log)) // 默认打印
+			// 对于未知级别，使用默认颜色输出
+			f.cl.White(string(log))
 		}
 	}
 
 	// 写入到文件
-	if f.cfg.OutputToFile {
-		log = append(log, '\n')
+	if f.cfg.OutputToFile && f.fileWriter != nil {
+		// 确保日志以换行符结尾
+		if len(log) == 0 || log[len(log)-1] != '\n' {
+			log = append(log, '\n')
+		}
 		if _, err := f.fileWriter.Write(log); err != nil {
 			fmt.Printf("fastlog: failed to write log: %v\n", err)
 		}

@@ -18,18 +18,18 @@ func (s *StdLog) logFatal(message string) {
 	// Fatal方法的特殊处理 - 即使StdLog为nil也要记录错误并退出
 	if s == nil {
 		// 如果日志器为nil，直接输出到stderr并退出
-		fmt.Printf("FATAL: %s\n", message)
+		fmt.Printf("fastlog: %s\n", message)
 		os.Exit(1)
 		return
 	}
 
 	// 先记录日志
-	s.processLog(types.FATAL, message)
+	s.processLog(types.FATAL_Mask, message)
 
 	// 关闭日志记录器
 	if err := s.Close(); err != nil {
 		// 如果关闭失败，记录到stderr
-		fmt.Printf("FATAL: failed to close logger: %v\n", err)
+		fmt.Printf("fastlog: failed to close logger: %v\n", err)
 	}
 
 	// 终止程序（非0退出码表示错误）
@@ -80,24 +80,29 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 	if s.cfg.OutputToConsole {
 		// 直接调用 colorlib 的打印方法（自带换行）
 		switch logMessage.Level {
-		case types.INFO:
+		case types.INFO_Mask:
 			s.cl.Blue(buf.String())
-		case types.WARN:
+		case types.WARN_Mask:
 			s.cl.Yellow(buf.String())
-		case types.ERROR:
+		case types.ERROR_Mask:
 			s.cl.Red(buf.String())
-		case types.DEBUG:
+		case types.DEBUG_Mask:
 			s.cl.Magenta(buf.String())
-		case types.FATAL:
+		case types.FATAL_Mask:
 			s.cl.Red(buf.String())
 		default:
-			fmt.Println(buf.String()) // 默认打印
+			// 对于未知级别，使用默认颜色输出
+			s.cl.White(buf.String())
 		}
 	}
 
 	// 将缓冲区中的日志消息写入日志文件
 	if s.cfg.OutputToFile && s.fileWriter != nil {
-		buf.WriteString("\n") // 添加换行符，确保每条日志单独一行
+		// 确保日志以换行符结尾
+		if len(buf.Bytes()) == 0 || buf.Bytes()[len(buf.Bytes())-1] != '\n' {
+			buf.WriteByte('\n')
+		}
+
 		if _, err := s.fileWriter.Write(buf.Bytes()); err != nil {
 			fmt.Printf("Error writing to log file: %v\n", err)
 		}
