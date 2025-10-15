@@ -7,6 +7,7 @@ import (
 	"gitee.com/MM-Q/fastlog/internal/config"
 	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/go-kit/pool"
+	"gitee.com/MM-Q/go-kit/utils"
 )
 
 // entryPool Entry对象池，用于重用Entry实例
@@ -91,7 +92,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			b.Write([]byte(`","caller":"`))
 			b.Write(e.caller)
 			b.Write([]byte(`","msg":"`))
-			b.WriteString(e.msg)
+			b.WriteString(utils.QuoteString(e.msg))
 			b.Write([]byte(`"`))
 
 			// 添加字段
@@ -102,9 +103,9 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.Write([]byte(`,`))
 					}
 					b.Write([]byte(`"`))
-					b.WriteString(field.Key())
+					b.WriteString(utils.QuoteString(field.Key()))
 					b.Write([]byte(`":"`))
-					b.WriteString(field.Value())
+					b.WriteString(utils.QuoteString(field.Value()))
 					b.Write([]byte(`"`))
 				}
 				b.Write([]byte(`}`))
@@ -119,7 +120,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			b.Write([]byte(`","level":"`))
 			b.WriteString(types.LogLevelToString(e.level))
 			b.Write([]byte(`","msg":"`))
-			b.WriteString(e.msg)
+			b.WriteString(utils.QuoteString(e.msg))
 			b.Write([]byte(`"`))
 
 			// 添加字段
@@ -130,9 +131,9 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.Write([]byte(`,`))
 					}
 					b.Write([]byte(`"`))
-					b.WriteString(field.Key())
+					b.WriteString(utils.QuoteString(field.Key()))
 					b.Write([]byte(`":"`))
-					b.WriteString(field.Value())
+					b.WriteString(utils.QuoteString(field.Value()))
 					b.Write([]byte(`"`))
 				}
 				b.Write([]byte(`}`))

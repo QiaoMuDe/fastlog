@@ -7,6 +7,7 @@ import (
 
 	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/go-kit/pool"
+	"gitee.com/MM-Q/go-kit/utils"
 )
 
 // logFatal Fatal级别的特殊处理方法
@@ -136,7 +137,7 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 			buf.Write([]byte(`","caller":"`))
 			buf.Write(logmsg.Caller)
 			buf.Write([]byte(`","msg":"`))
-			buf.WriteString(logmsg.Message)
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 			buf.Write([]byte(`"}`))
 		} else {
 
@@ -145,7 +146,7 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 			buf.Write([]byte(`","level":"`))
 			buf.WriteString(types.LogLevelToString(logmsg.Level))
 			buf.Write([]byte(`","msg":"`))
-			buf.WriteString(logmsg.Message)
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 			buf.Write([]byte(`"}`))
 		}
 
@@ -158,13 +159,13 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 			buf.WriteString(" | ")
 			buf.Write(logmsg.Caller) // 调用者信息
 			buf.WriteString(" - ")
-			buf.WriteString(logmsg.Message) // 消息
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		} else {
 			buf.WriteString(logmsg.Timestamp) // 时间戳
 			buf.WriteString(" | ")
 			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 			buf.WriteString(" | ")
-			buf.WriteString(logmsg.Message) // 消息
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		}
 
 	case types.Structured: // 结构化格式
@@ -177,14 +178,14 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 			buf.WriteString("|C:") // 调用者信息
 			buf.Write(logmsg.Caller)
 			buf.WriteString("|M:") // 消息
-			buf.WriteString(logmsg.Message)
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		} else {
 			buf.WriteString("T:") // 时间戳
 			buf.WriteString(logmsg.Timestamp)
 			buf.WriteString("|L:") // 日志级别
 			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 			buf.WriteString("|M:") // 消息
-			buf.WriteString(logmsg.Message)
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		}
 
 	case types.Timestamp: // 时间格式
@@ -192,10 +193,10 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 		buf.WriteString(" ")
 		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level)) // 日志级别
 		buf.WriteString(" ")
-		buf.WriteString(logmsg.Message) // 消息
+		buf.WriteString(utils.QuoteString(logmsg.Message))
 
 	case types.Custom: // 自定义格式
-		buf.WriteString(logmsg.Message)
+		buf.WriteString(utils.QuoteString(logmsg.Message))
 
 	default: // 未识别的日志格式选项
 		// 根据是否需要文件信息，选择不同的详细格式
@@ -206,13 +207,13 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 			buf.WriteString(" | ")
 			buf.Write(logmsg.Caller) // 调用者信息
 			buf.WriteString(" - ")
-			buf.WriteString(logmsg.Message) // 消息
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		} else {
 			buf.WriteString(logmsg.Timestamp) // 时间戳
 			buf.WriteString(" | ")
 			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
 			buf.WriteString(" | ")
-			buf.WriteString(logmsg.Message) // 消息
+			buf.WriteString(utils.QuoteString(logmsg.Message))
 		}
 	}
 }
