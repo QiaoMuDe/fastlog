@@ -22,8 +22,8 @@ func (f *Flog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
 		return
 	}
 
-	// 检查日志级别，如果调用的日志级别低于配置的日志级别，则直接返回
-	if level < f.cfg.LogLevel {
+	// 检查日志级别，使用位运算判断是否应该记录该级别的日志
+	if !types.ShouldLog(level, f.cfg.LogLevel) {
 		return
 	}
 
