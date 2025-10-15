@@ -76,52 +76,20 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 //
 // 返回值：
 //   - []byte: 构建的日志消息。
-//
-// 注意:
-//   - flog仅支持Json和JsonSimple格式。
 func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 	if cfg == nil || e == nil {
 		return []byte{}
 	}
 
-	switch cfg.LogFormat {
-	case types.Json: // JSON格式
+	// 根据是否需要文件信息，选择不同的Json格式
+	if cfg.CallerInfo {
 		return pool.WithBuf(func(b *bytes.Buffer) {
 			b.Write([]byte(`{"time":"`))
 			b.WriteString(e.time)
 			b.Write([]byte(`","level":"`))
 			b.WriteString(types.LogLevelToString(e.level))
-			b.Write([]byte(`","msg":"`))
-			b.WriteString(e.msg)
 			b.Write([]byte(`","caller":"`))
 			b.Write(e.caller)
-			b.Write([]byte(`"`))
-
-			// 添加字段
-			if len(e.fields) > 0 {
-				b.Write([]byte(`,`))
-				for i, field := range e.fields {
-					if i > 0 {
-						b.Write([]byte(`,`))
-					}
-					b.Write([]byte(`"`))
-					b.WriteString(field.Key())
-					b.Write([]byte(`":"`))
-					b.WriteString(field.Value())
-					b.Write([]byte(`"`))
-				}
-				b.Write([]byte(`}`))
-			} else {
-				b.Write([]byte(`}`))
-			}
-		})
-
-	case types.JsonSimple: // 简单JSON格式
-		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.Write([]byte(`{"time":"`))
-			b.WriteString(e.time)
-			b.Write([]byte(`","level":"`))
-			b.WriteString(types.LogLevelToString(e.level))
 			b.Write([]byte(`","msg":"`))
 			b.WriteString(e.msg)
 			b.Write([]byte(`"`))
@@ -144,8 +112,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 				b.Write([]byte(`}`))
 			}
 		})
-
-	default: // 默认格式为简洁JSON
+	} else {
 		return pool.WithBuf(func(b *bytes.Buffer) {
 			b.Write([]byte(`{"time":"`))
 			b.WriteString(e.time)

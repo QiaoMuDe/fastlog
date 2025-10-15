@@ -33,18 +33,21 @@ func TestBuildLogFormats(t *testing.T) {
 		name        string
 		contains    []string // 期望包含的字符串片段
 		notContains []string // 期望不包含的字符串片段
+		caller      bool     // 是否包含caller信息
 	}{
 		{
 			formatType:  types.Json,
 			name:        "JSON格式",
+			caller:      true,
 			contains:    []string{"{", `"time":"` + testTime, `"level":"INFO"`, `"msg":"用户登录成功"`, `"user_id":"12345"`, `"age":"25"`, `"action":"login"`, "}"},
-			notContains: []string{}, // 不应该包含硬编码的caller信息
+			notContains: []string{},
 		},
 		{
-			formatType:  types.JsonSimple,
-			name:        "JSON简单格式",
+			formatType:  types.Json,
+			name:        "Json格式(无caller)",
+			caller:      false,
 			contains:    []string{"{", `"time":"` + testTime, `"level":"INFO"`, `"msg":"用户登录成功"`, `"user_id":"12345"`, `"age":"25"`, `"action":"login"`, "}"},
-			notContains: []string{`"caller"`}, // 不应该包含caller字段
+			notContains: []string{},
 		},
 	}
 
@@ -53,6 +56,9 @@ func TestBuildLogFormats(t *testing.T) {
 		t.Run(format.name, func(t *testing.T) {
 			// 设置当前测试的日志格式
 			cfg.LogFormat = format.formatType
+
+			// 设置是否包含caller信息
+			cfg.CallerInfo = format.caller
 
 			// 调用buildLog函数
 			result := buildLog(cfg, entry)
@@ -76,7 +82,7 @@ func TestBuildLogFormats(t *testing.T) {
 			}
 
 			// 特殊检查：确保JSON格式是合法的
-			if format.formatType == types.Json || format.formatType == types.JsonSimple {
+			if format.formatType == types.Json {
 				if !strings.HasPrefix(resultStr, "{") || !strings.HasSuffix(resultStr, "}") {
 					t.Errorf("格式 %s 的输出不是合法的JSON格式", format.name)
 				}
@@ -167,7 +173,7 @@ func TestBuildLogEdgeCases(t *testing.T) {
 			t.Run(level.levelStr, func(t *testing.T) {
 				entry := NewEntry(true, level.level, "测试消息")
 
-				cfg.LogFormat = types.JsonSimple
+				cfg.LogFormat = types.Json
 				result := buildLog(cfg, entry)
 				resultStr := string(result)
 

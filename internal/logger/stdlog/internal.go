@@ -64,7 +64,7 @@ func (s *StdLog) processLog(level types.LogLevel, msg string) {
 	logMessage.Message = msg         // 日志消息
 
 	// 仅当需要文件信息时才获取调用者信息
-	if types.NeedsFileInfo(s.cfg.LogFormat) {
+	if s.cfg.CallerInfo {
 		logMessage.Caller = types.GetCallerInfo(3)
 	}
 
@@ -126,71 +126,93 @@ func (s *StdLog) formatLogToBuffer(buf *bytes.Buffer, logmsg *logMsg) {
 
 	// 根据日志格式直接格式化到目标缓冲区
 	switch s.cfg.LogFormat {
-	// JSON格式
-	case types.Json:
-		fmt.Fprintf(buf,
-			types.LogFormatMap[types.Json],
-			logmsg.Timestamp, types.LogLevelToString(logmsg.Level), string(logmsg.Caller), logmsg.Message)
+	case types.Json: // Json格式
+		// 根据是否需要文件信息，选择不同的Json格式
+		if s.cfg.CallerInfo {
+			buf.Write([]byte(`{"time":"`))
+			buf.WriteString(logmsg.Timestamp)
+			buf.Write([]byte(`","level":"`))
+			buf.WriteString(types.LogLevelToString(logmsg.Level))
+			buf.Write([]byte(`","caller":"`))
+			buf.Write(logmsg.Caller)
+			buf.Write([]byte(`","msg":"`))
+			buf.WriteString(logmsg.Message)
+			buf.Write([]byte(`"}`))
+		} else {
 
-	// JsonSimple格式（无文件信息）
-	case types.JsonSimple:
-		fmt.Fprintf(buf,
-			types.LogFormatMap[types.JsonSimple],
-			logmsg.Timestamp, types.LogLevelToString(logmsg.Level), logmsg.Message)
+			buf.Write([]byte(`{"time":"`))
+			buf.WriteString(logmsg.Timestamp)
+			buf.Write([]byte(`","level":"`))
+			buf.WriteString(types.LogLevelToString(logmsg.Level))
+			buf.Write([]byte(`","msg":"`))
+			buf.WriteString(logmsg.Message)
+			buf.Write([]byte(`"}`))
+		}
 
-	// 详细格式
-	case types.Detailed:
-		buf.WriteString(logmsg.Timestamp) // 时间戳
-		buf.WriteString(" | ")
-		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
-		buf.WriteString(" | ")
-		buf.Write(logmsg.Caller) // 调用者信息
-		buf.WriteString(" - ")
-		buf.WriteString(logmsg.Message) // 消息
+	case types.Def: // 默认格式
+		// 根据是否需要文件信息，选择不同的详细格式
+		if s.cfg.CallerInfo {
+			buf.WriteString(logmsg.Timestamp) // 时间戳
+			buf.WriteString(" | ")
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString(" | ")
+			buf.Write(logmsg.Caller) // 调用者信息
+			buf.WriteString(" - ")
+			buf.WriteString(logmsg.Message) // 消息
+		} else {
+			buf.WriteString(logmsg.Timestamp) // 时间戳
+			buf.WriteString(" | ")
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString(" | ")
+			buf.WriteString(logmsg.Message) // 消息
+		}
 
-	// 简约格式
-	case types.Simple:
-		buf.WriteString(logmsg.Timestamp) // 时间戳
-		buf.WriteString(" | ")
-		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
-		buf.WriteString(" | ")
-		buf.WriteString(logmsg.Message) // 消息
+	case types.Structured: // 结构化格式
+		// 根据是否需要文件信息，选择不同的结构化格式
+		if s.cfg.CallerInfo {
+			buf.WriteString("T:") // 时间戳
+			buf.WriteString(logmsg.Timestamp)
+			buf.WriteString("|L:") // 日志级别
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString("|C:") // 调用者信息
+			buf.Write(logmsg.Caller)
+			buf.WriteString("|M:") // 消息
+			buf.WriteString(logmsg.Message)
+		} else {
+			buf.WriteString("T:") // 时间戳
+			buf.WriteString(logmsg.Timestamp)
+			buf.WriteString("|L:") // 日志级别
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString("|M:") // 消息
+			buf.WriteString(logmsg.Message)
+		}
 
-	// 结构化格式
-	case types.Structured:
-		buf.WriteString("T:") // 时间戳
-		buf.WriteString(logmsg.Timestamp)
-		buf.WriteString("|L:") // 日志级别
-		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
-		buf.WriteString("|C:") // 调用者信息
-		buf.Write(logmsg.Caller)
-		buf.WriteString("|M:") // 消息
-		buf.WriteString(logmsg.Message)
-
-	// 基础结构化格式(无文件信息)
-	case types.BasicStructured:
-		buf.WriteString("T:") // 时间戳
-		buf.WriteString(logmsg.Timestamp)
-		buf.WriteString("|L:") // 日志级别
-		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
-		buf.WriteString("|M:") // 消息
-		buf.WriteString(logmsg.Message)
-
-	// 简单时间格式
-	case types.SimpleTimestamp:
+	case types.Timestamp: // 时间格式
 		buf.WriteString(logmsg.Timestamp) // 时间戳
 		buf.WriteString(" ")
 		buf.WriteString(types.LogLevelToPaddedString(logmsg.Level)) // 日志级别
 		buf.WriteString(" ")
 		buf.WriteString(logmsg.Message) // 消息
 
-	// 自定义格式
-	case types.Custom:
+	case types.Custom: // 自定义格式
 		buf.WriteString(logmsg.Message)
 
-	// 默认情况
-	default:
-		buf.WriteString("Unrecognized log format option: ")
-		fmt.Fprintf(buf, "%v", s.cfg.LogFormat)
+	default: // 未识别的日志格式选项
+		// 根据是否需要文件信息，选择不同的详细格式
+		if s.cfg.CallerInfo {
+			buf.WriteString(logmsg.Timestamp) // 时间戳
+			buf.WriteString(" | ")
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString(" | ")
+			buf.Write(logmsg.Caller) // 调用者信息
+			buf.WriteString(" - ")
+			buf.WriteString(logmsg.Message) // 消息
+		} else {
+			buf.WriteString(logmsg.Timestamp) // 时间戳
+			buf.WriteString(" | ")
+			buf.WriteString(types.LogLevelToPaddedString(logmsg.Level))
+			buf.WriteString(" | ")
+			buf.WriteString(logmsg.Message) // 消息
+		}
 	}
 }

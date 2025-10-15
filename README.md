@@ -21,7 +21,7 @@ FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设�
 
 ### 📊 日志能力
 - 日志级别：DEBUG / INFO / WARN / ERROR / FATAL
-- 输出格式：Detailed / Json / Structured / Simple / BasicStructured / SimpleTimestamp / JsonSimple / Custom
+- 输出格式：Def / Json / Structured / Timestamp / Custom
 - 输出目标：文件与控制台可独立开启/关闭
 - 颜色与样式：可配置 Color/Bold 提升终端可读性
 
@@ -106,7 +106,7 @@ func main() {
 
 - `DevConfig(logDir, logFile)` - 开发模式：文件+控制台、Detailed、DEBUG、彩色加粗、FlushInterval≈200ms、短期保留（示例：MaxFiles=5 / MaxAge=7）
 - `ProdConfig(logDir, logFile)` - 生产模式：仅文件、Structured、INFO、无装饰、压缩、MaxSize=100MB、FlushInterval≈1s、长期保留（30天 / 24个）
-- `ConsoleConfig()` - 终端模式：仅控制台、SimpleTimestamp、DEBUG、彩色加粗、FlushInterval≈500ms（不写文件）
+- `ConsoleConfig()` - 终端模式：仅控制台、Timestamp、DEBUG、彩色加粗、FlushInterval≈500ms（不写文件）
 
 ### 简化创建方式
 
@@ -137,12 +137,12 @@ FastLog 支持八种不同的日志格式：
 | Simple | `fastlog.Simple` | 简约格式，仅包含时间、级别和消息 |
 | Structured | `fastlog.Structured` | 结构化格式，使用分隔符组织信息 |
 | BasicStructured | `fastlog.BasicStructured` | 基础结构化格式(无文件信息) |
-| SimpleTimestamp | `fastlog.SimpleTimestamp` | 简单时间格式 |
+| Timestamp | `fastlog.Timestamp` | 简单时间格式 |
 | Custom | `fastlog.Custom` | 自定义格式，直接输出原始消息 |
 
 ### 格式示例
 
-#### 1. Detailed 格式
+#### 1. Def 格式
 ```
 2025-01-15 10:30:45 | INFO    | main.go:main:15 - 用户登录成功
 2025-01-15 10:30:46 | ERROR   | database.go:Connect:23 - 数据库连接失败
@@ -154,37 +154,19 @@ FastLog 支持八种不同的日志格式：
 {"time":"2025-01-15 10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
 ```
 
-#### 3. JsonSimple 格式
-```json
-{"time":"2025-01-15 10:30:45","level":"INFO","message":"用户登录成功"}
-{"time":"2025-01-15 10:30:46","level":"ERROR","message":"数据库连接失败"}
-```
-
-#### 4. Simple 格式
-```
-2025-01-15 10:30:45 | INFO    | 用户登录成功
-2025-01-15 10:30:46 | ERROR   | 数据库连接失败
-```
-
-#### 5. Structured 格式
+#### 3. Structured 格式
 ```
 T:2025-01-15 10:30:45|L:INFO   |C:main.go:main:15|M:用户登录成功
 T:2025-01-15 10:30:46|L:ERROR  |C:database.go:Connect:23|M:数据库连接失败
 ```
 
-#### 6. BasicStructured 格式
-```
-T:2025-01-15 10:30:45|L:INFO   |M:用户登录成功
-T:2025-01-15 10:30:46|L:ERROR  |M:数据库连接失败
-```
-
-#### 7. SimpleTimestamp 格式
+#### 4. Timestamp 格式
 ```
 2025-01-15 10:30:45 INFO  用户登录成功
 2025-01-15 10:30:46 ERROR 数据库连接失败
 ```
 
-#### 8. Custom 格式
+#### 5. Custom 格式
 ```go
 // 使用 Custom 格式时，直接输出传入的消息内容
 logger.Info("自定义格式的日志消息")  // 输出: 自定义格式的日志消息

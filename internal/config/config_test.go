@@ -34,8 +34,8 @@ func TestNewFastLogConfig_Defaults(t *testing.T) {
 	if cfg.LogLevel != types.INFO {
 		t.Errorf("默认 LogLevel 应为 INFO，得到 %v", cfg.LogLevel)
 	}
-	if cfg.LogFormat != types.Simple {
-		t.Errorf("默认 LogFormat 应为 Simple，得到 %v", cfg.LogFormat)
+	if cfg.LogFormat != types.Def {
+		t.Errorf("默认 LogFormat 应为 Def，得到 %v", cfg.LogFormat)
 	}
 	if !cfg.Color {
 		t.Error("默认 Color 应为 true")
@@ -80,8 +80,8 @@ func TestDevConfig(t *testing.T) {
 	if cfg.LogLevel != types.DEBUG {
 		t.Errorf("DevConfig: LogLevel 应为 DEBUG，得到 %v", cfg.LogLevel)
 	}
-	if cfg.LogFormat != types.Detailed {
-		t.Errorf("DevConfig: LogFormat 应为 Detailed，得到 %v", cfg.LogFormat)
+	if cfg.LogFormat != types.Def {
+		t.Errorf("DevConfig: LogFormat 应为 Def，得到 %v", cfg.LogFormat)
 	}
 	if cfg.MaxFiles != 5 {
 		t.Errorf("DevConfig: MaxFiles 应为 5，得到 %d", cfg.MaxFiles)

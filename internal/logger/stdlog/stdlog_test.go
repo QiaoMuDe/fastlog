@@ -157,13 +157,10 @@ func TestNewFastLog_Initialization(t *testing.T) {
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
 	formats := map[types.LogFormatType]string{
-		types.Detailed:        "detailed.log",
-		types.Json:            "json.log",
-		types.Structured:      "structured.log",
-		types.Simple:          "simple.log",
-		types.BasicStructured: "basic_structured.log",
-		types.SimpleTimestamp: "simple_timestamp.log",
-		types.JsonSimple:      "json_simple.log",
+		types.Def:        "def.log",
+		types.Json:       "json.log",
+		types.Structured: "structured.log",
+		types.Timestamp:  "simple_timestamp.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		types.Custom: "custom.log",
 	}

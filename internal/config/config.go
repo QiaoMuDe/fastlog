@@ -29,6 +29,7 @@ type FastLogConfig struct {
 	MaxWriteCount   int                 // 最大写入次数, 默认500次
 	FlushInterval   time.Duration       // 刷新间隔, 默认1秒
 	Async           bool                // 是否异步清理日志, 默认同步清理
+	CallerInfo      bool                // 是否获取调用者信息, 默认不获取
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -47,7 +48,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		OutputToConsole: true,                       // 是否将日志输出到控制台
 		OutputToFile:    true,                       // 是否将日志输出到文件
 		LogLevel:        types.INFO,                 // 日志级别 默认INFO
-		LogFormat:       types.Simple,               // 日志格式选项
+		LogFormat:       types.Def,                  // 日志格式选项
 		MaxSize:         types.DefaultMaxFileSize,   // 最大日志文件大小, 单位为MB, 默认10MB
 		MaxAge:          0,                          // 最大日志文件保留天数, 默认为0, 表示不做限制
 		MaxFiles:        0,                          // 最大日志文件保留数量, 默认为0, 表示不做限制
@@ -59,6 +60,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		MaxWriteCount:   types.DefaultMaxWriteCount, // 最大写入次数, 默认500次
 		FlushInterval:   types.DefaultFlushInterval, // 刷新间隔, 默认1秒
 		Async:           false,                      // 是否异步清理日志, 默认同步清理
+		CallerInfo:      false,                      // 是否获取调用者信息, 默认不获取
 	}
 }
 
@@ -79,10 +81,11 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 func DevConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 创建一个新的FastLogConfig实例
 	cfg := NewFastLogConfig(logDirName, logFileName)
-	cfg.LogLevel = types.DEBUG     // 设置日志级别为DEBUG
-	cfg.LogFormat = types.Detailed // 设置日志格式为详细格式
-	cfg.MaxFiles = 5               // 设置最大日志文件保留数量为5
-	cfg.MaxAge = 7                 // 设置最大日志文件保留天数为7天
+	cfg.LogLevel = types.DEBUG // 设置日志级别为DEBUG
+	cfg.LogFormat = types.Def  // 设置日志格式为默认格式
+	cfg.MaxFiles = 5           // 设置最大日志文件保留数量为5
+	cfg.MaxAge = 7             // 设置最大日志文件保留天数为7天
+	cfg.CallerInfo = true      // 启用调用者信息
 	return cfg
 }
 
@@ -121,6 +124,7 @@ func ConsoleConfig() *FastLogConfig {
 	cfg := NewFastLogConfig("", "")
 	cfg.OutputToFile = false   // 禁用文件输出
 	cfg.LogLevel = types.DEBUG // 设置日志级别为DEBUG
+	cfg.CallerInfo = true      // 启用调用者信息
 	return cfg
 }
 
@@ -149,8 +153,8 @@ func (c *FastLogConfig) ValidateConfig() {
 	}
 
 	// 验证日志格式
-	if c.LogFormat < types.Detailed || c.LogFormat > types.Custom {
-		panic(fmt.Sprintf("invalid LogFormat %d, must be %d-%d", c.LogFormat, types.Detailed, types.Custom))
+	if c.LogFormat < types.Def || c.LogFormat > types.Custom {
+		panic(fmt.Sprintf("invalid LogFormat %d, must be %d-%d", c.LogFormat, types.Def, types.Custom))
 	}
 
 	// 验证文件大小
@@ -210,6 +214,7 @@ func (c *FastLogConfig) Clone() *FastLogConfig {
 		MaxBufferSize:   c.MaxBufferSize,
 		MaxWriteCount:   c.MaxWriteCount,
 		FlushInterval:   c.FlushInterval,
+		CallerInfo:      c.CallerInfo,
 	}
 }
 

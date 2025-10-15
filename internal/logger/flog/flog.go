@@ -77,6 +77,6 @@ func (f *Flog) log(level types.LogLevel, msg string, fields ...*Field) {
 		return
 	}
 
-	_ = NewEntry(types.NeedsFileInfo(f.cfg.LogFormat), level, msg, fields...)
+	//_ = NewEntry(types.NeedsFileInfo(f.cfg.LogFormat), level, msg, fields...)
 
 }

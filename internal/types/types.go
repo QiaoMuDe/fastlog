@@ -78,18 +78,6 @@ func GetCachedTimestamp() string {
 // key: 完整文件路径，value: 文件名（不含路径）
 var fileNameCache = sync.Map{}
 
-// NeedsFileInfo 判断日志格式是否需要文件信息
-//
-// 参数：
-//   - format: 日志格式类型
-//
-// 返回值：
-//   - bool: true表示需要文件信息，false表示不需要
-func NeedsFileInfo(format LogFormatType) bool {
-	_, exists := FileInfoRequiredFormats[format]
-	return exists
-}
-
 // GetCallerInfo 获取调用者的信息（优化版本，使用文件名缓存）
 //
 // 参数：
