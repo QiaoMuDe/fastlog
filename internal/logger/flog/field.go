@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// FieldType 定义了日志字段的类型(12个)
+// FieldType 定义了日志字段的类型(13个)
 type FieldType uint8
 
 const (

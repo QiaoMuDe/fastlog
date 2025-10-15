@@ -1,6 +1,14 @@
 package types
 
 // LogLevel 定义为位掩码类型，每一位代表一个日志级别
+//
+// 支持的日志级别:
+//   - DEBUG: 调试级别
+//   - INFO: 信息级别
+//   - WARN: 警告级别
+//   - ERROR: 错误级别
+//   - FATAL: 致命错误级别
+//   - NONE: 不记录任何日志级别
 type LogLevel uint8
 
 // 定义日志级别的位掩码

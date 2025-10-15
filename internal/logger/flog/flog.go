@@ -11,7 +11,7 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// Flog 日志记录器
+// Flog 是一个高性能的键值对日志记录器
 type Flog struct {
 	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库

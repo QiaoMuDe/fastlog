@@ -34,15 +34,3 @@ const (
 	Timestamp                       // 时间格式
 	Custom                          // 自定义格式
 )
-
-// 仅供内部参考的日志格式
-// // 定义日志格式
-// var LogFormatMap = map[LogFormatType]string{
-// 	Json:            `{"time":"%s","level":"%s","caller":"%s","message":"%s"}`, // Json格式
-// 	JsonSimple:      `{"time":"%s","level":"%s","message":"%s"}`,               // Json简化格式(无文件信息)
-// 	Detailed:        `%s | %-6s | %s - %s`,                                     // 详细格式
-// 	Simple:          `%s | %-6s | %s`,                                          // 简约格式(无文件信息)                                                                                                 // 自定义格式
-// 	Structured:      `T:%s|L:%-6s|C:%s|M:%s`,                                   // 结构化格式
-// 	BasicStructured: `T:%s|L:%-6s|M:%s`,                                        // 基础结构化格式(无文件信息)
-// 	Timestamp:       `%s %s %s`,                                                // 简单时间格式
-// }

@@ -10,7 +10,7 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// StdLog 日志记录器
+// StdLog 符合标准库fmt使用习惯的日志记录器
 type StdLog struct {
 	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
