@@ -153,7 +153,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 	})
 }
 
-// TestLogFormats 测试日志库支持的所有日志格式
+// c 测试日志库支持的所有日志格式
 func TestLogFormats(t *testing.T) {
 	// 定义日志格式及其对应的文件名
 	formats := map[types.LogFormatType]string{
