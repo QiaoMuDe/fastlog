@@ -13,7 +13,7 @@ import (
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *Flog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
-	if f != nil && f.cfg != nil {
+	if f == nil || f.cfg == nil {
 		return
 	}
 
@@ -51,8 +51,6 @@ func (f *Flog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
 			fmt.Println(string(log)) // 默认打印
 		}
 	}
-	fmt.Println("控制台日志:")
-	fmt.Println(string(log)) // 默认打印
 
 	// 写入到文件
 	if f.cfg.OutputToFile {

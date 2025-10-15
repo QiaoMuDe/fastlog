@@ -2,6 +2,9 @@ package flog
 
 import (
 	"errors"
+	"flag"
+	"fmt"
+	"os"
 	"testing"
 	"time"
 
@@ -9,21 +12,47 @@ import (
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
-func TestQM(t *testing.T) {
-	log := NewFlog(config.ConsoleConfig())
-	defer log.Close()
+// TestMain 全局测试入口，控制非verbose模式下的输出重定向
+func TestMain(m *testing.M) {
+	flag.Parse() // 解析命令行参数
+	// 保存原始标准输出和错误输出
+	originalStdout := os.Stdout
+	originalStderr := os.Stderr
+	var nullFile *os.File
+	var err error
 
-	log.Info("测试")
-	log.Warn("测试")
-	log.Error("测试")
-	log.Debug("测试")
+	// 非verbose模式下重定向到空设备
+	if !testing.Verbose() {
+		nullFile, err = os.OpenFile(os.DevNull, os.O_WRONLY, 0666)
+		if err != nil {
+			panic("无法打开空设备文件: " + err.Error())
+		}
+		os.Stdout = nullFile
+		os.Stderr = nullFile
+	}
 
+	// 运行所有测试
+	exitCode := m.Run()
+
+	//清理日志目录
+	if err := os.RemoveAll("logs"); err != nil {
+		fmt.Printf("清理日志目录失败: %v\n", err)
+	}
+
+	// 恢复原始输出
+	if !testing.Verbose() {
+		os.Stdout = originalStdout
+		os.Stderr = originalStderr
+		_ = nullFile.Close()
+	}
+
+	os.Exit(exitCode)
 }
 
 // TestLog 测试使用flog库记录不同级别的日志
 func TestLog(t *testing.T) {
 	// 创建开发环境配置
-	cfg := config.DevConfig("example_logs", "app.log")
+	cfg := config.DevConfig("logs", "app.log")
 
 	// 也可以自定义配置
 	cfg.LogLevel = types.DEBUG
@@ -33,7 +62,7 @@ func TestLog(t *testing.T) {
 
 	// 创建flog实例
 	logger := NewFlog(cfg)
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// 记录不同级别的日志
 	logger.Debug("这是一条调试日志")
@@ -68,12 +97,12 @@ func TestLog(t *testing.T) {
 		Uint64("disk_space", 1024000))
 
 	// 使用不同日志格式
-	jsonCfg := config.NewFastLogConfig("example_logs", "json.log")
+	jsonCfg := config.NewFastLogConfig("logs", "json.log")
 	jsonCfg.LogFormat = types.Json
 	jsonCfg.CallerInfo = true
 
 	jsonLogger := NewFlog(jsonCfg)
-	defer jsonLogger.Close()
+	defer func() { _ = jsonLogger.Close() }()
 
 	jsonLogger.Info("JSON格式日志示例",
 		String("service", "user-service"),
@@ -91,7 +120,7 @@ func TestFlogUsage(t *testing.T) {
 	if logger == nil {
 		t.Fatal("Failed to create flog instance")
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	// 测试不同级别的日志记录
 	t.Run("BasicLogLevels", func(t *testing.T) {
@@ -156,7 +185,7 @@ func TestFlogWithDifferentFormats(t *testing.T) {
 			if logger == nil {
 				t.Fatal("Failed to create flog instance")
 			}
-			defer logger.Close()
+			defer func() { _ = logger.Close() }()
 
 			// 记录带字段的日志
 			logger.Info("测试不同日志格式",
@@ -178,7 +207,7 @@ func TestFlogConfigurations(t *testing.T) {
 		if logger == nil {
 			t.Fatal("Failed to create flog instance")
 		}
-		defer logger.Close()
+		defer func() { _ = logger.Close() }()
 
 		logger.Info("启用调用者信息的日志")
 	})
@@ -201,7 +230,7 @@ func TestFlogConfigurations(t *testing.T) {
 				if logger == nil {
 					t.Fatal("Failed to create flog instance")
 				}
-				defer logger.Close()
+				defer func() { _ = logger.Close() }()
 
 				// 尝试记录所有级别的日志
 				logger.Debug("调试信息")
@@ -224,7 +253,7 @@ func BenchmarkFlogInfo(b *testing.B) {
 	if logger == nil {
 		b.Fatal("Failed to create flog instance")
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -243,7 +272,7 @@ func BenchmarkFlogInfoWithFields(b *testing.B) {
 	if logger == nil {
 		b.Fatal("Failed to create flog instance")
 	}
-	defer logger.Close()
+	defer func() { _ = logger.Close() }()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
