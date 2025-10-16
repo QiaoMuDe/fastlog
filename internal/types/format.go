@@ -5,7 +5,6 @@ package types
 // 格式:
 //   - Detailed: 详细格式
 //   - Json: json格式
-//   - Structured: 结构化格式
 //   - Timestamp: 时间格式
 //   - Custom: 自定义格式
 type LogFormatType int
@@ -15,8 +14,6 @@ func (f LogFormatType) String() string {
 	switch f {
 	case Json:
 		return "json"
-	case Structured:
-		return "structured"
 	case Timestamp:
 		return "timestamp"
 	case Custom:
@@ -28,9 +25,8 @@ func (f LogFormatType) String() string {
 
 // 日志格式选项
 const (
-	Def        LogFormatType = iota // 默认格式
-	Json                            // json格式
-	Structured                      // 结构化格式
-	Timestamp                       // 时间格式
-	Custom                          // 自定义格式
+	Def       LogFormatType = iota // 默认格式
+	Json                           // json格式
+	Timestamp                      // 时间格式
+	Custom                         // 自定义格式
 )

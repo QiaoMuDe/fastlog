@@ -1,4 +1,4 @@
-package flog
+package fastlog
 
 import (
 	"strconv"

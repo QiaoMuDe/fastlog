@@ -31,22 +31,22 @@ const (
 
 // 预构建的日志级别到字符串的映射表（不带填充，用于JSON序列化）
 var LogLevelStringMap = map[LogLevel]string{
-	DEBUG: "DEBUG",
-	INFO:  "INFO",
-	WARN:  "WARN",
-	ERROR: "ERROR",
-	FATAL: "FATAL",
-	NONE:  "NONE",
+	DEBUG_Mask: "DEBUG",
+	INFO_Mask:  "INFO",
+	WARN_Mask:  "WARN",
+	ERROR_Mask: "ERROR",
+	FATAL_Mask: "FATAL",
+	NONE_Mask:  "NONE",
 }
 
 // 预构建的日志级别到字符串的映射表（带填充，用于文本格式化）
 var LogLevelPaddedStringMap = map[LogLevel]string{
-	DEBUG: "DEBUG", // 5个字符(预填充空格)
-	INFO:  "INFO ", // 5个字符
-	WARN:  "WARN ", // 5个字符
-	ERROR: "ERROR", // 5个字符
-	FATAL: "FATAL", // 5个字符
-	NONE:  "NONE ", // 5个字符
+	DEBUG_Mask: "DEBUG", // 5个字符(预填充空格)
+	INFO_Mask:  "INFO ", // 5个字符
+	WARN_Mask:  "WARN ", // 5个字符
+	ERROR_Mask: "ERROR", // 5个字符
+	FATAL_Mask: "FATAL", // 5个字符
+	NONE_Mask:  "NONE ", // 5个字符
 }
 
 // ShouldLog 检查是否应该记录指定级别的日志

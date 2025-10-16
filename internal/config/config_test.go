@@ -191,7 +191,7 @@ func TestValidateConfig_ValidExample(t *testing.T) {
 	cfg.OutputToConsole = false
 	cfg.OutputToFile = true
 	cfg.LogLevel = types.INFO
-	cfg.LogFormat = types.Structured
+	cfg.LogFormat = types.Json
 	cfg.MaxSize = 100
 	cfg.MaxAge = 30
 	cfg.MaxFiles = 24

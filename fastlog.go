@@ -2,8 +2,7 @@ package fastlog
 
 import (
 	"gitee.com/MM-Q/fastlog/internal/config"
-	"gitee.com/MM-Q/fastlog/internal/logger/flog"
-	"gitee.com/MM-Q/fastlog/internal/logger/stdlog"
+	"gitee.com/MM-Q/fastlog/internal/logger/fastlog"
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
@@ -39,11 +38,10 @@ const (
 type LogFormatType = types.LogFormatType
 
 const (
-	Def        = types.Def        // 默认格式
-	Json       = types.Json       // json格式
-	Structured = types.Structured // 结构化格式
-	Timestamp  = types.Timestamp  // 时间格式
-	Custom     = types.Custom     // 自定义格式
+	Def       = types.Def       // 默认格式
+	Json      = types.Json      // json格式
+	Timestamp = types.Timestamp // 时间格式
+	Custom    = types.Custom    // 自定义格式
 )
 
 // FastLogConfig 定义一个配置结构体, 用于配置日志记录器
@@ -101,29 +99,14 @@ var ProdConfig = config.ProdConfig
 //   - 设置日志级别为DEBUG
 var ConsoleConfig = config.ConsoleConfig
 
-// StdLog 符合标准库fmt使用习惯的日志记录器
-type StdLog = stdlog.StdLog
-
-// NewStdLog 创建一个新的StdLog实例, 用于记录日志。
+// NewFastLog 创建一个新的FastLog实例, 用于记录日志。
 //
 // 参数:
 //   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *StdLog: 一个指向StdLog实例的指针。
-var NewStdLog = stdlog.NewStdLog
-
-// Flog 是一个高性能的键值对日志记录器
-type Flog = flog.Flog
-
-// NewFlog 创建一个新的Flog实例, 用于记录日志。
-//
-// 参数:
-//   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
-//
-// 返回值:
-//   - *Flog: 一个指向Flog实例的指针。
-var NewFlog = flog.NewFlog
+//   - *FastLog: 一个指向FastLog实例的指针。
+var NewFastLog = fastlog.NewFastLog
 
 // String 添加字符串字段
 //
@@ -133,7 +116,7 @@ var NewFlog = flog.NewFlog
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var String = flog.String
+var String = fastlog.String
 
 // Int 添加整数字段
 //
@@ -143,7 +126,7 @@ var String = flog.String
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Int = flog.Int
+var Int = fastlog.Int
 
 // Int64 添加64位整数字段
 //
@@ -153,7 +136,7 @@ var Int = flog.Int
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Int64 = flog.Int64
+var Int64 = fastlog.Int64
 
 // Float64 添加64位浮点数字段
 //
@@ -163,7 +146,7 @@ var Int64 = flog.Int64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Float64 = flog.Float64
+var Float64 = fastlog.Float64
 
 // Bool 添加布尔字段
 //
@@ -173,7 +156,7 @@ var Float64 = flog.Float64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Bool = flog.Bool
+var Bool = fastlog.Bool
 
 // Time 添加时间字段
 //
@@ -183,7 +166,7 @@ var Bool = flog.Bool
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Time = flog.Time
+var Time = fastlog.Time
 
 // Duration 添加持续时间字段
 //
@@ -193,7 +176,7 @@ var Time = flog.Time
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Duration = flog.Duration
+var Duration = fastlog.Duration
 
 // Uint64 添加64位无符号整数字段
 //
@@ -203,7 +186,7 @@ var Duration = flog.Duration
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint64 = flog.Uint64
+var Uint64 = fastlog.Uint64
 
 // Uint32 添加32位无符号整数字段
 //
@@ -213,7 +196,7 @@ var Uint64 = flog.Uint64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint32 = flog.Uint32
+var Uint32 = fastlog.Uint32
 
 // Uint16 添加16位无符号整数字段
 //
@@ -223,7 +206,7 @@ var Uint32 = flog.Uint32
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint16 = flog.Uint16
+var Uint16 = fastlog.Uint16
 
 // Uint8 添加8位无符号整数字段
 //
@@ -233,7 +216,7 @@ var Uint16 = flog.Uint16
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint8 = flog.Uint8
+var Uint8 = fastlog.Uint8
 
 // Error 添加错误字段
 //
@@ -243,4 +226,4 @@ var Uint8 = flog.Uint8
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Error = flog.Error
+var Error = fastlog.Error

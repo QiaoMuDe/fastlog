@@ -151,19 +151,13 @@ FastLog 支持4种不同的日志格式：
 {"time":"2025-01-15 10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
 ```
 
-#### 3. Structured 格式
-```
-T:2025-01-15 10:30:45|L:INFO   |C:main.go:main:15|M:用户登录成功
-T:2025-01-15 10:30:46|L:ERROR  |C:database.go:Connect:23|M:数据库连接失败
-```
-
-#### 4. Timestamp 格式
+#### 3. Timestamp 格式
 ```
 2025-01-15 10:30:45 INFO  用户登录成功
 2025-01-15 10:30:46 ERROR 数据库连接失败
 ```
 
-#### 5. Custom 格式
+#### 4. Custom 格式
 ```go
 // 使用 Custom 格式时，直接输出传入的消息内容
 logger.Info("自定义格式的日志消息")  // 输出: 自定义格式的日志消息

@@ -1,7 +1,8 @@
-package stdlog
+package fastlog
 
 import (
 	"fmt"
+	"os"
 	"sync/atomic"
 
 	"gitee.com/MM-Q/colorlib"
@@ -10,25 +11,25 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// StdLog 符合标准库fmt使用习惯的日志记录器
-type StdLog struct {
+// FastLog 是一个高性能的键值对日志记录器
+type FastLog struct {
 	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
 	cfg        *config.FastLogConfig      // 嵌入的配置结构体
 	closed     atomic.Bool                // 标记日志处理器是否已关闭
 }
 
-// NewStdLog 创建一个新的StdLog实例, 用于记录日志。
+// NewFastLog 创建一个新的FastLog实例, 用于记录日志。
 //
 // 参数:
-//   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
+//   - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *StdLog: 一个指向StdLog实例的指针。
-func NewStdLog(cfg *config.FastLogConfig) *StdLog {
+//   - *FastLog: 一个指向FastLog实例的指针。
+func NewFastLog(cfg *config.FastLogConfig) *FastLog {
 	// 检查配置结构体是否为nil
 	if cfg == nil {
-		panic("FastLogConfig cannot be nil")
+		panic("fastlog: FastLogConfig cannot be nil")
 	}
 
 	// 最终验证
@@ -40,42 +41,43 @@ func NewStdLog(cfg *config.FastLogConfig) *StdLog {
 	// 初始化写入器
 	fileWriter := config.CreateBufferedWriter(cfg)
 
-	// 创建一个新的StdLog实例, 将配置和缓冲区赋值给实例。
-	s := &StdLog{
+	// 创建一个新的Fastlog实例, 将配置和缓冲区赋值给实例。
+	f := &FastLog{
 		fileWriter: fileWriter,             // 带缓冲的文件写入器
 		cl:         colorlib.NewColorLib(), // 颜色库实例, 用于在终端中显示颜色
 		cfg:        cfg,                    // 配置结构体
 		closed:     atomic.Bool{},          // 标记日志处理器是否已关闭
 	}
 
-	s.cl.SetColor(s.cfg.Color) // 设置颜色库的颜色选项
-	s.cl.SetBold(s.cfg.Bold)   // 设置颜色库的字体加粗选项
-	s.closed.Store(false)      // 初始化日志处理器为未关闭状态
+	// 配置设置
+	f.cl.SetColor(f.cfg.Color) // 设置颜色库的颜色选项
+	f.cl.SetBold(f.cfg.Bold)   // 设置颜色库的字体加粗选项
+	f.closed.Store(false)      // 初始化日志处理器为未关闭状态
 
-	// 返回StdLog实例
-	return s
+	// 返回Fastlog实例
+	return f
 }
 
-// Close 关闭日志记录器
+// Close 关闭日志处理器
 //
-// 返回值:
-//   - error: 如果关闭过程中发生错误, 返回错误信息; 否则返回nil
-func (s *StdLog) Close() error {
-	if s == nil {
-		return nil
+// 返回值：
+//   - error: 如果关闭过程中发生错误, 返回错误信息; 否则返回 nil。
+func (f *FastLog) Close() error {
+	if f == nil || f.cfg == nil {
+		return fmt.Errorf("fastlog: cannot close nil logger")
 	}
 
 	// 记录关闭日志
-	s.Info("stop logging...")
+	f.Info("stop logging...")
 
 	// 确保日志处理器只关闭一次 (原子操作)
-	if !s.closed.CompareAndSwap(false, true) {
+	if !f.closed.CompareAndSwap(false, true) {
 		return nil
 	}
 
 	// 如果启用了文件写入器，则尝试关闭它。
-	if s.cfg.OutputToFile && s.fileWriter != nil {
-		if err := s.fileWriter.Close(); err != nil {
+	if f.cfg.OutputToFile && f.fileWriter != nil {
+		if err := f.fileWriter.Close(); err != nil {
 			return err
 		}
 	}
@@ -89,14 +91,14 @@ func (s *StdLog) Close() error {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Info(v ...any) {
+func (f *FastLog) Info(v ...any) {
 	// 公共API入口参数验证
-	if s == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -106,21 +108,21 @@ func (s *StdLog) Info(v ...any) {
 	}
 
 	// 调用processLog方法记录日志
-	s.processLog(types.INFO_Mask, fmt.Sprint(v...))
+	f.handleLog(types.INFO_Mask, fmt.Sprint(v...))
 }
 
 // Debug 记录调试级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Debug(v ...any) {
+func (f *FastLog) Debug(v ...any) {
 	// 公共API入口参数验证
-	if s == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -129,21 +131,21 @@ func (s *StdLog) Debug(v ...any) {
 		return
 	}
 
-	s.processLog(types.DEBUG_Mask, fmt.Sprint(v...))
+	f.handleLog(types.DEBUG_Mask, fmt.Sprint(v...))
 }
 
 // Warn 记录警告级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Warn(v ...any) {
+func (f *FastLog) Warn(v ...any) {
 	// 公共API入口参数验证
-	if s == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -152,21 +154,21 @@ func (s *StdLog) Warn(v ...any) {
 		return
 	}
 
-	s.processLog(types.WARN_Mask, fmt.Sprint(v...))
+	f.handleLog(types.WARN_Mask, fmt.Sprint(v...))
 }
 
 // Error 记录错误级别的日志，不支持占位符
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Error(v ...any) {
+func (f *FastLog) Error(v ...any) {
 	// 公共API入口参数验证
-	if s == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -175,21 +177,21 @@ func (s *StdLog) Error(v ...any) {
 		return
 	}
 
-	s.processLog(types.ERROR_Mask, fmt.Sprint(v...))
+	f.handleLog(types.ERROR_Mask, fmt.Sprint(v...))
 }
 
 // Fatal 记录致命级别的日志，不支持占位符，发送后关闭日志记录器
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Fatal(v ...any) {
+func (f *FastLog) Fatal(v ...any) {
 	// 公共API入口参数验证
-	if s == nil {
+	if f == nil {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -198,7 +200,7 @@ func (s *StdLog) Fatal(v ...any) {
 		return
 	}
 
-	s.logFatal(fmt.Sprint(v...))
+	f.logFatal(fmt.Sprint(v...))
 }
 
 /*====== 占位符方法 ======*/
@@ -208,14 +210,14 @@ func (s *StdLog) Fatal(v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Infof(format string, v ...any) {
+func (f *FastLog) Infof(format string, v ...any) {
 	// 公共API入口参数验证
-	if s == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -224,7 +226,7 @@ func (s *StdLog) Infof(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.INFO_Mask, fmt.Sprintf(format, v...))
+	f.handleLog(types.INFO_Mask, fmt.Sprintf(format, v...))
 }
 
 // Debugf 记录调试级别的日志，支持占位符，格式化
@@ -232,14 +234,14 @@ func (s *StdLog) Infof(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Debugf(format string, v ...any) {
+func (f *FastLog) Debugf(format string, v ...any) {
 	// 公共API入口参数验证
-	if s == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -248,7 +250,7 @@ func (s *StdLog) Debugf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.DEBUG_Mask, fmt.Sprintf(format, v...))
+	f.handleLog(types.DEBUG_Mask, fmt.Sprintf(format, v...))
 }
 
 // Warnf 记录警告级别的日志，支持占位符，格式化
@@ -256,14 +258,14 @@ func (s *StdLog) Debugf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Warnf(format string, v ...any) {
+func (f *FastLog) Warnf(format string, v ...any) {
 	// 公共API入口参数验证
-	if s == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -272,7 +274,7 @@ func (s *StdLog) Warnf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.WARN_Mask, fmt.Sprintf(format, v...))
+	f.handleLog(types.WARN_Mask, fmt.Sprintf(format, v...))
 }
 
 // Errorf 记录错误级别的日志，支持占位符，格式化
@@ -280,14 +282,14 @@ func (s *StdLog) Warnf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Errorf(format string, v ...any) {
+func (f *FastLog) Errorf(format string, v ...any) {
 	// 公共API入口参数验证
-	if s == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -296,7 +298,7 @@ func (s *StdLog) Errorf(format string, v ...any) {
 		return
 	}
 
-	s.processLog(types.ERROR_Mask, fmt.Sprintf(format, v...))
+	f.handleLog(types.ERROR_Mask, fmt.Sprintf(format, v...))
 }
 
 // Fatalf 记录致命级别的日志，支持占位符，发送后关闭日志记录器
@@ -304,14 +306,14 @@ func (s *StdLog) Errorf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (s *StdLog) Fatalf(format string, v ...any) {
+func (f *FastLog) Fatalf(format string, v ...any) {
 	// 公共API入口参数验证
-	if s == nil || format == "" {
+	if f == nil || format == "" {
 		return
 	}
 
 	// 检查是否已关闭日志记录器
-	if s.closed.Load() {
+	if f.closed.Load() {
 		return
 	}
 
@@ -320,5 +322,58 @@ func (s *StdLog) Fatalf(format string, v ...any) {
 		return
 	}
 
-	s.logFatal(fmt.Sprintf(format, v...))
+	f.logFatal(fmt.Sprintf(format, v...))
+}
+
+// InfoF 记录Info级别的键值对日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *FastLog) InfoF(msg string, fields ...*Field) {
+	f.handleLog(types.INFO_Mask, msg, fields...)
+}
+
+// WarnF 记录Warn级别的键值对日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *FastLog) WarnF(msg string, fields ...*Field) {
+	f.handleLog(types.WARN_Mask, msg, fields...)
+}
+
+// ErrorF 记录Error级别的键值对日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *FastLog) ErrorF(msg string, fields ...*Field) {
+	f.handleLog(types.ERROR_Mask, msg, fields...)
+}
+
+// DebugF 记录Debug级别的键值对日志
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *FastLog) DebugF(msg string, fields ...*Field) {
+	f.handleLog(types.DEBUG_Mask, msg, fields...)
+}
+
+// FatalF 记录Fatal级别的键值对日志并触发程序退出
+//
+// 参数：
+//   - msg: 日志消息。
+//   - fields: 日志字段，可变参数。
+func (f *FastLog) FatalF(msg string, fields ...*Field) {
+	f.handleLog(types.FATAL_Mask, msg, fields...)
+
+	// 关闭日志处理器
+	if err := f.Close(); err != nil {
+		fmt.Printf("fastlog: failed to close logger: %v\n", err)
+	}
+
+	// 退出程序
+	os.Exit(1)
 }
