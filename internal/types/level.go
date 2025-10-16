@@ -37,6 +37,10 @@ var LogLevelStringMap = map[LogLevel]string{
 	ERROR_Mask: "ERROR",
 	FATAL_Mask: "FATAL",
 	NONE_Mask:  "NONE",
+	DEBUG:      "DEBUG",
+	INFO:       "INFO",
+	WARN:       "WARN",
+	ERROR:      "ERROR",
 }
 
 // 预构建的日志级别到字符串的映射表（带填充，用于文本格式化）
@@ -47,6 +51,10 @@ var LogLevelPaddedStringMap = map[LogLevel]string{
 	ERROR_Mask: "ERROR", // 5个字符
 	FATAL_Mask: "FATAL", // 5个字符
 	NONE_Mask:  "NONE ", // 5个字符
+	DEBUG:      "DEBUG", // 5个字符
+	INFO:       "INFO ", // 5个字符
+	WARN:       "WARN ", // 5个字符
+	ERROR:      "ERROR", // 5个字符
 }
 
 // ShouldLog 检查是否应该记录指定级别的日志
