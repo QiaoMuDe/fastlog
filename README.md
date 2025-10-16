@@ -8,30 +8,29 @@
 
 </div>
 
-FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设计。当前实现为同步写入，提供严格的配置校验、丰富的日志级别与格式、灵活的输出目标，以及完善的日志轮转支持。配套提供开发/生产/终端三种便捷模式构造函数，便于快速在不同场景落地。
+FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设计。当前实现采用带缓冲写入与定时刷新（BufferedWriter + FlushInterval），提供严格的配置校验、丰富的日志级别与格式、灵活的输出目标，以及完善的日志轮转与清理支持。配套提供开发/生产/终端三种便捷模式构造函数，便于快速在不同场景落地。
 
 ## 🌟 核心特性
 
 ### ⚙️ 写入与配置
-- 同步写入：简洁直接，便于理解与调试
-- 异步清理：支持 Async 控制是否异步清理轮转后的旧日志（默认同步）
-- 严格配置校验：validateConfig 对不合理配置直接 panic，防止隐性错误
-- 刷新与大小控制：支持 FlushInterval、MaxSize/MaxAge/MaxFiles 等参数
-- 本地时间与压缩：支持本地时间命名与压缩轮转
+- 带缓冲写入 + 定时刷新：支持 FlushInterval、MaxBufferSize、MaxWriteCount，兼顾吞吐与时延
+- 轮转与清理：支持 MaxSize/MaxAge/MaxFiles、LocalTime、Compress；Async 控制是否异步清理旧日志（默认同步）
+- 严格配置校验：validateConfig 对不合理配置直接 panic（含输出目标、格式上下界、文件输出前置条件等）
+- 输出目标：文件与控制台可独立开启/关闭，终端输出可配色与加粗（Color/Bold）
+- 调用者信息：可选输出调用文件/函数/行号（CallerInfo）
 
 ### 📊 日志能力
-- 日志级别：DEBUG / INFO / WARN / ERROR / FATAL
-- 输出格式：Def / Json / Timestamp / KVfmt / Logfmt / Custom
-- 输出目标：文件与控制台可独立开启/关闭
-- 颜色与样式：可配置 Color/Bold 提升终端可读性
+- 日志级别：DEBUG / INFO / WARN / ERROR / FATAL（位掩码组合与过滤）
+- 输出格式：Def / Json / Timestamp / KVFmt / LogFmt / Custom（Custom 需外部自定义格式化）
+- 兼容 API：Info/Debug/Warn/Error/Fatal 及对应格式化方法（Infof/Debugf 等）
 
 ### 🔧 开发友好设计
 - 便捷模式构造函数：
-  - DevConfig：开发模式（详细格式、DEBUG、短期保留）
-  - ProdConfig：生产模式（压缩、禁用控制台、长期保留）
-  - ConsoleConfig：终端模式（仅控制台、DEBUG、简洁时间戳）
-- 完整测试：包含高并发性能测试与 Fatal/Fatalf 子进程行为验证
-- 简洁 API：通过 NewFastLogConfig + NewFLog 组合使用，支持格式化方法（Infof/Debugf 等）
+  - DevConfig：开发模式（Def、DEBUG、短期保留：MaxAge=7/MaxFiles=5）
+  - ProdConfig：生产模式（Json、压缩、禁用控制台、长期保留：MaxAge=30/MaxFiles=24）
+  - ConsoleConfig：终端模式（仅控制台、DEBUG、无需文件路径）
+- 完整测试：覆盖高并发性能、格式多样性、Fatal/Fatalf 子进程行为等
+- 简洁 API：通过 NewFastLogConfig + NewFLog 组合使用
 
 ## 📦 安装与引入
 
@@ -108,23 +107,6 @@ func main() {
 - `ProdConfig(logDir, logFile)` - 生产模式：仅文件、Structured、INFO、无装饰、压缩、MaxSize=100MB、FlushInterval≈1s、长期保留（30天 / 24个）
 - `ConsoleConfig()` - 终端模式：仅控制台、Timestamp、DEBUG、彩色加粗、FlushInterval≈500ms（不写文件）
 
-### 简化创建方式
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 使用简写函数创建
-    config := fastlog.NewCfg("logs", "app.log")  // NewCfg 是 NewFastLogConfig 的简写
-    logger := fastlog.New(config)           // New 是 NewFLog 的简写
-    defer logger.Close()
-
-    logger.Info("使用简写函数创建的日志")
-}
-```
-
 ## 📝 日志格式
 
 FastLog 支持4种不同的日志格式：
@@ -134,7 +116,7 @@ FastLog 支持4种不同的日志格式：
 | Def | `fastlog.Def` | 默认格式，包含时间、级别、文件、函数、行号等完整信息 |
 | Json | `fastlog.Json` | JSON 格式输出，便于日志分析和处理 |
 | Timestamp | `fastlog.Timestamp` | 时间格式 |
-| KVfmt | `fastlog.KVfmt` | 键值对格式 |
+| KVFmt | `fastlog.KVFmt` | 键值对格式 |
 | LogFmt | `fastlog.LogFmt` | 日志格式 |
 | Custom | `fastlog.Custom` | 自定义格式，直接输出原始消息 |
 
@@ -158,7 +140,7 @@ FastLog 支持4种不同的日志格式：
 2025-01-15T10:30:46 ERROR 数据库连接失败
 ```
 
-#### 4. KVfmt 键值对格式
+#### 4. KVFmt 键值对格式
 ```
 time=2025-01-15T10:30:45 level=INFO message=用户登录成功
 time=2025-01-15T10:30:46 level=ERROR message=数据库连接失败

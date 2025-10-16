@@ -169,7 +169,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			}
 		})
 
-	case types.KVfmt: // 键值对格式
+	case types.KVFmt: // 键值对格式
 		return pool.WithBuf(func(b *bytes.Buffer) {
 			b.Write([]byte(`time=`))
 			b.WriteString(e.time)

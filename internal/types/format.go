@@ -6,7 +6,7 @@ package types
 //   - Detailed: 详细格式
 //   - Json: json格式
 //   - Timestamp: 时间格式
-//   - KVfmt: 键值对格式
+//   - KVFmt: 键值对格式
 //   - LogFmt: logfmt格式
 //   - Custom: 自定义格式
 type LogFormatType int
@@ -23,7 +23,7 @@ func (f LogFormatType) String() string {
 	case Custom:
 		return "custom"
 
-	case KVfmt:
+	case KVFmt:
 		return "kvfmt"
 
 	case LogFmt:
@@ -39,7 +39,7 @@ const (
 	Def       LogFormatType = iota // 默认格式
 	Json                           // json格式
 	Timestamp                      // 时间格式
-	KVfmt                          // KVfmt 键值对格式
+	KVFmt                          // KVFmt 键值对格式
 	LogFmt                         // logfmt格式
 	Custom                         // 自定义格式
 )
