@@ -94,8 +94,6 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 	// 仅当需要文件信息时才获取调用者信息
 	if needFileInfo {
 		e.caller = types.GetCallerInfo(3)
-	} else {
-		e.caller = []byte("")
 	}
 
 	// 返回日志条目指针
@@ -141,10 +139,6 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.Write([]byte(`":"`))
 						b.WriteString(utils.QuoteString(field.Value()))
 						b.Write([]byte(`"`))
-
-					} else if field != nil {
-						// key为空的字段直接回收
-						putField(field)
 					}
 				}
 			}
@@ -174,9 +168,6 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.Write([]byte(`=`))
 						b.WriteString(utils.QuoteString(field.Value()))
 
-					} else if field != nil {
-						// key为空的字段直接回收
-						putField(field)
 					}
 				}
 			}
@@ -206,9 +197,6 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.WriteString(utils.QuoteString(field.Value()))
 						b.Write([]byte(`"`))
 
-					} else if field != nil {
-						// key为空的字段直接回收
-						putField(field)
 					}
 				}
 			}
@@ -256,9 +244,6 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.Write([]byte(`=`))
 						b.WriteString(utils.QuoteString(field.Value()))
 
-					} else if field != nil {
-						// key为空的字段直接回收
-						putField(field)
 					}
 				}
 			}
@@ -285,10 +270,6 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						b.WriteString(utils.QuoteString(field.Key()))
 						b.Write([]byte(`=`))
 						b.WriteString(utils.QuoteString(field.Value()))
-
-					} else if field != nil {
-						// key为空的字段直接回收
-						putField(field)
 					}
 				}
 			}

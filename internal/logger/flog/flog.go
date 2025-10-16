@@ -11,7 +11,8 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// FLog 是一个高性能的键值对日志记录器
+// FLog 是一个高性能的日志记录器, 支持键值对风格的使用和标准库fmt类似的使用,
+// 同时提供了丰富的配置选项, 如日志级别、输出格式、日志轮转等。
 type FLog struct {
 	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
@@ -97,11 +98,6 @@ func (f *FLog) Info(v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -118,11 +114,6 @@ func (f *FLog) Info(v ...any) {
 func (f *FLog) Debug(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
-		return
-	}
-
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
 		return
 	}
 
@@ -144,11 +135,6 @@ func (f *FLog) Warn(v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -167,11 +153,6 @@ func (f *FLog) Error(v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -187,11 +168,6 @@ func (f *FLog) Error(v ...any) {
 func (f *FLog) Fatal(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
-		return
-	}
-
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
 		return
 	}
 
@@ -216,11 +192,6 @@ func (f *FLog) Infof(format string, v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -237,11 +208,6 @@ func (f *FLog) Infof(format string, v ...any) {
 func (f *FLog) Debugf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
-		return
-	}
-
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
 		return
 	}
 
@@ -264,11 +230,6 @@ func (f *FLog) Warnf(format string, v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -285,11 +246,6 @@ func (f *FLog) Warnf(format string, v ...any) {
 func (f *FLog) Errorf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
-		return
-	}
-
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
 		return
 	}
 
@@ -312,11 +268,6 @@ func (f *FLog) Fatalf(format string, v ...any) {
 		return
 	}
 
-	// 检查是否已关闭日志记录器
-	if f.closed.Load() {
-		return
-	}
-
 	// 检查参数是否为空
 	if len(v) == 0 {
 		return
@@ -324,6 +275,8 @@ func (f *FLog) Fatalf(format string, v ...any) {
 
 	f.logFatal(fmt.Sprintf(format, v...))
 }
+
+// ====== 键值对方法 ======
 
 // InfoF 记录Info级别的键值对日志
 //
