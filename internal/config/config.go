@@ -109,6 +109,7 @@ func ProdConfig(logDirName string, logFileName string) *FastLogConfig {
 	cfg.MaxFiles = 24           // 设置最大日志文件保留数量为24个
 	cfg.Compress = true         // 启用日志文件压缩
 	cfg.OutputToConsole = false // 禁用控制台输出
+	cfg.LogFormat = types.Json  // 设置日志格式为json格式
 	return cfg
 }
 
@@ -125,6 +126,7 @@ func ConsoleConfig() *FastLogConfig {
 	cfg.OutputToFile = false   // 禁用文件输出
 	cfg.LogLevel = types.DEBUG // 设置日志级别为DEBUG
 	cfg.CallerInfo = true      // 启用调用者信息
+	cfg.LogFormat = types.Def  // 设置日志格式为默认格式
 	return cfg
 }
 

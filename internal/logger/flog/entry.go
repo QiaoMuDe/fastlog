@@ -82,8 +82,11 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 	// 复制字段指针切片 (避免外部修改影响池化实例）
 	if len(fields) > 0 {
 		for _, field := range fields {
-			if field != nil {
+			if field != nil && field.Key() != "" {
 				e.fields = append(e.fields, field)
+			} else {
+				// 空字段或无效字段键，直接归还到对象池
+				putField(field)
 			}
 		}
 	}
@@ -93,7 +96,7 @@ func NewEntry(needFileInfo bool, level types.LogLevel, msg string, fields ...*Fi
 
 	// 仅当需要文件信息时才获取调用者信息
 	if needFileInfo {
-		e.caller = types.GetCallerInfo(3)
+		e.caller = types.GetCallerInfo(types.DefaultCallerDepth)
 	}
 
 	// 返回日志条目指针
@@ -132,14 +135,11 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
-					// 检查字段是否有效
-					if field != nil && field.Key() != "" {
-						b.Write([]byte(`,"`))
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`":"`))
-						b.WriteString(utils.QuoteString(field.Value()))
-						b.Write([]byte(`"`))
-					}
+					b.Write([]byte(`,"`))
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`":"`))
+					b.WriteString(utils.QuoteString(field.Value()))
+					b.Write([]byte(`"`))
 				}
 			}
 			// 最后添加右大括号
@@ -161,14 +161,10 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
-					// 检查字段是否有效
-					if field != nil && field.Key() != "" {
-						b.Write([]byte(` `))
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`=`))
-						b.WriteString(utils.QuoteString(field.Value()))
-
-					}
+					b.Write([]byte(` `))
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`=`))
+					b.WriteString(utils.QuoteString(field.Value()))
 				}
 			}
 		})
@@ -189,15 +185,11 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
-					// 检查字段是否有效
-					if field != nil && field.Key() != "" {
-						b.Write([]byte(` `))
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`="`))
-						b.WriteString(utils.QuoteString(field.Value()))
-						b.Write([]byte(`"`))
-
-					}
+					b.Write([]byte(` `))
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`="`))
+					b.WriteString(utils.QuoteString(field.Value()))
+					b.Write([]byte(`"`))
 				}
 			}
 		})
@@ -217,14 +209,12 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			if len(e.fields) > 0 {
 				b.Write([]byte(` [`))
 				for i, field := range e.fields {
-					if field != nil && field.Key() != "" {
-						if i > 0 {
-							b.Write([]byte(`, `))
-						}
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`=`))
-						b.WriteString(utils.QuoteString(field.Value()))
+					if i > 0 {
+						b.Write([]byte(`, `))
 					}
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`=`))
+					b.WriteString(utils.QuoteString(field.Value()))
 				}
 				b.Write([]byte(`]`))
 			}
@@ -237,14 +227,10 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
-					// 检查字段是否有效
-					if field != nil && field.Key() != "" {
-						b.Write([]byte(` `))
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`=`))
-						b.WriteString(utils.QuoteString(field.Value()))
-
-					}
+					b.Write([]byte(` `))
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`=`))
+					b.WriteString(utils.QuoteString(field.Value()))
 				}
 			}
 		})
@@ -264,13 +250,10 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
-					// 检查字段是否有效
-					if field != nil && field.Key() != "" {
-						b.Write([]byte(` `))
-						b.WriteString(utils.QuoteString(field.Key()))
-						b.Write([]byte(`=`))
-						b.WriteString(utils.QuoteString(field.Value()))
-					}
+					b.Write([]byte(` `))
+					b.WriteString(utils.QuoteString(field.Key()))
+					b.Write([]byte(`=`))
+					b.WriteString(utils.QuoteString(field.Value()))
 				}
 			}
 		})

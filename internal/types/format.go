@@ -7,6 +7,7 @@ package types
 //   - Json: json格式
 //   - Timestamp: 时间格式
 //   - KVfmt: 键值对格式
+//   - LogFmt: logfmt格式
 //   - Custom: 自定义格式
 type LogFormatType int
 

@@ -14,14 +14,16 @@ import (
 
 const (
 	// 文件大小配置常量
-	DefaultMaxFileSize = 10 // 默认最大文件大小（MB）
+	DefaultMaxFileSize = 10                    // 默认最大文件大小（MB）
+	DefaultTimeFormat  = "2006-01-02T15:04:05" // 默认时间格式
+
+	// 获取调用信息的层数（0表示当前调用，1表示调用者，2表示调用者的调用者，依此类推）
+	DefaultCallerDepth = 3 // 默认调用信息层数（3层）
 
 	// 默认文件写入器配置
 	DefaultMaxBufferSize = 64 * 1024       // 默认最大缓冲区大小（64KB）
 	DefaultMaxWriteCount = 500             // 默认最大写入次数（500次）
 	DefaultFlushInterval = 1 * time.Second // 默认最大刷新间隔（1秒）
-
-	DefaultTimeFormat = "2006-01-02T15:04:05" // 默认时间格式
 )
 
 // 优化的时间戳缓存结构，使用原子操作 + 读写锁的混合方案

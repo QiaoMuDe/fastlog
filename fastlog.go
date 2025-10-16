@@ -32,8 +32,9 @@ const (
 // 格式:
 //   - Detailed: 详细格式
 //   - Json: json格式
-//   - Structured: 结构化格式
 //   - Timestamp: 时间格式
+//   - KVfmt: 键值对格式
+//   - LogFmt: logfmt格式
 //   - Custom: 自定义格式
 type LogFormatType = types.LogFormatType
 
