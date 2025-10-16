@@ -98,11 +98,6 @@ func (f *FLog) Info(v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	// 调用processLog方法记录日志
 	f.handleLog(types.INFO_Mask, fmt.Sprint(v...))
 }
@@ -114,11 +109,6 @@ func (f *FLog) Info(v ...any) {
 func (f *FLog) Debug(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
 		return
 	}
 
@@ -135,11 +125,6 @@ func (f *FLog) Warn(v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	f.handleLog(types.WARN_Mask, fmt.Sprint(v...))
 }
 
@@ -153,11 +138,6 @@ func (f *FLog) Error(v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	f.handleLog(types.ERROR_Mask, fmt.Sprint(v...))
 }
 
@@ -168,11 +148,6 @@ func (f *FLog) Error(v ...any) {
 func (f *FLog) Fatal(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
 		return
 	}
 
@@ -192,11 +167,6 @@ func (f *FLog) Infof(format string, v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	f.handleLog(types.INFO_Mask, fmt.Sprintf(format, v...))
 }
 
@@ -208,11 +178,6 @@ func (f *FLog) Infof(format string, v ...any) {
 func (f *FLog) Debugf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
 		return
 	}
 
@@ -230,11 +195,6 @@ func (f *FLog) Warnf(format string, v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	f.handleLog(types.WARN_Mask, fmt.Sprintf(format, v...))
 }
 
@@ -246,11 +206,6 @@ func (f *FLog) Warnf(format string, v ...any) {
 func (f *FLog) Errorf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
-		return
-	}
-
-	// 检查参数是否为空
-	if len(v) == 0 {
 		return
 	}
 
@@ -268,11 +223,6 @@ func (f *FLog) Fatalf(format string, v ...any) {
 		return
 	}
 
-	// 检查参数是否为空
-	if len(v) == 0 {
-		return
-	}
-
 	f.logFatal(fmt.Sprintf(format, v...))
 }
 
@@ -284,6 +234,10 @@ func (f *FLog) Fatalf(format string, v ...any) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *FLog) InfoF(msg string, fields ...*Field) {
+	if f == nil {
+		return
+	}
+
 	f.handleLog(types.INFO_Mask, msg, fields...)
 }
 
@@ -293,6 +247,10 @@ func (f *FLog) InfoF(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *FLog) WarnF(msg string, fields ...*Field) {
+	if f == nil {
+		return
+	}
+
 	f.handleLog(types.WARN_Mask, msg, fields...)
 }
 
@@ -302,6 +260,10 @@ func (f *FLog) WarnF(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *FLog) ErrorF(msg string, fields ...*Field) {
+	if f == nil {
+		return
+	}
+
 	f.handleLog(types.ERROR_Mask, msg, fields...)
 }
 
@@ -311,6 +273,10 @@ func (f *FLog) ErrorF(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *FLog) DebugF(msg string, fields ...*Field) {
+	if f == nil {
+		return
+	}
+
 	f.handleLog(types.DEBUG_Mask, msg, fields...)
 }
 
@@ -320,6 +286,10 @@ func (f *FLog) DebugF(msg string, fields ...*Field) {
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
 func (f *FLog) FatalF(msg string, fields ...*Field) {
+	if f == nil {
+		return
+	}
+
 	f.handleLog(types.FATAL_Mask, msg, fields...)
 
 	// 关闭日志处理器
