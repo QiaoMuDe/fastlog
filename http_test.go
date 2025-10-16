@@ -1,6 +1,7 @@
 package fastlog
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -9,32 +10,76 @@ import (
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
-// TestWithLog 测试 WithLog 中间件是否能正确记录 HTTP 请求日志
+// TestWithLog 打印多组模拟 HTTP 请求的日志（无断言）
 func TestWithLog(t *testing.T) {
-	// 设置日志记录器，使用 ConsoleConfig 并将格式设置为 KVFmt 以便断言
+	// 配置日志
 	cfg := ConsoleConfig()
-	cfg.LogFormat = types.Def // 使用键值对格式，方便检查
-	cfg.Color = true          // 关闭颜色，避免 ANSI 转义字符干扰
-	cfg.CallerInfo = false    // 关闭调用者信息
+	cfg.LogFormat = types.Def // 使用默认/键值对格式，便于阅读
+	cfg.Color = true          // 开启颜色，便于阅读
+	cfg.CallerInfo = false
 	log := NewFLog(cfg)
 
-	// 创建模拟的 HTTP 处理器和请求
-	// 模拟业务逻辑处理器
-	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// 模拟业务耗时
-		time.Sleep(10 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("OK"))
-	})
+	// 定义多组用例
+	cases := []struct {
+		name       string
+		method     string
+		path       string
+		statusCode int
+		handler    http.HandlerFunc
+	}{
+		{
+			name:       "GET OK",
+			method:     "GET",
+			path:       "/test/success",
+			statusCode: http.StatusOK,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(10 * time.Millisecond)
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte("Success"))
+			},
+		},
+		{
+			name:       "POST Client Error",
+			method:     "POST",
+			path:       "/test/client-error",
+			statusCode: http.StatusBadRequest,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(5 * time.Millisecond)
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("Bad Request"))
+			},
+		},
+		{
+			name:       "PUT Server Error",
+			method:     "PUT",
+			path:       "/test/server-error",
+			statusCode: http.StatusInternalServerError,
+			handler: func(w http.ResponseWriter, r *http.Request) {
+				time.Sleep(15 * time.Millisecond)
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte("Internal Server Error"))
+			},
+		},
+	}
 
-	// 使用中间件包装处理器
-	middleware := LogRequest(log, nextHandler)
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// 每个用例单独的业务处理器并包上中间件
+			middleware := LogRequest(log, tc.handler)
 
-	// 创建一个模拟请求
-	req := httptest.NewRequest("GET", "/test/path", nil)
-	rr := httptest.NewRecorder()
+			// 构造请求并添加常见头部
+			req := httptest.NewRequest(tc.method, tc.path, nil)
+			req.Header.Set("User-Agent", "test-agent/1.0")
+			req.Header.Set("X-Request-ID", fmt.Sprintf("req-%d", time.Now().UnixNano()))
+			req.Header.Set("X-Forwarded-For", "203.0.113.10")
+			rr := httptest.NewRecorder()
 
-	// 执行中间件
-	middleware.ServeHTTP(rr, req)
-	_ = log.Close() // 关闭日志，确保缓冲区内容被刷新
+			// 在日志前后打印分隔，方便阅读
+			t.Logf("===== START %s %s (%s) =====", tc.method, tc.path, tc.name)
+			middleware.ServeHTTP(rr, req)
+			t.Logf("===== END %s %s (%s) =====", tc.method, tc.path, tc.name)
+		})
+	}
+
+	_ = log.Close()
 }

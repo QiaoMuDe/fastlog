@@ -354,3 +354,41 @@ type LogLevel = types.LogLevel
   - ERROR：错误级别（业务逻辑错误，需关注）。
   - FATAL：致命错误级别（程序无法继续运行，会终止）。
   - NONE：无日志级别（不输出任何日志）。
+  
+  
+## 4. 函数 (FUNCTIONS)
+
+### 4.1 LogRequest
+HTTP 日志中间件，用于记录 HTTP 请求的关键信息（如方法、路径、状态码、耗时等）。
+
+```go
+func LogRequest(log *FLog, next http.Handler) http.Handler
+```
+
+- 参数：
+  - log：日志实例。
+  - next：下一个 HTTP 处理器（被包装的业务处理器）。
+- 返回值：
+  - http.Handler：包装后的处理器，可直接用于路由或服务端复用。
+
+- 使用示例：
+```go
+mux := http.NewServeMux()
+
+handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    // 模拟业务处理
+    w.WriteHeader(http.StatusOK)
+    _, _ = w.Write([]byte("OK"))
+})
+
+// 包装中间件
+wrapped := LogRequest(log, handler)
+
+// 方式一：直接作为最终处理器使用
+mux.Handle("/test/path", wrapped)
+
+// 方式二：在路由注册处直接包裹
+// mux.Handle("/test/path", LogRequest(log, handler))
+
+http.ListenAndServe(":8080", mux)
+```
