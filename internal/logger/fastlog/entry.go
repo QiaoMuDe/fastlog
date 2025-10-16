@@ -158,6 +158,10 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			b.WriteString(" ")
 			b.WriteString(types.LogLevelToPaddedString(e.level)) // 日志级别
 			b.WriteString(" ")
+			if cfg.CallerInfo {
+				b.Write(e.caller)
+				b.Write([]byte(` `))
+			}
 			b.WriteString(utils.QuoteString(e.msg))
 
 			// 添加字段
@@ -175,6 +179,66 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 						putField(field)
 					}
 				}
+			}
+		})
+
+	case types.KVfmt: // 键值对格式
+		return pool.WithBuf(func(b *bytes.Buffer) {
+			b.Write([]byte(`time=`))
+			b.WriteString(e.time)
+			b.Write([]byte(` level=`))
+			b.WriteString(types.LogLevelToPaddedString(e.level))
+			b.Write([]byte(` msg="`))
+			b.WriteString(utils.QuoteString(e.msg))
+			b.Write([]byte(`"`))
+			if cfg.CallerInfo {
+				b.Write([]byte(` caller=`))
+				b.Write(e.caller)
+			}
+
+			if len(e.fields) > 0 {
+				for _, field := range e.fields {
+					// 检查字段是否有效
+					if field != nil && field.Key() != "" {
+						b.Write([]byte(` `))
+						b.WriteString(utils.QuoteString(field.Key()))
+						b.Write([]byte(`="`))
+						b.WriteString(utils.QuoteString(field.Value()))
+						b.Write([]byte(`"`))
+
+					} else if field != nil {
+						// key为空的字段直接回收
+						putField(field)
+					}
+				}
+			}
+		})
+
+	case types.LogFmt: // logfmt格式
+		return pool.WithBuf(func(b *bytes.Buffer) {
+			b.WriteString(e.time)
+			b.Write([]byte(` [`))
+			b.WriteString(types.LogLevelToPaddedString(e.level))
+			b.Write([]byte(`] `))
+			if cfg.CallerInfo {
+				b.Write(e.caller)
+				b.Write([]byte(` `))
+			}
+			b.WriteString(utils.QuoteString(e.msg))
+
+			if len(e.fields) > 0 {
+				b.Write([]byte(` [`))
+				for i, field := range e.fields {
+					if field != nil && field.Key() != "" {
+						if i > 0 {
+							b.Write([]byte(`, `))
+						}
+						b.WriteString(utils.QuoteString(field.Key()))
+						b.Write([]byte(`=`))
+						b.WriteString(utils.QuoteString(field.Value()))
+					}
+				}
+				b.Write([]byte(`]`))
 			}
 		})
 

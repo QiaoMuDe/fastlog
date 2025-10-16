@@ -133,31 +133,44 @@ FastLog 支持4种不同的日志格式：
 |---------|--------|------|
 | Def | `fastlog.Def` | 默认格式，包含时间、级别、文件、函数、行号等完整信息 |
 | Json | `fastlog.Json` | JSON 格式输出，便于日志分析和处理 |
-| Structured | `fastlog.Structured` | 结构化格式，使用分隔符组织信息 |
 | Timestamp | `fastlog.Timestamp` | 时间格式 |
+| KVfmt | `fastlog.KVfmt` | 键值对格式 |
+| LogFmt | `fastlog.LogFmt` | 日志格式 |
 | Custom | `fastlog.Custom` | 自定义格式，直接输出原始消息 |
 
 ### 格式示例
 
 #### 1. Def 格式
 ```
-2025-01-15 10:30:45 | INFO    | main.go:main:15 - 用户登录成功
-2025-01-15 10:30:46 | ERROR   | database.go:Connect:23 - 数据库连接失败
+2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
+2025-01-15T10:30:46 | ERROR   | database.go:Connect:23 - 数据库连接失败
 ```
 
 #### 2. JSON 格式
 ```json
-{"time":"2025-01-15 10:30:45","level":"INFO","caller":"main.go:main:15","message":"用户登录成功"}
-{"time":"2025-01-15 10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
+{"time":"2025-01-15T10:30:45","level":"INFO","caller":"main.go:main:15","message":"用户登录成功"}
+{"time":"2025-01-15T10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
 ```
 
 #### 3. Timestamp 格式
 ```
-2025-01-15 10:30:45 INFO  用户登录成功
-2025-01-15 10:30:46 ERROR 数据库连接失败
+2025-01-15T10:30:45 INFO  用户登录成功
+2025-01-15T10:30:46 ERROR 数据库连接失败
 ```
 
-#### 4. Custom 格式
+#### 4. KVfmt 键值对格式
+```
+time=2025-01-15T10:30:45 level=INFO message=用户登录成功
+time=2025-01-15T10:30:46 level=ERROR message=数据库连接失败
+```
+
+#### 5. LogFmt 日志格式
+```
+2025-01-15T10:30:45 [INFO ] 用户登录成功 [username=张三, age=30]
+2025-01-15T10:30:46 [ERROR] database.go:Connect:23 数据库连接失败
+```
+
+#### 6. Custom 格式
 ```go
 // 使用 Custom 格式时，直接输出传入的消息内容
 logger.Info("自定义格式的日志消息")  // 输出: 自定义格式的日志消息

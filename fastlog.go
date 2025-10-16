@@ -41,6 +41,8 @@ const (
 	Def       = types.Def       // 默认格式
 	Json      = types.Json      // json格式
 	Timestamp = types.Timestamp // 时间格式
+	KVfmt     = types.KVfmt     // 键值对格式
+	LogFmt    = types.LogFmt    // 日志格式
 	Custom    = types.Custom    // 自定义格式
 )
 

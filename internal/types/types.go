@@ -20,6 +20,8 @@ const (
 	DefaultMaxBufferSize = 64 * 1024       // 默认最大缓冲区大小（64KB）
 	DefaultMaxWriteCount = 500             // 默认最大写入次数（500次）
 	DefaultFlushInterval = 1 * time.Second // 默认最大刷新间隔（1秒）
+
+	DefaultTimeFormat = "2006-01-02T15:04:05" // 默认时间格式
 )
 
 // 优化的时间戳缓存结构，使用原子操作 + 读写锁的混合方案
@@ -67,7 +69,7 @@ func GetCachedTimestamp() string {
 
 	// 执行更新
 	// 先更新字符串，再原子更新秒数（确保一致性）
-	newTimestamp := now.Format("2006-01-02 15:04:05")
+	newTimestamp := now.Format(DefaultTimeFormat)
 	globalRWCache.cachedString = newTimestamp
 	atomic.StoreInt64(&globalRWCache.lastSecond, currentSecond)
 

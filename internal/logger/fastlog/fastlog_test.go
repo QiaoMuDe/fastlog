@@ -161,6 +161,8 @@ func TestLogFormats(t *testing.T) {
 		types.Def:       "def.log",
 		types.Json:      "json.log",
 		types.Timestamp: "simple_timestamp.log",
+		types.KVfmt:     "kvfmt.log",
+		types.LogFmt:    "logfmt.log",
 		// 注意：对于Custom格式，日志库内部不进行格式化，需要在外部格式化后传入
 		types.Custom: "custom.log",
 	}
