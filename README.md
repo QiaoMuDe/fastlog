@@ -22,7 +22,7 @@ FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设�
 ### 📊 日志能力
 - 日志级别：DEBUG / INFO / WARN / ERROR / FATAL（位掩码组合与过滤）
 - 输出格式：Def / Json / Timestamp / KVFmt / LogFmt / Custom（Custom 需外部自定义格式化）
-- 兼容 API：Info/Debug/Warn/Error/Fatal 及对应格式化方法（Infof/Debugf 等）
+- 使用方式：标准库 fmt 风格（Info/Debug/Warn/Error/Fatal 与 Infof/Debugf/Warnf/Errorf/Fatalf）与键值对字段日志（InfoF/DebugF/WarnF/ErrorF/FatalF + 字段构造器：String/Int/Int64/Float64/Bool/Time/Duration/Uint*/Error）
 
 ### 🔧 开发友好设计
 - 便捷模式构造函数：
@@ -69,6 +69,36 @@ func main() {
     // 使用格式化方法
     logger.Infof("用户 %s 登录成功，IP: %s", "张三", "192.168.1.1")
     logger.Errorf("数据库连接失败，重试次数: %d", 3)
+}
+```
+
+### 键值对字段日志示例
+
+```go
+package main
+
+import (
+    "errors"
+    "gitee.com/MM-Q/fastlog"
+)
+
+func main() {
+    cfg := fastlog.NewFastLogConfig("logs", "kv.log")
+    logger := fastlog.NewFLog(cfg)
+    defer logger.Close()
+
+    // 使用键值对字段风格
+    logger.InfoF("用户登录成功",
+        fastlog.String("username", "zhangsan"),
+        fastlog.Int("age", 30),
+        fastlog.Bool("vip", true),
+    )
+
+    err := errors.New("库存不足")
+    logger.ErrorF("下单失败",
+        fastlog.String("orderId", "A123"),
+        fastlog.Error("err", err),
+    )
 }
 ```
 

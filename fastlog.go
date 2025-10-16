@@ -60,6 +60,16 @@ type FastLogConfig = config.FastLogConfig
 //   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
 var NewFastLogConfig = config.NewFastLogConfig
 
+// NewCfg 是 NewFastLogConfig 的简写, 用于创建一个新的FastLogConfig实例。
+//
+// 参数:
+//   - logDirName: 日志目录名称, 默认为"applogs"。
+//   - logFileName: 日志文件名称, 默认为"app.log"。
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+var NewCfg = config.NewFastLogConfig
+
 // DevConfig 创建一个开发环境下的FastLogConfig实例
 //
 // 参数:
