@@ -20,13 +20,13 @@ type FLog struct {
 	closed     atomic.Bool                // 标记日志处理器是否已关闭
 }
 
-// NewFLog 创建一个新的FastLog实例, 用于记录日志。
+// NewFLog 创建一个新的FLog实例, 用于记录日志。
 //
 // 参数:
 //   - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *FLog: 一个指向FastLog实例的指针。
+//   - *FLog: 一个指向FLog实例的指针。
 func NewFLog(cfg *config.FastLogConfig) *FLog {
 	// 检查配置结构体是否为nil
 	if cfg == nil {

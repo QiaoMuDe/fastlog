@@ -102,14 +102,18 @@ var ProdConfig = config.ProdConfig
 //   - 设置日志级别为DEBUG
 var ConsoleConfig = config.ConsoleConfig
 
-// NewFastLog 创建一个新的FastLog实例, 用于记录日志。
+// FLog 是一个高性能的日志记录器, 支持键值对风格的使用和标准库fmt类似的使用,
+// 同时提供了丰富的配置选项, 如日志级别、输出格式、日志轮转等。
+type FLog = flog.FLog
+
+// NewFLog 创建一个新的FLog实例, 用于记录日志。
 //
 // 参数:
 //   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *FLog: 一个指向FastLog实例的指针。
-var NewLog = flog.NewFLog
+//   - *FLog: 一个指向FLog实例的指针。
+var NewFLog = flog.NewFLog
 
 // String 添加字符串字段
 //
