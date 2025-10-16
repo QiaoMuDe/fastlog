@@ -1,4 +1,4 @@
-package fastlog
+package flog
 
 import (
 	"fmt"
@@ -13,7 +13,7 @@ import (
 //   - level: 日志级别。
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
+func (f *FLog) handleLog(level types.LogLevel, msg string, fields ...*Field) {
 	if f == nil || f.cfg == nil {
 		return
 	}
@@ -70,7 +70,7 @@ func (f *FastLog) handleLog(level types.LogLevel, msg string, fields ...*Field) 
 //
 // 参数:
 //   - message: 格式化后的消息
-func (f *FastLog) logFatal(message string) {
+func (f *FLog) logFatal(message string) {
 	// Fatal方法的特殊处理 - 即使StdLog为nil也要记录错误并退出
 	if f == nil {
 		// 如果日志器为nil，直接输出到stderr并退出

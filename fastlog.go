@@ -2,7 +2,7 @@ package fastlog
 
 import (
 	"gitee.com/MM-Q/fastlog/internal/config"
-	"gitee.com/MM-Q/fastlog/internal/logger/fastlog"
+	"gitee.com/MM-Q/fastlog/internal/logger/flog"
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
@@ -107,8 +107,8 @@ var ConsoleConfig = config.ConsoleConfig
 //   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *FastLog: 一个指向FastLog实例的指针。
-var NewFastLog = fastlog.NewFastLog
+//   - *FLog: 一个指向FastLog实例的指针。
+var NewLog = flog.NewFLog
 
 // String 添加字符串字段
 //
@@ -118,7 +118,7 @@ var NewFastLog = fastlog.NewFastLog
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var String = fastlog.String
+var String = flog.String
 
 // Int 添加整数字段
 //
@@ -128,7 +128,7 @@ var String = fastlog.String
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Int = fastlog.Int
+var Int = flog.Int
 
 // Int64 添加64位整数字段
 //
@@ -138,7 +138,7 @@ var Int = fastlog.Int
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Int64 = fastlog.Int64
+var Int64 = flog.Int64
 
 // Float64 添加64位浮点数字段
 //
@@ -148,7 +148,7 @@ var Int64 = fastlog.Int64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Float64 = fastlog.Float64
+var Float64 = flog.Float64
 
 // Bool 添加布尔字段
 //
@@ -158,7 +158,7 @@ var Float64 = fastlog.Float64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Bool = fastlog.Bool
+var Bool = flog.Bool
 
 // Time 添加时间字段
 //
@@ -168,7 +168,7 @@ var Bool = fastlog.Bool
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Time = fastlog.Time
+var Time = flog.Time
 
 // Duration 添加持续时间字段
 //
@@ -178,7 +178,7 @@ var Time = fastlog.Time
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Duration = fastlog.Duration
+var Duration = flog.Duration
 
 // Uint64 添加64位无符号整数字段
 //
@@ -188,7 +188,7 @@ var Duration = fastlog.Duration
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint64 = fastlog.Uint64
+var Uint64 = flog.Uint64
 
 // Uint32 添加32位无符号整数字段
 //
@@ -198,7 +198,7 @@ var Uint64 = fastlog.Uint64
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint32 = fastlog.Uint32
+var Uint32 = flog.Uint32
 
 // Uint16 添加16位无符号整数字段
 //
@@ -208,7 +208,7 @@ var Uint32 = fastlog.Uint32
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint16 = fastlog.Uint16
+var Uint16 = flog.Uint16
 
 // Uint8 添加8位无符号整数字段
 //
@@ -218,7 +218,7 @@ var Uint16 = fastlog.Uint16
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Uint8 = fastlog.Uint8
+var Uint8 = flog.Uint8
 
 // Error 添加错误字段
 //
@@ -228,4 +228,4 @@ var Uint8 = fastlog.Uint8
 //
 // 返回值:
 //   - *Field: 一个指向 Field 实例的指针。
-var Error = fastlog.Error
+var Error = flog.Error

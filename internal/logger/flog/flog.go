@@ -1,4 +1,4 @@
-package fastlog
+package flog
 
 import (
 	"fmt"
@@ -11,22 +11,22 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
-// FastLog 是一个高性能的键值对日志记录器
-type FastLog struct {
+// FLog 是一个高性能的键值对日志记录器
+type FLog struct {
 	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
 	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
 	cfg        *config.FastLogConfig      // 嵌入的配置结构体
 	closed     atomic.Bool                // 标记日志处理器是否已关闭
 }
 
-// NewFastLog 创建一个新的FastLog实例, 用于记录日志。
+// NewFLog 创建一个新的FastLog实例, 用于记录日志。
 //
 // 参数:
 //   - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *FastLog: 一个指向FastLog实例的指针。
-func NewFastLog(cfg *config.FastLogConfig) *FastLog {
+//   - *FLog: 一个指向FastLog实例的指针。
+func NewFLog(cfg *config.FastLogConfig) *FLog {
 	// 检查配置结构体是否为nil
 	if cfg == nil {
 		panic("fastlog: FastLogConfig cannot be nil")
@@ -42,7 +42,7 @@ func NewFastLog(cfg *config.FastLogConfig) *FastLog {
 	fileWriter := config.CreateBufferedWriter(cfg)
 
 	// 创建一个新的Fastlog实例, 将配置和缓冲区赋值给实例。
-	f := &FastLog{
+	f := &FLog{
 		fileWriter: fileWriter,             // 带缓冲的文件写入器
 		cl:         colorlib.NewColorLib(), // 颜色库实例, 用于在终端中显示颜色
 		cfg:        cfg,                    // 配置结构体
@@ -62,7 +62,7 @@ func NewFastLog(cfg *config.FastLogConfig) *FastLog {
 //
 // 返回值：
 //   - error: 如果关闭过程中发生错误, 返回错误信息; 否则返回 nil。
-func (f *FastLog) Close() error {
+func (f *FLog) Close() error {
 	if f == nil || f.cfg == nil {
 		return fmt.Errorf("fastlog: cannot close nil logger")
 	}
@@ -91,7 +91,7 @@ func (f *FastLog) Close() error {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Info(v ...any) {
+func (f *FLog) Info(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
 		return
@@ -115,7 +115,7 @@ func (f *FastLog) Info(v ...any) {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Debug(v ...any) {
+func (f *FLog) Debug(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
 		return
@@ -138,7 +138,7 @@ func (f *FastLog) Debug(v ...any) {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Warn(v ...any) {
+func (f *FLog) Warn(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
 		return
@@ -161,7 +161,7 @@ func (f *FastLog) Warn(v ...any) {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Error(v ...any) {
+func (f *FLog) Error(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
 		return
@@ -184,7 +184,7 @@ func (f *FastLog) Error(v ...any) {
 //
 // 参数:
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Fatal(v ...any) {
+func (f *FLog) Fatal(v ...any) {
 	// 公共API入口参数验证
 	if f == nil {
 		return
@@ -210,7 +210,7 @@ func (f *FastLog) Fatal(v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Infof(format string, v ...any) {
+func (f *FLog) Infof(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
 		return
@@ -234,7 +234,7 @@ func (f *FastLog) Infof(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Debugf(format string, v ...any) {
+func (f *FLog) Debugf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
 		return
@@ -258,7 +258,7 @@ func (f *FastLog) Debugf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Warnf(format string, v ...any) {
+func (f *FLog) Warnf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
 		return
@@ -282,7 +282,7 @@ func (f *FastLog) Warnf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Errorf(format string, v ...any) {
+func (f *FLog) Errorf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
 		return
@@ -306,7 +306,7 @@ func (f *FastLog) Errorf(format string, v ...any) {
 // 参数:
 //   - format: 格式字符串
 //   - v: 可变参数，可以是任意类型，会被转换为字符串
-func (f *FastLog) Fatalf(format string, v ...any) {
+func (f *FLog) Fatalf(format string, v ...any) {
 	// 公共API入口参数验证
 	if f == nil || format == "" {
 		return
@@ -330,7 +330,7 @@ func (f *FastLog) Fatalf(format string, v ...any) {
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) InfoF(msg string, fields ...*Field) {
+func (f *FLog) InfoF(msg string, fields ...*Field) {
 	f.handleLog(types.INFO_Mask, msg, fields...)
 }
 
@@ -339,7 +339,7 @@ func (f *FastLog) InfoF(msg string, fields ...*Field) {
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) WarnF(msg string, fields ...*Field) {
+func (f *FLog) WarnF(msg string, fields ...*Field) {
 	f.handleLog(types.WARN_Mask, msg, fields...)
 }
 
@@ -348,7 +348,7 @@ func (f *FastLog) WarnF(msg string, fields ...*Field) {
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) ErrorF(msg string, fields ...*Field) {
+func (f *FLog) ErrorF(msg string, fields ...*Field) {
 	f.handleLog(types.ERROR_Mask, msg, fields...)
 }
 
@@ -357,7 +357,7 @@ func (f *FastLog) ErrorF(msg string, fields ...*Field) {
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) DebugF(msg string, fields ...*Field) {
+func (f *FLog) DebugF(msg string, fields ...*Field) {
 	f.handleLog(types.DEBUG_Mask, msg, fields...)
 }
 
@@ -366,7 +366,7 @@ func (f *FastLog) DebugF(msg string, fields ...*Field) {
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FastLog) FatalF(msg string, fields ...*Field) {
+func (f *FLog) FatalF(msg string, fields ...*Field) {
 	f.handleLog(types.FATAL_Mask, msg, fields...)
 
 	// 关闭日志处理器

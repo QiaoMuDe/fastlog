@@ -1,4 +1,4 @@
-package fastlog
+package flog
 
 import (
 	"bytes"

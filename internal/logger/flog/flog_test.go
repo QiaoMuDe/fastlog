@@ -1,4 +1,4 @@
-package fastlog
+package flog
 
 import (
 	"errors"
@@ -60,7 +60,7 @@ func TestCustomFormat(t *testing.T) {
 	cfg.LogFormat = types.Custom
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewFLog(cfg)
 	defer func() { _ = log.Close() }()
 
 	// 定义web应用程序日志格式
@@ -81,7 +81,7 @@ func TestNoColor(t *testing.T) {
 	cfg.Color = false // 禁用终端颜色
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewFLog(cfg)
 
 	defer func() { _ = log.Close() }()
 
@@ -101,7 +101,7 @@ func TestNoBold(t *testing.T) {
 	cfg.Color = false
 
 	// 创建日志记录器
-	log := NewFastLog(cfg)
+	log := NewFLog(cfg)
 
 	defer func() { _ = log.Close() }()
 
@@ -122,7 +122,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 			}
 		}()
 		// 这行代码应该会panic
-		_ = NewFastLog(nil)
+		_ = NewFLog(nil)
 	})
 
 	// 测试正常初始化 - 使用临时目录避免文件冲突
@@ -131,7 +131,7 @@ func TestNewFastLog_Initialization(t *testing.T) {
 		cfg.OutputToConsole = false // 禁用控制台输出，避免测试干扰
 		cfg.OutputToFile = true     // 只测试文件输出
 
-		log := NewFastLog(cfg)
+		log := NewFLog(cfg)
 
 		// 验证日志实例是否正确创建
 		if log == nil {
@@ -178,7 +178,7 @@ func TestLogFormats(t *testing.T) {
 			cfg.CallerInfo = false
 
 			// 创建日志记录器
-			log := NewFastLog(cfg)
+			log := NewFLog(cfg)
 			defer func() { _ = log.Close() }()
 
 			// 测试所有日志级别
@@ -232,7 +232,7 @@ func TestFatal(t *testing.T) {
 		if err := os.MkdirAll(config.LogDirName, 0755); err != nil {
 			panic(err)
 		}
-		log := NewFastLog(config)
+		log := NewFLog(config)
 		log.Fatal("fatal_test message")
 		return
 	}
@@ -282,7 +282,7 @@ func TestFatalf(t *testing.T) {
 	// 子进程模式：执行实际的Fatalf调用
 	if os.Getenv("TEST_MODE") == testName {
 		config := config.NewFastLogConfig("logs", "fatalf_test.log")
-		log := NewFastLog(config)
+		log := NewFLog(config)
 		defer func() { _ = log.Close() }()
 
 		log.Fatalf("fatalf_test %s message", "formatted")
@@ -338,7 +338,7 @@ func TestLog(t *testing.T) {
 	cfg.OutputToFile = true
 
 	// 创建flog实例
-	logger := NewFastLog(cfg)
+	logger := NewFLog(cfg)
 	defer func() { _ = logger.Close() }()
 
 	// 记录不同级别的日志
@@ -378,7 +378,7 @@ func TestLog(t *testing.T) {
 	jsonCfg.LogFormat = types.Json
 	jsonCfg.CallerInfo = true
 
-	jsonLogger := NewFastLog(jsonCfg)
+	jsonLogger := NewFLog(jsonCfg)
 	defer func() { _ = jsonLogger.Close() }()
 
 	jsonLogger.Info("JSON格式日志示例",
@@ -393,7 +393,7 @@ func TestFlogUsage(t *testing.T) {
 	cfg.LogFormat = types.Json
 
 	// 创建flog实例
-	logger := NewFastLog(cfg)
+	logger := NewFLog(cfg)
 	if logger == nil {
 		t.Fatal("Failed to create flog instance")
 	}
@@ -457,7 +457,7 @@ func TestFlogWithDifferentFormats(t *testing.T) {
 			cfg.LogFormat = format
 
 			// 创建flog实例
-			logger := NewFastLog(cfg)
+			logger := NewFLog(cfg)
 			if logger == nil {
 				t.Fatal("Failed to create flog instance")
 			}
@@ -479,7 +479,7 @@ func TestFlogConfigurations(t *testing.T) {
 		cfg := config.ConsoleConfig()
 		cfg.CallerInfo = true
 
-		logger := NewFastLog(cfg)
+		logger := NewFLog(cfg)
 		if logger == nil {
 			t.Fatal("Failed to create flog instance")
 		}
@@ -502,7 +502,7 @@ func TestFlogConfigurations(t *testing.T) {
 				cfg := config.ConsoleConfig()
 				cfg.LogLevel = level
 
-				logger := NewFastLog(cfg)
+				logger := NewFLog(cfg)
 				if logger == nil {
 					t.Fatal("Failed to create flog instance")
 				}
@@ -525,7 +525,7 @@ func BenchmarkFlogInfo(b *testing.B) {
 	cfg.OutputToConsole = false // 关闭控制台输出以提高性能测试准确性
 
 	// 创建flog实例
-	logger := NewFastLog(cfg)
+	logger := NewFLog(cfg)
 	if logger == nil {
 		b.Fatal("Failed to create flog instance")
 	}
@@ -544,7 +544,7 @@ func BenchmarkFlogInfoWithFields(b *testing.B) {
 	cfg.OutputToConsole = false // 关闭控制台输出以提高性能测试准确性
 
 	// 创建flog实例
-	logger := NewFastLog(cfg)
+	logger := NewFLog(cfg)
 	if logger == nil {
 		b.Fatal("Failed to create flog instance")
 	}
