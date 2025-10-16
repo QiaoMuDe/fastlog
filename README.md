@@ -21,7 +21,7 @@ FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设�
 
 ### 📊 日志能力
 - 日志级别：DEBUG / INFO / WARN / ERROR / FATAL
-- 输出格式：Def / Json / Structured / Timestamp / Custom
+- 输出格式：Def / Json / Timestamp / KVfmt / Logfmt / Custom
 - 输出目标：文件与控制台可独立开启/关闭
 - 颜色与样式：可配置 Color/Bold 提升终端可读性
 
@@ -31,7 +31,7 @@ FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设�
   - ProdConfig：生产模式（压缩、禁用控制台、长期保留）
   - ConsoleConfig：终端模式（仅控制台、DEBUG、简洁时间戳）
 - 完整测试：包含高并发性能测试与 Fatal/Fatalf 子进程行为验证
-- 简洁 API：通过 NewFastLogConfig + NewStdLog 组合使用，支持格式化方法（Infof/Debugf 等）
+- 简洁 API：通过 NewFastLogConfig + NewFLog 组合使用，支持格式化方法（Infof/Debugf 等）
 
 ## 📦 安装与引入
 
@@ -58,7 +58,7 @@ func main() {
     config := fastlog.NewFastLogConfig("logs", "app.log")
 
     // 创建日志实例
-    logger := fastlog.NewStdLog(config)
+    logger := fastlog.NewFLog(config)
     defer logger.Close()
 
     // 记录不同级别的日志
@@ -85,7 +85,7 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 开发模式：文件+控制台、详细格式、彩色加粗、快速刷新
     devCfg := fastlog.DevConfig("logs", "dev.log")
-    logger := fastlog.NewStdLog(devCfg)
+    logger := fastlog.NewFLog(devCfg)
     defer logger.Close()
 
     // 生产模式：仅文件、结构化格式、压缩、长期保留
@@ -118,7 +118,7 @@ import "gitee.com/MM-Q/fastlog"
 func main() {
     // 使用简写函数创建
     config := fastlog.NewCfg("logs", "app.log")  // NewCfg 是 NewFastLogConfig 的简写
-    logger := fastlog.New(config)           // New 是 NewStdLog 的简写
+    logger := fastlog.New(config)           // New 是 NewFLog 的简写
     defer logger.Close()
 
     logger.Info("使用简写函数创建的日志")
@@ -216,13 +216,13 @@ config.Compress = true          // 启用压缩功能
 ```go
 // 推荐：根据场景选择合适的预设配置
 // 生产环境（仅文件、结构化、长期保留、压缩）
-logger := fastlog.NewStdLog(fastlog.ProdConfig("logs", "app.log"))
+logger := fastlog.NewFLog(fastlog.ProdConfig("logs", "app.log"))
 
 // 开发环境（文件+控制台、详细信息、彩色加粗、快速刷新）
-logger := fastlog.NewStdLog(fastlog.DevConfig("logs", "debug.log"))
+logger := fastlog.NewFLog(fastlog.DevConfig("logs", "debug.log"))
 
 // 终端环境（仅控制台、时间戳简洁格式、彩色加粗）
-logger := fastlog.NewStdLog(fastlog.ConsoleConfig())
+logger := fastlog.NewFLog(fastlog.ConsoleConfig())
 
 // 自定义配置（在预设不满足需求时使用）
 config := fastlog.NewFastLogConfig("logs", "app.log")
@@ -240,7 +240,7 @@ logger.Infof("用户 %s 执行操作 %s", username, action)  // 推荐
 ```go
 // 推荐：在关键位置使用 defer 并显式处理 Close 的错误（满足 errcheck）
 func main() {
-    logger := fastlog.NewStdLog(config)
+    logger := fastlog.NewFLog(config)
     defer func() {
         logger.Info("程序正在关闭...")
         if err := logger.Close(); err != nil {
