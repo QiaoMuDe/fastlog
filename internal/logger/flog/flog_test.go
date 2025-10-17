@@ -194,22 +194,22 @@ func TestLogFormats(t *testing.T) {
 				log.Warn("这是一条警告日志")
 				log.Error("这是一条错误日志")
 
-				log.DebugF("这是一条键值对调试日志",
+				log.DebugFields("这是一条键值对调试日志",
 					String("key1", "value1"),
 					Int("key2", 42),
 				)
 
-				log.InfoF("这是一条键值对信息日志",
+				log.InfoFields("这是一条键值对信息日志",
 					String("key1", "value1"),
 					Int("key2", 42),
 				)
 
-				log.WarnF("这是一条键值对警告日志",
+				log.WarnFields("这是一条键值对警告日志",
 					String("key1", "value1"),
 					Int("key2", 42),
 				)
 
-				log.ErrorF("这是一条键值对错误日志",
+				log.ErrorFields("这是一条键值对错误日志",
 					String("key1", "value1"),
 					Int("key2", 42),
 				)

@@ -69,7 +69,7 @@ func LogRequest(log *FLog, next http.Handler) http.Handler {
 		duration := time.Since(startTime)
 
 		// 打印HTTP日志
-		log.InfoF("[HTTP LOG]",
+		log.InfoFields("[HTTP LOG]",
 			String("method", r.Method),            // 请求方法
 			String("path", r.URL.Path),            // 请求路径
 			Int("status", lw.statusCode),          // HTTP状态码

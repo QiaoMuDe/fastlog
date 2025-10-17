@@ -98,7 +98,7 @@ logger.Errorf("请求失败 [URL: %s, 状态码: %d]", "/api/user", 404) // ERRO
 适用于需要结构化分析的日志（如 JSON 格式输出时，键值对会转为 JSON 字段），通过 `fastlog.XXX` 函数创建字段。
 ```go
 // 示例1：记录 INFO 级键值对日志
-logger.InfoF(
+logger.InfoFields(
     "用户下单成功", // 日志主消息
     fastlog.Int("order_id", 123456),       // 整数字段
     fastlog.String("user_name", "zhangsan"),// 字符串字段
@@ -109,7 +109,7 @@ logger.InfoF(
 
 // 示例2：记录 ERROR 级键值对日志（附带错误信息）
 err := fmt.Errorf("数据库连接超时")
-logger.ErrorF(
+logger.ErrorFields(
     "数据库操作失败",
     fastlog.String("action", "query_user"),
     fastlog.Error("error", err), // 错误字段
@@ -157,7 +157,7 @@ func main() {
 
     // 3.3 键值对（模拟业务日志）
     err := fmt.Errorf("请求超时")
-    logger.ErrorF(
+    logger.ErrorFields(
         "API 请求失败",
         fastlog.String("url", "https://api.example.com/user"),
         fastlog.Int("status_code", 504),

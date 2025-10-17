@@ -228,12 +228,12 @@ func (f *FLog) Fatalf(format string, v ...any) {
 
 // ====== 键值对方法 ======
 
-// InfoF 记录Info级别的键值对日志
+// InfoFields 记录Info级别的键值对日志
 //
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FLog) InfoF(msg string, fields ...*Field) {
+func (f *FLog) InfoFields(msg string, fields ...*Field) {
 	if f == nil {
 		return
 	}
@@ -241,12 +241,12 @@ func (f *FLog) InfoF(msg string, fields ...*Field) {
 	f.handleLog(types.INFO_Mask, msg, fields...)
 }
 
-// WarnF 记录Warn级别的键值对日志
+// WarnFields 记录Warn级别的键值对日志
 //
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FLog) WarnF(msg string, fields ...*Field) {
+func (f *FLog) WarnFields(msg string, fields ...*Field) {
 	if f == nil {
 		return
 	}
@@ -254,12 +254,12 @@ func (f *FLog) WarnF(msg string, fields ...*Field) {
 	f.handleLog(types.WARN_Mask, msg, fields...)
 }
 
-// ErrorF 记录Error级别的键值对日志
+// ErrorFields 记录Error级别的键值对日志
 //
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FLog) ErrorF(msg string, fields ...*Field) {
+func (f *FLog) ErrorFields(msg string, fields ...*Field) {
 	if f == nil {
 		return
 	}
@@ -267,12 +267,12 @@ func (f *FLog) ErrorF(msg string, fields ...*Field) {
 	f.handleLog(types.ERROR_Mask, msg, fields...)
 }
 
-// DebugF 记录Debug级别的键值对日志
+// DebugFields 记录Debug级别的键值对日志
 //
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FLog) DebugF(msg string, fields ...*Field) {
+func (f *FLog) DebugFields(msg string, fields ...*Field) {
 	if f == nil {
 		return
 	}
@@ -280,12 +280,12 @@ func (f *FLog) DebugF(msg string, fields ...*Field) {
 	f.handleLog(types.DEBUG_Mask, msg, fields...)
 }
 
-// FatalF 记录Fatal级别的键值对日志并触发程序退出
+// FatalFields 记录Fatal级别的键值对日志并触发程序退出
 //
 // 参数：
 //   - msg: 日志消息。
 //   - fields: 日志字段，可变参数。
-func (f *FLog) FatalF(msg string, fields ...*Field) {
+func (f *FLog) FatalFields(msg string, fields ...*Field) {
 	if f == nil {
 		return
 	}

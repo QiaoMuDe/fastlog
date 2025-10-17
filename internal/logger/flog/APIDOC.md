@@ -75,11 +75,11 @@ func (f *FLog) Debug(v ...any)
 **参数:**
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
-#### DebugF
-DebugF 记录Debug级别的键值对日志
+#### DebugFields
+DebugFields 记录Debug级别的键值对日志
 
 ```go
-func (f *FLog) DebugF(msg string, fields ...*Field)
+func (f *FLog) DebugFields(msg string, fields ...*Field)
 ```
 
 **参数：**
@@ -107,11 +107,11 @@ func (f *FLog) Error(v ...any)
 **参数:**
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
-#### ErrorF
-ErrorF 记录Error级别的键值对日志
+#### ErrorFields
+ErrorFields 记录Error级别的键值对日志
 
 ```go
-func (f *FLog) ErrorF(msg string, fields ...*Field)
+func (f *FLog) ErrorFields(msg string, fields ...*Field)
 ```
 
 **参数：**
@@ -139,11 +139,11 @@ func (f *FLog) Fatal(v ...any)
 **参数:**
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
-#### FatalF
-FatalF 记录Fatal级别的键值对日志并触发程序退出
+#### FatalFields
+FatalFields 记录Fatal级别的键值对日志并触发程序退出
 
 ```go
-func (f *FLog) FatalF(msg string, fields ...*Field)
+func (f *FLog) FatalFields(msg string, fields ...*Field)
 ```
 
 **参数：**
@@ -171,11 +171,11 @@ func (f *FLog) Info(v ...any)
 **参数:**
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
-#### InfoF
-InfoF 记录Info级别的键值对日志
+#### InfoFields
+InfoFields 记录Info级别的键值对日志
 
 ```go
-func (f *FLog) InfoF(msg string, fields ...*Field)
+func (f *FLog) InfoFields(msg string, fields ...*Field)
 ```
 
 **参数：**
@@ -203,11 +203,11 @@ func (f *FLog) Warn(v ...any)
 **参数:**
 - v: 可变参数，可以是任意类型，会被转换为字符串
 
-#### WarnF
-WarnF 记录Warn级别的键值对日志
+#### WarnFields
+WarnFields 记录Warn级别的键值对日志
 
 ```go
-func (f *FLog) WarnF(msg string, fields ...*Field)
+func (f *FLog) WarnFields(msg string, fields ...*Field)
 ```
 
 **参数：**

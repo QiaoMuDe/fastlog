@@ -88,14 +88,14 @@ func main() {
     defer logger.Close()
 
     // 使用键值对字段风格
-    logger.InfoF("用户登录成功",
+    logger.InfoFields("用户登录成功",
         fastlog.String("username", "zhangsan"),
         fastlog.Int("age", 30),
         fastlog.Bool("vip", true),
     )
 
     err := errors.New("库存不足")
-    logger.ErrorF("下单失败",
+    logger.ErrorFields("下单失败",
         fastlog.String("orderId", "A123"),
         fastlog.Error("err", err),
     )
@@ -273,8 +273,8 @@ FastLog 依赖以下外部库（与 go.mod 保持一致）：
 ```go
 require (
     gitee.com/MM-Q/colorlib v1.3.2      // 终端颜色与样式
-    gitee.com/MM-Q/logrotatex v1.1.2    // 日志文件轮转（大小/时间/数量、压缩、本地时间）
-    gitee.com/MM-Q/go-kit v0.0.8        // 常用工具集
+    gitee.com/MM-Q/logrotatex v1.1.4    // 日志文件轮转（大小/时间/数量、压缩、本地时间）
+    gitee.com/MM-Q/go-kit v0.0.9        // 常用工具集
 )
 ```
 
