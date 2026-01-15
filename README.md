@@ -139,7 +139,7 @@ func main() {
 
 ## 📝 日志格式
 
-FastLog 支持4种不同的日志格式：
+FastLog 支持6种不同的日志格式：
 
 | 格式名称 | 枚举值 | 说明 |
 |---------|--------|------|
@@ -204,11 +204,14 @@ FastLog 基于轮转参数支持常见的日志管理策略：
 
 ```go
 config := fastlog.NewFastLogConfig("logs", "app.log")
-config.MaxSize = 10             // 文件大小超过 10MB 时轮转
-config.MaxAge = 7               // 保留 7 天的日志文件
-config.MaxFiles = 5             // 最多保留 5 个备份文件
-config.LocalTime = true         // 使用本地时间命名
-config.Compress = true          // 启用压缩功能
+config.MaxSize = 10                          // 文件大小超过 10MB 时轮转
+config.MaxAge = 7                            // 保留 7 天的日志文件
+config.MaxFiles = 5                          // 最多保留 5 个备份文件
+config.LocalTime = true                      // 使用本地时间命名
+config.Compress = true                       // 启用压缩功能
+config.DateDirLayout = true                  // 启用按日期目录存放轮转后的日志
+config.RotateByDay = true                    // 启用按天轮转
+config.CompressType = comprx.CompressTypeZip // 压缩类型
 ```
 
 轮转后的日志文件命名格式示例：`app_202501010301.log`

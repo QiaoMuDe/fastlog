@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"gitee.com/MM-Q/comprx"
 	"gitee.com/MM-Q/fastlog/internal/types"
 	"gitee.com/MM-Q/logrotatex"
 )
@@ -30,6 +31,29 @@ type FastLogConfig struct {
 	FlushInterval   time.Duration       // 刷新间隔, 默认1秒
 	Async           bool                // 是否异步清理日志, 默认同步清理
 	CallerInfo      bool                // 是否获取调用者信息, 默认不获取
+
+	// DateDirLayout 决定是否启用按日期目录存放轮转后的日志。
+	// true: 轮转后的日志存放在 YYYY-MM-DD/ 目录下
+	// false: 轮转后的日志存放在当前目录下 (默认)
+	DateDirLayout bool `json:"datedirlayout" yaml:"datedirlayout"`
+
+	// RotateByDay 决定是否启用按天轮转。
+	// true: 每天自动轮转一次 (跨天时触发)
+	// false: 只按文件大小轮转 (默认)
+	RotateByDay bool `json:"rotatebyday" yaml:"rotatebyday"`
+
+	// CompressType 压缩类型, 默认为: comprx.CompressTypeZip
+	//
+	// 支持的压缩格式：
+	//   - comprx.CompressTypeZip: zip 压缩格式
+	//   - comprx.CompressTypeTar: tar 压缩格式
+	//   - comprx.CompressTypeTgz: tgz 压缩格式
+	//   - comprx.CompressTypeTarGz: tar.gz 压缩格式
+	//   - comprx.CompressTypeGz: gz 压缩格式
+	//   - comprx.CompressTypeBz2: bz2 压缩格式
+	//   - comprx.CompressTypeBzip2: bzip2 压缩格式
+	//   - comprx.CompressTypeZlib: zlib 压缩格式
+	CompressType comprx.CompressType `json:"compress_type" yaml:"compress_type"`
 }
 
 // NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
@@ -61,6 +85,9 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		FlushInterval:   types.DefaultFlushInterval, // 刷新间隔, 默认1秒
 		Async:           false,                      // 是否异步清理日志, 默认同步清理
 		CallerInfo:      false,                      // 是否获取调用者信息, 默认不获取
+		DateDirLayout:   true,                       // 是否启用按日期目录存放轮转后的日志, 默认启用
+		RotateByDay:     true,                       // 是否启用按天轮转, 默认启用
+		CompressType:    comprx.CompressTypeZip,     // 压缩类型, 默认zip压缩格式
 	}
 }
 
@@ -210,6 +237,9 @@ func (c *FastLogConfig) Clone() *FastLogConfig {
 		MaxWriteCount:   c.MaxWriteCount,
 		FlushInterval:   c.FlushInterval,
 		CallerInfo:      c.CallerInfo,
+		DateDirLayout:   c.DateDirLayout,
+		RotateByDay:     c.RotateByDay,
+		CompressType:    c.CompressType,
 	}
 }
 
@@ -237,6 +267,9 @@ func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
 	logger.Compress = cfg.Compress                  // 是否启用日志文件压缩
 	logger.LocalTime = cfg.LocalTime                // 是否使用本地时间
 	logger.Async = cfg.Async                        // 是否异步清理日志
+	logger.DateDirLayout = cfg.DateDirLayout        // 是否启用按日期目录存放轮转后的日志
+	logger.RotateByDay = cfg.RotateByDay            // 是否启用按天轮转
+	logger.CompressType = cfg.CompressType          // 压缩类型
 
 	// 初始化缓冲区配置
 	bufCfg := logrotatex.DefBufCfg()

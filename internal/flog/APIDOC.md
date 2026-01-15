@@ -1,6 +1,6 @@
 # Package flog
 
-Package flog (import "gitee.com/MM-Q/fastlog/internal/logger/flog")
+Package flog (import "gitee.com/MM-Q/fastlog/internal/flog")
 
 ## Types
 

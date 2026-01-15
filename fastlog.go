@@ -2,7 +2,7 @@ package fastlog
 
 import (
 	"gitee.com/MM-Q/fastlog/internal/config"
-	"gitee.com/MM-Q/fastlog/internal/logger/flog"
+	"gitee.com/MM-Q/fastlog/internal/flog"
 	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
