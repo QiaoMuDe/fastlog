@@ -28,7 +28,7 @@ type FastLogConfig struct {
 	Compress        bool                // 是否启用日志文件压缩 默认不启用
 	MaxBufferSize   int                 // 缓冲区大小, 单位为字节, 默认64KB
 	MaxWriteCount   int                 // 最大写入次数, 默认500次
-	FlushInterval   time.Duration       // 刷新间隔, 默认1秒
+	FlushInterval   time.Duration       // 刷新间隔, 默认1秒, 最低为500毫秒
 	Async           bool                // 是否异步清理日志, 默认同步清理
 	CallerInfo      bool                // 是否获取调用者信息, 默认不获取
 
@@ -273,9 +273,9 @@ func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
 
 	// 初始化缓冲区配置
 	bufCfg := logrotatex.DefBufCfg()
-	bufCfg.FlushInterval = cfg.FlushInterval // 刷新间隔, 单位为秒, 默认为0, 表示不做限制
+	bufCfg.FlushInterval = cfg.FlushInterval // 刷新间隔, 单位为秒, 默认为1秒, 最低为500毫秒
 	bufCfg.MaxBufferSize = cfg.MaxBufferSize // 缓冲区最大容量, 单位为字节
-	bufCfg.MaxWriteCount = cfg.MaxWriteCount // 最大写入次数, 默认为0, 表示不做限制
+	bufCfg.MaxWriteCount = cfg.MaxWriteCount // 最大写入次数, 默认500次
 
 	// 创建带缓冲的批量写入器，嵌入日志切割器
 	return logrotatex.NewBufferedWriter(logger, bufCfg)

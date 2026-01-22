@@ -4,7 +4,7 @@ go 1.25.0
 
 require gitee.com/MM-Q/colorlib v1.3.2
 
-require gitee.com/MM-Q/logrotatex v1.2.1
+require gitee.com/MM-Q/logrotatex v1.2.2
 
 require (
 	gitee.com/MM-Q/comprx v0.1.6
