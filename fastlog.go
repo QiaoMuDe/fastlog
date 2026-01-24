@@ -116,6 +116,34 @@ var ConsoleConfig = config.ConsoleConfig
 // 同时提供了丰富的配置选项, 如日志级别、输出格式、日志轮转等。
 type FLog = flog.FLog
 
+// Default 创建一个默认配置的日志记录器并返回
+//
+// 返回值:
+//   - *FLog: 一个指向FLog实例的指针。
+//
+// 默认配置:
+//   - 日志目录: "logs"
+//   - 日志文件名: "app.log"
+//   - 日志级别: INFO
+//   - 日志格式: Def
+//   - 最大日志文件大小: 10MB
+//   - 最大日志文件保留天数: 0 (不做限制)
+//   - 最大日志文件保留数量: 0 (不做限制)
+//   - 是否使用本地时间: true
+//   - 是否启用日志文件压缩: false
+//   - 是否启用终端颜色: true
+//   - 是否启用终端字体加粗: true
+//   - 缓冲区大小: 256KB
+//   - 刷新间隔: 1秒
+//   - 是否异步清理日志: false
+//   - 是否获取调用者信息: false
+//   - 是否将日志输出到控制台: true
+//   - 是否将日志输出到文件: true
+//   - 是否启用按日期目录存放轮转后的日志: true
+//   - 是否启用按天轮转: true
+//   - 压缩类型: comprx.CompressTypeZip
+var Default = flog.Default
+
 // NewFLog 创建一个新的FLog实例, 用于记录日志。
 //
 // 参数:

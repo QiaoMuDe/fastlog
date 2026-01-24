@@ -9,8 +9,7 @@ Package types (import "gitee.com/MM-Q/fastlog/internal/types")
 | `DefaultMaxFileSize`  | `int`         | 10，默认最大文件大小（单位：MB）                                        |
 | `DefaultTimeFormat`   | `string`      | "2006-01-02T15:04:05"，默认时间格式                                    |
 | `DefaultCallerDepth`  | `int`         | 3，默认调用信息层数（0表示当前调用，1表示调用者，依此类推）             |
-| `DefaultMaxBufferSize`| `int`         | 64 * 1024，默认最大缓冲区大小（单位：字节，即64KB）                    |
-| `DefaultMaxWriteCount`| `int`         | 500，默认最大写入次数                                                  |
+| `DefaultMaxBufferSize`| `int`         | 256 * 1024，默认最大缓冲区大小（单位：字节，即256KB）                  |
 | `DefaultFlushInterval`| `time.Duration`| 1 * time.Second，默认最大刷新间隔（即1秒）                             |
 
 ---
@@ -125,7 +124,7 @@ type LogFormatType int
 ```
 
 **格式说明：**
-- Detailed: 详细格式
+- Def: 默认格式
 - Json: json格式
 - Timestamp: 时间格式
 - KVFmt: 键值对格式
@@ -203,3 +202,19 @@ String 将 LogLevel 转换为字符串
 ```go
 func (l LogLevel) String() string
 ```
+
+### rwTimestampCache
+rwTimestampCache 优化的时间戳缓存结构, 使用原子操作 + 读写锁的混合方案
+
+```go
+type rwTimestampCache struct {
+	// Has unexported fields.
+}
+```
+
+**特点：**
+- 读取时使用原子操作快速检查, 只在必要时使用读写锁
+- 快路径：原子操作检查 + 读锁保护
+- 慢路径：写锁保护更新操作
+- 多读者并发, 单写者独占
+- 无unsafe操作, 完全内存安全

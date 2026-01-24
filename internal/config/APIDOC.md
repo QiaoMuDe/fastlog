@@ -18,6 +18,39 @@ func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter
 **返回值:**
 - *logrotatex.BufferedWriter: 一个指向BufferedWriter实例的指针。
 
+### Default
+
+Default 返回一个默认的FastLogConfig实例, 用于配置日志记录器。
+
+```go
+func Default() *FastLogConfig
+```
+
+**返回值:**
+- *FastLogConfig: 一个指向FastLogConfig实例的指针。
+
+**默认配置:**
+- 日志目录: "logs"
+- 日志文件名: "app.log"
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
+
 ## Types
 
 ### FastLogConfig
@@ -39,11 +72,33 @@ type FastLogConfig struct {
 	MaxFiles        int                 // 最大日志文件保留数量, 默认为0, 表示不做限制
 	LocalTime       bool                // 是否使用本地时间 默认使用UTC时间
 	Compress        bool                // 是否启用日志文件压缩 默认不启用
-	MaxBufferSize   int                 // 缓冲区大小, 单位为字节, 默认64KB
-	MaxWriteCount   int                 // 最大写入次数, 默认500次
-	FlushInterval   time.Duration       // 刷新间隔, 默认1秒
+	MaxBufferSize   int                 // 缓冲区大小, 单位为字节, 默认256KB
+	FlushInterval   time.Duration       // 刷新间隔, 默认1秒, 最低为500毫秒
 	Async           bool                // 是否异步清理日志, 默认同步清理
 	CallerInfo      bool                // 是否获取调用者信息, 默认不获取
+
+	// DateDirLayout 决定是否启用按日期目录存放轮转后的日志。
+	// true: 轮转后的日志存放在 YYYY-MM-DD/ 目录下
+	// false: 轮转后的日志存放在当前目录下 (默认)
+	DateDirLayout bool `json:"datedirlayout" yaml:"datedirlayout"`
+
+	// RotateByDay 决定是否启用按天轮转。
+	// true: 每天自动轮转一次 (跨天时触发)
+	// false: 只按文件大小轮转 (默认)
+	RotateByDay bool `json:"rotatebyday" yaml:"rotatebyday"`
+
+	// CompressType 压缩类型, 默认为: comprx.CompressTypeZip
+	//
+	// 支持的压缩格式：
+	//   - comprx.CompressTypeZip: zip 压缩格式
+	//   - comprx.CompressTypeTar: tar 压缩格式
+	//   - comprx.CompressTypeTgz: tgz 压缩格式
+	//   - comprx.CompressTypeTarGz: tar.gz 压缩格式
+	//   - comprx.CompressTypeGz: gz 压缩格式
+	//   - comprx.CompressTypeBz2: bz2 压缩格式
+	//   - comprx.CompressTypeBzip2: bzip2 压缩格式
+	//   - comprx.CompressTypeZlib: zlib 压缩格式
+	CompressType comprx.CompressType `json:"compress_type" yaml:"compress_type"`
 }
 ```
 
@@ -61,6 +116,41 @@ func ConsoleConfig() *FastLogConfig
 **特性:**
 - 禁用文件输出
 - 设置日志级别为DEBUG
+- 启用调用者信息
+- 设置日志格式为默认格式
+
+#### Default
+
+Default 返回一个默认的FastLogConfig实例, 用于配置日志记录器。
+
+```go
+func Default() *FastLogConfig
+```
+
+**返回值:**
+- *FastLogConfig: 一个指向FastLogConfig实例的指针。
+
+**默认配置:**
+- 日志目录: "logs"
+- 日志文件名: "app.log"
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
 
 #### DevConfig
 
@@ -82,6 +172,7 @@ func DevConfig(logDirName string, logFileName string) *FastLogConfig
 - 设置日志级别为DEBUG
 - 设置最大日志文件保留数量为5
 - 设置最大日志文件保留天数为7天
+- 启用调用者信息
 
 #### NewFastLogConfig
 
@@ -92,11 +183,31 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig
 ```
 
 **参数:**
-- logDirName: 日志目录名称, 默认为"applogs"。
-- logFileName: 日志文件名称, 默认为"app.log"。
+- logDirName: 日志目录名称
+- logFileName: 日志文件名称
 
 **返回值:**
 - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+
+**默认配置:**
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
 
 #### ProdConfig
 
@@ -118,6 +229,7 @@ func ProdConfig(logDirName string, logFileName string) *FastLogConfig
 - 禁用控制台输出
 - 设置最大日志文件保留天数为30天
 - 设置最大日志文件保留数量为24个
+- 设置日志格式为json格式
 
 #### Clone
 

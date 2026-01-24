@@ -63,9 +63,6 @@ func TestNewFastLogConfig_Defaults(t *testing.T) {
 	if cfg.MaxBufferSize <= 0 {
 		t.Error("MaxBufferSize 应为正数")
 	}
-	if cfg.MaxWriteCount <= 0 {
-		t.Error("MaxWriteCount 应为正数")
-	}
 	if cfg.FlushInterval != types.DefaultFlushInterval {
 		t.Errorf("默认 FlushInterval 应为 %v，得到 %v", types.DefaultFlushInterval, cfg.FlushInterval)
 	}
@@ -198,7 +195,6 @@ func TestValidateConfig_ValidExample(t *testing.T) {
 	cfg.LocalTime = true
 	cfg.Compress = true
 	cfg.MaxBufferSize = types.DefaultMaxBufferSize
-	cfg.MaxWriteCount = types.DefaultMaxWriteCount
 	cfg.FlushInterval = 1 * time.Second
 
 	// 不应 panic

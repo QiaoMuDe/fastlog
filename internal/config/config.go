@@ -26,8 +26,7 @@ type FastLogConfig struct {
 	MaxFiles        int                 // 最大日志文件保留数量, 默认为0, 表示不做限制
 	LocalTime       bool                // 是否使用本地时间 默认使用UTC时间
 	Compress        bool                // 是否启用日志文件压缩 默认不启用
-	MaxBufferSize   int                 // 缓冲区大小, 单位为字节, 默认64KB
-	MaxWriteCount   int                 // 最大写入次数, 默认500次
+	MaxBufferSize   int                 // 缓冲区大小, 单位为字节, 默认256KB
 	FlushInterval   time.Duration       // 刷新间隔, 默认1秒, 最低为500毫秒
 	Async           bool                // 是否异步清理日志, 默认同步清理
 	CallerInfo      bool                // 是否获取调用者信息, 默认不获取
@@ -56,14 +55,64 @@ type FastLogConfig struct {
 	CompressType comprx.CompressType `json:"compress_type" yaml:"compress_type"`
 }
 
-// NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
-//
-// 参数:
-//   - logDirName: 日志目录名称, 默认为"applogs"。
-//   - logFileName: 日志文件名称, 默认为"app.log"。
+// Default 返回一个默认的FastLogConfig实例, 用于配置日志记录器。
 //
 // 返回值:
 //   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+//
+// 默认配置:
+//   - 日志目录: "logs"
+//   - 日志文件名: "app.log"
+//   - 日志级别: INFO
+//   - 日志格式: Def
+//   - 最大日志文件大小: 10MB
+//   - 最大日志文件保留天数: 0 (不做限制)
+//   - 最大日志文件保留数量: 0 (不做限制)
+//   - 是否使用本地时间: true
+//   - 是否启用日志文件压缩: false
+//   - 是否启用终端颜色: true
+//   - 是否启用终端字体加粗: true
+//   - 缓冲区大小: 256KB
+//   - 刷新间隔: 1秒
+//   - 是否异步清理日志: false
+//   - 是否获取调用者信息: false
+//   - 是否将日志输出到控制台: true
+//   - 是否将日志输出到文件: true
+//   - 是否启用按日期目录存放轮转后的日志: true
+//   - 是否启用按天轮转: true
+//   - 压缩类型: comprx.CompressTypeZip
+func Default() *FastLogConfig {
+	return NewFastLogConfig("logs", "app.log")
+}
+
+// NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
+//
+// 参数:
+//   - logDirName: 日志目录名称
+//   - logFileName: 日志文件名称
+//
+// 返回值:
+//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
+//
+// 默认配置:
+//   - 日志级别: INFO
+//   - 日志格式: Def
+//   - 最大日志文件大小: 10MB
+//   - 最大日志文件保留天数: 0 (不做限制)
+//   - 最大日志文件保留数量: 0 (不做限制)
+//   - 是否使用本地时间: true
+//   - 是否启用日志文件压缩: false
+//   - 是否启用终端颜色: true
+//   - 是否启用终端字体加粗: true
+//   - 缓冲区大小: 256KB
+//   - 刷新间隔: 1秒
+//   - 是否异步清理日志: false
+//   - 是否获取调用者信息: false
+//   - 是否将日志输出到控制台: true
+//   - 是否将日志输出到文件: true
+//   - 是否启用按日期目录存放轮转后的日志: true
+//   - 是否启用按天轮转: true
+//   - 压缩类型: comprx.CompressTypeZip
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
@@ -80,8 +129,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		Compress:        false,                      // 是否启用日志文件压缩 默认不启用
 		Color:           true,                       // 是否启用终端颜色
 		Bold:            true,                       // 是否启用终端字体加粗
-		MaxBufferSize:   types.DefaultMaxBufferSize, // 缓冲区大小, 单位为字节, 默认64KB
-		MaxWriteCount:   types.DefaultMaxWriteCount, // 最大写入次数, 默认500次
+		MaxBufferSize:   types.DefaultMaxBufferSize, // 缓冲区大小, 单位为字节, 默认256KB
 		FlushInterval:   types.DefaultFlushInterval, // 刷新间隔, 默认1秒
 		Async:           false,                      // 是否异步清理日志, 默认同步清理
 		CallerInfo:      false,                      // 是否获取调用者信息, 默认不获取
@@ -181,34 +229,34 @@ func (c *FastLogConfig) ValidateConfig() {
 
 	// 验证文件大小
 	if c.MaxSize < 0 {
-		panic("MaxSize cannot be negative")
+		panic("maxSize cannot be negative")
 	}
 
 	// 验证保留天数
 	if c.MaxAge < 0 {
-		panic("MaxAge cannot be negative")
+		panic("maxAge cannot be negative")
 	}
 
 	// 验证保留文件数
 	if c.MaxFiles < 0 {
-		panic("MaxFiles cannot be negative")
+		panic("maxFiles cannot be negative")
 	}
 
 	// 文件输出相关校验（只校验不更改）
 	if c.OutputToFile {
-		// 必填项
+		// 必填项校验
 		if strings.TrimSpace(c.LogDirName) == "" {
-			panic("LogDirName cannot be empty when OutputToFile is enabled")
+			panic("logDirName cannot be empty when OutputToFile is enabled")
 		}
 		if strings.TrimSpace(c.LogFileName) == "" {
-			panic("LogFileName cannot be empty when OutputToFile is enabled")
+			panic("logFileName cannot be empty when OutputToFile is enabled")
 		}
 		// 路径穿越检测
 		if strings.Contains(c.LogDirName, "..") {
-			panic("LogDirName contains path traversal '..'")
+			panic("logDirName contains path traversal '..'")
 		}
 		if strings.Contains(c.LogFileName, "..") {
-			panic("LogFileName contains path traversal '..'")
+			panic("logFileName contains path traversal '..'")
 		}
 	}
 }
@@ -234,7 +282,6 @@ func (c *FastLogConfig) Clone() *FastLogConfig {
 		Async:           c.Async,
 		LocalTime:       c.LocalTime,
 		MaxBufferSize:   c.MaxBufferSize,
-		MaxWriteCount:   c.MaxWriteCount,
 		FlushInterval:   c.FlushInterval,
 		CallerInfo:      c.CallerInfo,
 		DateDirLayout:   c.DateDirLayout,
@@ -259,23 +306,25 @@ func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
 	// 拼接日志文件路径
 	logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
-	// 初始化日志文件切割器
-	logger := logrotatex.NewLogRotateX(logFilePath) // 初始化日志文件切割器
-	logger.MaxSize = cfg.MaxSize                    // 最大日志文件大小, 单位为MB
-	logger.MaxAge = cfg.MaxAge                      // 最大日志文件保留天数
-	logger.MaxFiles = cfg.MaxFiles                  // 最大日志文件保留数量
-	logger.Compress = cfg.Compress                  // 是否启用日志文件压缩
-	logger.LocalTime = cfg.LocalTime                // 是否使用本地时间
-	logger.Async = cfg.Async                        // 是否异步清理日志
-	logger.DateDirLayout = cfg.DateDirLayout        // 是否启用按日期目录存放轮转后的日志
-	logger.RotateByDay = cfg.RotateByDay            // 是否启用按天轮转
-	logger.CompressType = cfg.CompressType          // 压缩类型
+	// 创建日志轮转器
+	logger := &logrotatex.LogRotateX{
+		LogFilePath:   logFilePath,       // 日志文件路径
+		MaxSize:       cfg.MaxSize,       // 最大日志文件大小, 单位为MB
+		MaxAge:        cfg.MaxAge,        // 最大日志文件保留天数
+		MaxFiles:      cfg.MaxFiles,      // 最大日志文件保留数量
+		Compress:      cfg.Compress,      // 是否启用日志文件压缩
+		LocalTime:     cfg.LocalTime,     // 是否使用本地时间
+		Async:         cfg.Async,         // 是否异步清理日志
+		DateDirLayout: cfg.DateDirLayout, // 是否启用按日期目录存放轮转后的日志
+		RotateByDay:   cfg.RotateByDay,   // 是否启用按天轮转
+		CompressType:  cfg.CompressType,  // 压缩类型
+	}
 
 	// 初始化缓冲区配置
-	bufCfg := logrotatex.DefBufCfg()
-	bufCfg.FlushInterval = cfg.FlushInterval // 刷新间隔, 单位为秒, 默认为1秒, 最低为500毫秒
-	bufCfg.MaxBufferSize = cfg.MaxBufferSize // 缓冲区最大容量, 单位为字节
-	bufCfg.MaxWriteCount = cfg.MaxWriteCount // 最大写入次数, 默认500次
+	bufCfg := &logrotatex.BufCfg{
+		FlushInterval: cfg.FlushInterval, // 刷新间隔, 单位为秒, 默认为1秒, 最低为500毫秒
+		MaxBufferSize: cfg.MaxBufferSize, // 缓冲区最大容量, 单位为字节
+	}
 
 	// 创建带缓冲的批量写入器，嵌入日志切割器
 	return logrotatex.NewBufferedWriter(logger, bufCfg)

@@ -45,6 +45,28 @@ import "gitee.com/MM-Q/fastlog"
 
 ## 🚀 快速开始
 
+### 最简单的使用方式
+
+如果你不想配置复杂的参数，可以直接使用默认日志记录器：
+
+```go
+package main
+
+import "gitee.com/MM-Q/fastlog"
+
+func main() {
+    // 获取默认日志记录器（开箱即用）
+    logger := fastlog.Default()
+    defer logger.Close()
+
+    // 直接使用
+    logger.Info("程序启动成功")
+    logger.Debugf("用户 %s 登录成功，IP: %s", "张三", "192.168.1.1")
+    logger.Warn("内存使用率较高: 85%")
+    logger.Error("数据库连接失败")
+}
+```
+
 ### 基础使用示例
 
 ```go
@@ -112,15 +134,19 @@ package main
 import "gitee.com/MM-Q/fastlog"
 
 func main() {
-    // 开发模式：文件+控制台、详细格式、彩色加粗、快速刷新
+    // 方式1：使用默认日志记录器（最简单）
+    logger := fastlog.Default()
+    defer logger.Close()
+    
+    // 方式2：开发模式：文件+控制台、详细格式、彩色加粗、快速刷新
     devCfg := fastlog.DevConfig("logs", "dev.log")
     logger := fastlog.NewFLog(devCfg)
     defer logger.Close()
 
-    // 生产模式：仅文件、结构化格式、压缩、长期保留
+    // 方式3：生产模式：仅文件、结构化格式、压缩、长期保留
     // prodCfg := fastlog.ProdConfig("logs", "prod.log")
     
-    // 终端模式：仅控制台、时间戳简洁格式、彩色加粗
+    // 方式4：终端模式：仅控制台、时间戳简洁格式、彩色加粗
     // consoleCfg := fastlog.ConsoleConfig()
 
     // 记录日志
@@ -133,6 +159,7 @@ func main() {
 
 #### 可用的预设配置模式
 
+- `Default()` - 默认模式：文件+控制台、默认格式、INFO级别、彩色加粗、按日期目录存放和按天轮转
 - `DevConfig(logDir, logFile)` - 开发模式：文件+控制台、Detailed、DEBUG、彩色加粗、FlushInterval≈200ms、短期保留（示例：MaxFiles=5 / MaxAge=7）
 - `ProdConfig(logDir, logFile)` - 生产模式：仅文件、Structured、INFO、无装饰、压缩、MaxSize=100MB、FlushInterval≈1s、长期保留（30天 / 24个）
 - `ConsoleConfig()` - 终端模式：仅控制台、Timestamp、DEBUG、彩色加粗、FlushInterval≈500ms（不写文件）
@@ -276,13 +303,15 @@ FastLog 依赖以下外部库（与 go.mod 保持一致）：
 ```go
 require (
     gitee.com/MM-Q/colorlib v1.3.2      // 终端颜色与样式
-    gitee.com/MM-Q/logrotatex v1.1.4    // 日志文件轮转（大小/时间/数量、压缩、本地时间）
-    gitee.com/MM-Q/go-kit v0.0.9        // 常用工具集
+    gitee.com/MM-Q/logrotatex v1.2.3    // 日志文件轮转（大小/时间/数量、压缩、本地时间）
+    gitee.com/MM-Q/comprx v0.1.6        // 压缩工具
+    gitee.com/MM-Q/go-kit v0.0.13       // 常用工具集
 )
 ```
 
 - colorlib：提供终端颜色输出与样式支持
 - logrotatex：提供日志文件轮转功能，支持按大小、时间和数量轮转，以及压缩与本地时间
+- comprx：提供压缩工具支持
 - go-kit：提供通用工具函数（如字符串/配置等）
 
 ## 📋 版本要求

@@ -2,6 +2,41 @@
 
 Package flog (import "gitee.com/MM-Q/fastlog/internal/flog")
 
+## Functions
+
+### Default
+
+Default 创建一个新的默认配置的日志处理器。
+
+```go
+func Default() *FLog
+```
+
+**返回值:**
+- *FLog: 一个指向FLog实例的指针。
+
+**默认配置:**
+- 日志目录: "logs"
+- 日志文件名: "app.log"
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
+
 ## Types
 
 ### Entry
@@ -42,6 +77,39 @@ type FLog struct {
 }
 ```
 
+#### Default
+
+Default 创建一个新的默认配置的日志处理器。
+
+```go
+func Default() *FLog
+```
+
+**返回值:**
+- *FLog: 一个指向FLog实例的指针。
+
+**默认配置:**
+- 日志目录: "logs"
+- 日志文件名: "app.log"
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
+
 #### NewFLog
 NewFLog 创建一个新的FLog实例，用于记录日志。
 
@@ -54,6 +122,26 @@ func NewFLog(cfg *config.FastLogConfig) *FLog
 
 **返回值:**
 - *FLog: 一个指向FLog实例的指针。
+
+**默认配置:**
+- 日志级别: INFO
+- 日志格式: Def
+- 最大日志文件大小: 10MB
+- 最大日志文件保留天数: 0 (不做限制)
+- 最大日志文件保留数量: 0 (不做限制)
+- 是否使用本地时间: true
+- 是否启用日志文件压缩: false
+- 是否启用终端颜色: true
+- 是否启用终端字体加粗: true
+- 缓冲区大小: 256KB
+- 刷新间隔: 1秒
+- 是否异步清理日志: false
+- 是否获取调用者信息: false
+- 是否将日志输出到控制台: true
+- 是否将日志输出到文件: true
+- 是否启用按日期目录存放轮转后的日志: true
+- 是否启用按天轮转: true
+- 压缩类型: comprx.CompressTypeZip
 
 #### Close
 Close 关闭日志处理器
