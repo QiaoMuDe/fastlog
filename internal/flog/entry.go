@@ -156,15 +156,15 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 				b.Write(e.caller)
 				b.Write([]byte(` `))
 			}
-			b.WriteString(utils.QuoteString(e.msg))
+			b.WriteString(e.msg)
 
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
 					b.Write([]byte(` `))
-					b.WriteString(utils.QuoteString(field.Key()))
+					b.WriteString(field.Key())
 					b.Write([]byte(`=`))
-					b.WriteString(utils.QuoteString(field.Value()))
+					b.WriteString(field.Value())
 				}
 			}
 		})
@@ -176,7 +176,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			b.Write([]byte(` level=`))
 			b.WriteString(types.LogLevelToPaddedString(e.level))
 			b.Write([]byte(` msg="`))
-			b.WriteString(utils.QuoteString(e.msg))
+			b.WriteString(e.msg)
 			b.Write([]byte(`"`))
 			if cfg.CallerInfo {
 				b.Write([]byte(` caller=`))
@@ -186,9 +186,9 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
 					b.Write([]byte(` `))
-					b.WriteString(utils.QuoteString(field.Key()))
+					b.WriteString(field.Key())
 					b.Write([]byte(`="`))
-					b.WriteString(utils.QuoteString(field.Value()))
+					b.WriteString(field.Value())
 					b.Write([]byte(`"`))
 				}
 			}
@@ -204,7 +204,7 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 				b.Write(e.caller)
 				b.Write([]byte(` `))
 			}
-			b.WriteString(utils.QuoteString(e.msg))
+			b.WriteString(e.msg)
 
 			if len(e.fields) > 0 {
 				b.Write([]byte(` [`))
@@ -212,9 +212,9 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 					if i > 0 {
 						b.Write([]byte(`, `))
 					}
-					b.WriteString(utils.QuoteString(field.Key()))
+					b.WriteString(field.Key())
 					b.Write([]byte(`=`))
-					b.WriteString(utils.QuoteString(field.Value()))
+					b.WriteString(field.Value())
 				}
 				b.Write([]byte(`]`))
 			}
@@ -222,15 +222,15 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 
 	case types.Custom: // 自定义格式
 		return pool.WithBuf(func(b *bytes.Buffer) {
-			b.WriteString(utils.QuoteString(e.msg)) // 日志消息
+			b.WriteString(e.msg) // 日志消息
 
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
 					b.Write([]byte(` `))
-					b.WriteString(utils.QuoteString(field.Key()))
+					b.WriteString(field.Key())
 					b.Write([]byte(`=`))
-					b.WriteString(utils.QuoteString(field.Value()))
+					b.WriteString(field.Value())
 				}
 			}
 		})
@@ -245,15 +245,15 @@ func buildLog(cfg *config.FastLogConfig, e *Entry) []byte {
 				b.Write(e.caller) // 调用者信息
 				b.WriteString(" - ")
 			}
-			b.WriteString(utils.QuoteString(e.msg))
+			b.WriteString(e.msg)
 
 			// 添加字段
 			if len(e.fields) > 0 {
 				for _, field := range e.fields {
 					b.Write([]byte(` `))
-					b.WriteString(utils.QuoteString(field.Key()))
+					b.WriteString(field.Key())
 					b.Write([]byte(`=`))
-					b.WriteString(utils.QuoteString(field.Value()))
+					b.WriteString(field.Value())
 				}
 			}
 		})
