@@ -2,22 +2,24 @@ package flog
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"runtime"
 	"sync/atomic"
+	"time"
 
 	"gitee.com/MM-Q/colorlib"
 	"gitee.com/MM-Q/fastlog/internal/config"
 	"gitee.com/MM-Q/fastlog/internal/types"
-	"gitee.com/MM-Q/logrotatex"
 )
 
 // FLog 是一个高性能的日志记录器, 支持键值对风格的使用和标准库fmt类似的使用,
 // 同时提供了丰富的配置选项, 如日志级别、输出格式、日志轮转等。
 type FLog struct {
-	fileWriter *logrotatex.BufferedWriter // 带缓冲的文件写入器
-	cl         *colorlib.ColorLib         // 提供终端颜色输出的库
-	cfg        *config.FastLogConfig      // 嵌入的配置结构体
-	closed     atomic.Bool                // 标记日志处理器是否已关闭
+	fileWriter io.WriteCloser        // 带缓冲的文件写入器
+	cl         *colorlib.ColorLib    // 提供终端颜色输出的库
+	cfg        *config.FastLogConfig // 嵌入的配置结构体
+	closed     atomic.Bool           // 标记日志处理器是否已关闭
 }
 
 // Default 创建一个新的默认配置的日志处理器。
@@ -46,6 +48,7 @@ type FLog struct {
 //   - 是否启用按日期目录存放轮转后的日志: true
 //   - 是否启用按天轮转: true
 //   - 压缩类型: comprx.CompressTypeZip
+//   - 是否使用带缓冲的批量写入器: true (默认)
 func Default() *FLog {
 	return NewFLog(config.Default())
 }
@@ -77,6 +80,7 @@ func Default() *FLog {
 //   - 是否启用按日期目录存放轮转后的日志: true
 //   - 是否启用按天轮转: true
 //   - 压缩类型: comprx.CompressTypeZip
+//   - 是否使用带缓冲的批量写入器: true (默认)
 func NewFLog(cfg *config.FastLogConfig) *FLog {
 	// 检查配置结构体是否为nil
 	if cfg == nil {
@@ -90,7 +94,7 @@ func NewFLog(cfg *config.FastLogConfig) *FLog {
 	cfg = cfg.Clone()
 
 	// 初始化写入器
-	fileWriter := config.CreateBufferedWriter(cfg)
+	fileWriter := config.CreateWriter(cfg)
 
 	// 创建一个新的Fastlog实例, 将配置和缓冲区赋值给实例。
 	f := &FLog{
@@ -129,6 +133,10 @@ func (f *FLog) Close() error {
 	// 如果启用了文件写入器，则尝试关闭它。
 	if f.cfg.OutputToFile && f.fileWriter != nil {
 		if err := f.fileWriter.Close(); err != nil {
+			// Windows系统等待500ms, 确保文件句柄被释放
+			if runtime.GOOS == "windows" {
+				time.Sleep(500 * time.Millisecond)
+			}
 			return err
 		}
 	}

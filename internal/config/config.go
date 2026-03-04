@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -53,6 +55,11 @@ type FastLogConfig struct {
 	//   - comprx.CompressTypeBzip2: bzip2 压缩格式
 	//   - comprx.CompressTypeZlib: zlib 压缩格式
 	CompressType comprx.CompressType `json:"compress_type" yaml:"compress_type"`
+
+	// BufferedWrite 是否使用带缓冲的批量写入器
+	//  - true: 使用带缓冲的批量写入器（默认，高性能）
+	//  - false: 使用普通文件句柄直接写入（低延迟）
+	BufferedWrite bool `json:"buffered_write" yaml:"buffered_write"`
 }
 
 // Default 返回一个默认的FastLogConfig实例, 用于配置日志记录器。
@@ -81,6 +88,7 @@ type FastLogConfig struct {
 //   - 是否启用按日期目录存放轮转后的日志: true
 //   - 是否启用按天轮转: true
 //   - 压缩类型: comprx.CompressTypeZip
+//   - 是否使用带缓冲的批量写入器: true (默认)
 func Default() *FastLogConfig {
 	return NewFastLogConfig("logs", "app.log")
 }
@@ -113,6 +121,7 @@ func Default() *FastLogConfig {
 //   - 是否启用按日期目录存放轮转后的日志: true
 //   - 是否启用按天轮转: true
 //   - 压缩类型: comprx.CompressTypeZip
+//   - 是否使用带缓冲的批量写入器: true (默认)
 func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 	// 返回一个新的FastLogConfig实例
 	return &FastLogConfig{
@@ -136,6 +145,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig {
 		DateDirLayout:   true,                       // 是否启用按日期目录存放轮转后的日志, 默认启用
 		RotateByDay:     true,                       // 是否启用按天轮转, 默认启用
 		CompressType:    comprx.CompressTypeZip,     // 压缩类型, 默认zip压缩格式
+		BufferedWrite:   true,                       // 是否使用带缓冲的批量写入器, 默认使用带缓冲的批量写入器
 	}
 }
 
@@ -287,17 +297,18 @@ func (c *FastLogConfig) Clone() *FastLogConfig {
 		DateDirLayout:   c.DateDirLayout,
 		RotateByDay:     c.RotateByDay,
 		CompressType:    c.CompressType,
+		BufferedWrite:   c.BufferedWrite,
 	}
 }
 
-// CreateBufferedWriter 根据配置创建一个带缓冲的文件写入器
+// CreateWriter 根据配置创建一个文件写入器
 //
 // 参数:
 //   - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 //
 // 返回值:
-//   - *logrotatex.BufferedWriter: 一个指向BufferedWriter实例的指针。
-func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
+//   - io.WriteCloser: 一个指向WriteCloser实例的指针，用于写入日志到文件。
+func CreateWriter(cfg *FastLogConfig) io.WriteCloser {
 	// 如果不允许将日志输出到文件, 则返回nil
 	if !cfg.OutputToFile {
 		return nil
@@ -306,7 +317,22 @@ func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter {
 	// 拼接日志文件路径
 	logFilePath := filepath.Join(cfg.LogDirName, cfg.LogFileName)
 
-	// 创建日志轮转器
+	// 如果不使用缓冲写入，则直接打开文件
+	if !cfg.BufferedWrite {
+		// 确保日志目录存在
+		if err := os.MkdirAll(cfg.LogDirName, 0755); err != nil {
+			panic(fmt.Sprintf("failed to create log directory: %v", err))
+		}
+
+		// 打开日志文件
+		file, err := os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			panic(fmt.Sprintf("failed to open log file: %v", err))
+		}
+		return file
+	}
+
+	// 默认使用带有缓冲的批量写入器
 	logger := &logrotatex.LogRotateX{
 		LogFilePath:   logFilePath,       // 日志文件路径
 		MaxSize:       cfg.MaxSize,       // 最大日志文件大小, 单位为MB

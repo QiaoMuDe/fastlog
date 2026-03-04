@@ -4,19 +4,24 @@ Package config (import "gitee.com/MM-Q/fastlog/internal/config")
 
 ## Functions
 
-### CreateBufferedWriter
+### CreateWriter
 
-CreateBufferedWriter 根据配置创建一个带缓冲的文件写入器
+CreateWriter 根据配置创建文件写入器（支持带缓冲和普通文件写入）
 
 ```go
-func CreateBufferedWriter(cfg *FastLogConfig) *logrotatex.BufferedWriter
+func CreateWriter(cfg *FastLogConfig) io.WriteCloser
 ```
 
 **参数:**
 - cfg: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
 
 **返回值:**
-- *logrotatex.BufferedWriter: 一个指向BufferedWriter实例的指针。
+- io.WriteCloser: 文件写入器接口，同时支持写入和关闭操作。
+
+**说明:**
+- 当 BufferedWrite 为 true 时，返回带缓冲的批量写入器，支持日志轮转和压缩功能
+- 当 BufferedWrite 为 false 时，返回普通文件句柄，直接写入文件，不提供日志轮转功能
+- 如果 OutputToFile 为 false，则返回 nil
 
 ### Default
 
@@ -50,6 +55,7 @@ func Default() *FastLogConfig
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 ## Types
 
@@ -99,6 +105,11 @@ type FastLogConfig struct {
 	//   - comprx.CompressTypeBzip2: bzip2 压缩格式
 	//   - comprx.CompressTypeZlib: zlib 压缩格式
 	CompressType comprx.CompressType `json:"compress_type" yaml:"compress_type"`
+
+	// BufferedWrite 是否使用带缓冲的批量写入器
+	//  - true: 使用带缓冲的批量写入器（默认，高性能）
+	//  - false: 使用普通文件句柄直接写入（低延迟）
+	BufferedWrite bool `json:"buffered_write" yaml:"buffered_write"`
 }
 ```
 
@@ -151,6 +162,7 @@ func Default() *FastLogConfig
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 #### DevConfig
 
@@ -208,6 +220,7 @@ func NewFastLogConfig(logDirName string, logFileName string) *FastLogConfig
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 #### ProdConfig
 

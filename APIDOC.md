@@ -327,6 +327,7 @@ var Default = flog.Default
   - 是否启用按日期目录存放轮转后的日志: true
   - 是否启用按天轮转: true
   - 压缩类型: comprx.CompressTypeZip
+  - 是否使用带缓冲的批量写入器: true (默认)
 
 ## 3. 类型 (TYPES)
 

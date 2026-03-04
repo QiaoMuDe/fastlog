@@ -36,6 +36,7 @@ func Default() *FLog
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 ## Types
 
@@ -109,6 +110,7 @@ func Default() *FLog
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 #### NewFLog
 NewFLog 创建一个新的FLog实例，用于记录日志。
@@ -142,6 +144,7 @@ func NewFLog(cfg *config.FastLogConfig) *FLog
 - 是否启用按日期目录存放轮转后的日志: true
 - 是否启用按天轮转: true
 - 压缩类型: comprx.CompressTypeZip
+- 是否使用带缓冲的批量写入器: true (默认)
 
 #### Close
 Close 关闭日志处理器
