@@ -18,7 +18,8 @@ import (
 //   - Formatter: Def{}
 //   - Caller: false
 //   - Fields: []Field{}
-//   - SamplerTick: 10s, SamplerInitial: 3, SamplerThereafter: 10
+//   - SamplerTick: DefaultSamplerTick, SamplerInitial: DefaultSamplerInitial,
+//     SamplerThereafter: DefaultSamplerThereafter
 //   - OutputConsole: true, NoColor: false
 //   - OutputFile: true, LogPath: 参数指定
 //   - Async: false, MaxSize: 20MB, MaxFiles: 24, MaxAge: 7天
@@ -34,13 +35,13 @@ import (
 func NewConfig(logPath string) *Config {
 	return &Config{
 		// 基础日志配置
-		Level:             INFO,             // 日志级别, 零值默认 INFO
-		Formatter:         Def{},            // 日志格式化器, 零值默认 Def
-		Caller:            false,            // 是否记录调用者信息 (文件:函数:行号)
-		Fields:            []Field{},        // 预设字段
-		SamplerTick:       10 * time.Second, // 每10秒一个窗口
-		SamplerInitial:    3,                // 前3条放行
-		SamplerThereafter: 10,               // 之后每10条放行1条
+		Level:             INFO,                     // 日志级别, 零值默认 INFO
+		Formatter:         Def{},                    // 日志格式化器, 零值默认 Def
+		Caller:            false,                    // 是否记录调用者信息 (文件:函数:行号)
+		Fields:            []Field{},                // 预设字段
+		SamplerTick:       DefaultSamplerTick,       // 每 DefaultSamplerTick 一个窗口
+		SamplerInitial:    DefaultSamplerInitial,    // 前 DefaultSamplerInitial 条放行
+		SamplerThereafter: DefaultSamplerThereafter, // 之后每 DefaultSamplerThereafter 条放行 1 条
 
 		// 终端输出配置
 		OutputConsole: true,  // 是否输出到终端 (彩色自动检测)
@@ -75,7 +76,8 @@ func NewConfig(logPath string) *Config {
 //   - Formatter: Def{}
 //   - Caller: false
 //   - Fields: []Field{}
-//   - SamplerTick: 10s, SamplerInitial: 3, SamplerThereafter: 10
+//   - SamplerTick: DefaultSamplerTick, SamplerInitial: DefaultSamplerInitial,
+//     SamplerThereafter: DefaultSamplerThereafter
 //   - OutputConsole: true, NoColor: false
 //   - OutputFile: true, LogPath: 参数指定
 //   - Async: false, MaxSize: 20MB, MaxFiles: 24, MaxAge: 7天
@@ -174,9 +176,9 @@ func Console() *Config {
 //   - OutputConsole: true (输出到 stdout, 容器标准做法)
 //   - OutputFile: false (不写入文件, 由容器收集)
 //   - LogPath: "" (无文件路径)
-//   - SamplerTick: 10*time.Second  (每 10 秒为一个采样窗口)
-//   - SamplerInitial: 3  (每个窗口内前 3 条日志放行)
-//   - SamplerThereafter: 10  (之后每 10 条放行 1 条)
+//   - SamplerTick: DefaultSamplerTick
+//   - SamplerInitial: DefaultSamplerInitial
+//   - SamplerThereafter: DefaultSamplerThereafter
 //
 // 返回:
 //   - *Config: 容器生产环境配置实例

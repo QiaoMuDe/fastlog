@@ -6,8 +6,13 @@ import (
 )
 
 const (
-	samplerLevels  = 6    // 日志级别数: DEBUG ~ PANIC
-	samplerBuckets = 4096 // 每个级别下的桶数
+	samplerLevels            = 6                // 日志级别数: DEBUG ~ PANIC
+	samplerBuckets           = 4096             // 每个级别下的桶数
+	offset32                 = 2166136261       // FNV-1a 哈希函数偏移值
+	prime32                  = 16777619         // FNV-1a 哈希函数质数
+	DefaultSamplerTick       = 10 * time.Second // 默认采样时间窗口
+	DefaultSamplerInitial    = 3                // 默认窗口内前 N 条放行
+	DefaultSamplerThereafter = 10               // 默认之后每 M 条放行 1 条
 )
 
 // samplerCounter 采样计数器
@@ -30,9 +35,9 @@ type Sampler struct {
 // NewSampler 创建日志采样器
 //
 // 参数:
-//   - tick: 时间窗口, 如 10*time.Second。如果 <= 0, 默认使用 1 秒
-//   - initial: 窗口内前 N 条放行。如果 < 0, 默认使用 1
-//   - thereafter: 之后每 M 条放行 1 条, 0 表示不再放行。如果 < 0, 默认使用 10
+//   - tick: 时间窗口, 如 10*time.Second。如果 <= 0, 默认使用 DefaultSamplerTick
+//   - initial: 窗口内前 N 条放行。如果 < 0, 默认使用 DefaultSamplerInitial
+//   - thereafter: 之后每 M 条放行 1 条, 0 表示不再放行。如果 < 0, 默认使用 DefaultSamplerThereafter
 //
 // 示例:
 //
@@ -40,13 +45,13 @@ type Sampler struct {
 //	sampler := fastlog.NewSampler(10*time.Second, 3, 10)
 func NewSampler(tick time.Duration, initial, thereafter int) *Sampler {
 	if tick <= 0 {
-		tick = time.Second
+		tick = DefaultSamplerTick
 	}
 	if initial < 0 {
-		initial = 1
+		initial = DefaultSamplerInitial
 	}
 	if thereafter < 0 {
-		thereafter = 10
+		thereafter = DefaultSamplerThereafter
 	}
 	return &Sampler{
 		tick:       tick,
@@ -57,14 +62,15 @@ func NewSampler(tick time.Duration, initial, thereafter int) *Sampler {
 
 // DefaultSampler 创建默认日志采样器
 //
-// 默认参数: 窗口 1 秒, 前 3 条放行, 之后每 10 条放行 1 条。
+// 默认参数: 窗口 DefaultSamplerTick, 前 DefaultSamplerInitial 条放行,
+// 之后每 DefaultSamplerThereafter 条放行 1 条。
 // 适合大多数场景直接使用, 无需额外配置。
 //
 // 示例:
 //
 //	sampler := fastlog.DefaultSampler()
 func DefaultSampler() *Sampler {
-	return NewSampler(time.Second, 3, 10)
+	return NewSampler(DefaultSamplerTick, DefaultSamplerInitial, DefaultSamplerThereafter)
 }
 
 // Allow 判断是否放行这条日志
@@ -114,10 +120,6 @@ func (s *Sampler) Allow(level Level, msg string) bool {
 
 // fnv32a FNV-1a 哈希函数, 无内存分配
 func fnv32a(s string) uint32 {
-	const (
-		offset32 = 2166136261
-		prime32  = 16777619
-	)
 	hash := uint32(offset32)
 	for i := 0; i < len(s); i++ {
 		hash ^= uint32(s[i])

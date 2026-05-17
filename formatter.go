@@ -8,6 +8,12 @@ import (
 	"github.com/goccy/go-json"
 )
 
+// Formatter 定义日志格式化器接口
+type Formatter interface {
+	// Format 将日志条目格式化为字节数组
+	Format(entry *Entry) ([]byte, error)
+}
+
 // Def 默认格式
 // 格式: 2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
 type Def struct{}
