@@ -1,395 +1,454 @@
 <div align="center">
 
-# FastLog - 高性能 Go 日志库
+# FastLog
 
-![License](https://img.shields.io/badge/license-GPL-blue.svg)
-![Go Version](https://img.shields.io/badge/go-1.25.0-blue.svg)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/QiaoMuDe/fastlog)
+[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev) [![License](https://img.shields.io/badge/License-MIT-green)](#许可证) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FMM-Q%2Ffastlog&query=%24.stargazers_count&label=Stars&color=red&suffix=%20%E2%AD%90)](https://gitee.com/MM-Q/fastlog) [![Go Reference](https://img.shields.io/badge/Reference-pkg.go.dev-00ADD8)](https://pkg.go.dev/gitee.com/MM-Q/fastlog)
+
+**FastLog** 是一个轻量级、高性能的 Go 日志库，专注于简洁 API 与生产可用性的平衡。
+受 [zap](https://github.com/uber-go/zap) 启发，采用零分配字段设计、对象池复用、无锁采样等优化手段，同时提供友好的三级 API 和场景化的配置模式。
+
+> 项目地址：[gitee.com/MM-Q/fastlog](https://gitee.com/MM-Q/fastlog)
 
 </div>
-
-FastLog 是一个高性能的 Go 日志库，面向生产可用与易用性设计。当前实现采用带缓冲写入与定时刷新（BufferedWriter + FlushInterval），提供严格的配置校验、丰富的日志级别与格式、灵活的输出目标，以及完善的日志轮转与清理支持。配套提供开发/生产/终端三种便捷模式构造函数，便于快速在不同场景落地。
-
-## 🌟 核心特性
-
-### ⚙️ 写入与配置
-- 带缓冲写入 + 定时刷新：支持 FlushInterval、MaxBufferSize、MaxWriteCount，兼顾吞吐与时延
-- 轮转与清理：支持 MaxSize/MaxAge/MaxFiles、LocalTime、Compress；Async 控制是否异步清理旧日志（默认同步）
-- 严格配置校验：validateConfig 对不合理配置直接 panic（含输出目标、格式上下界、文件输出前置条件等）
-- 输出目标：文件与控制台可独立开启/关闭，终端输出可配色与加粗（Color/Bold）
-- 调用者信息：可选输出调用文件/函数/行号（CallerInfo）
-
-### 📊 日志能力
-- 日志级别：DEBUG / INFO / WARN / ERROR / FATAL（位掩码组合与过滤）
-- 输出格式：Def / Json / Timestamp / KVFmt / LogFmt / Custom（Custom 需外部自定义格式化）
-- 使用方式：标准库 fmt 风格（Info/Debug/Warn/Error/Fatal 与 Infof/Debugf/Warnf/Errorf/Fatalf）与键值对字段日志（InfoF/DebugF/WarnF/ErrorF/FatalF + 字段构造器：String/Int/Int64/Float64/Bool/Time/Duration/Uint*/Error）
-
-### 🔧 开发友好设计
-- 便捷模式构造函数：
-  - DevConfig：开发模式（Def、DEBUG、短期保留：MaxAge=7/MaxFiles=5）
-  - ProdConfig：生产模式（Json、压缩、禁用控制台、长期保留：MaxAge=30/MaxFiles=24）
-  - ConsoleConfig：终端模式（仅控制台、DEBUG、无需文件路径）
-- 完整测试：覆盖高并发性能、格式多样性、Fatal/Fatalf 子进程行为等
-- 简洁 API：通过 NewFastLogConfig + NewFLog 组合使用
-
-## 📦 安装与引入
-
-```bash
-# 确保在项目路径下存在 go.mod 文件
-go get gitee.com/MM-Q/fastlog
-```
-
-```go
-import "gitee.com/MM-Q/fastlog"
-```
-
-## 🚀 快速开始
-
-### 最简单的使用方式
-
-如果你不想配置复杂的参数，可以直接使用默认日志记录器：
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 获取默认日志记录器（开箱即用）
-    logger := fastlog.Default()
-    defer logger.Close()
-
-    // 直接使用
-    logger.Info("程序启动成功")
-    logger.Debugf("用户 %s 登录成功，IP: %s", "张三", "192.168.1.1")
-    logger.Warn("内存使用率较高: 85%")
-    logger.Error("数据库连接失败")
-}
-```
-
-### 基础使用示例
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 创建日志配置
-    config := fastlog.NewFastLogConfig("logs", "app.log")
-
-    // 创建日志实例
-    logger := fastlog.NewFLog(config)
-    defer logger.Close()
-
-    // 记录不同级别的日志
-    logger.Debug("这是调试信息")
-    logger.Info("这是一条信息日志")
-    logger.Warn("这是一个警告")
-    logger.Error("发生了一个错误")
-  
-    // 使用格式化方法
-    logger.Infof("用户 %s 登录成功，IP: %s", "张三", "192.168.1.1")
-    logger.Errorf("数据库连接失败，重试次数: %d", 3)
-}
-```
-
-### 键值对字段日志示例
-
-```go
-package main
-
-import (
-    "errors"
-    "gitee.com/MM-Q/fastlog"
-)
-
-func main() {
-    cfg := fastlog.NewFastLogConfig("logs", "kv.log")
-    logger := fastlog.NewFLog(cfg)
-    defer logger.Close()
-
-    // 使用键值对字段风格
-    logger.InfoFields("用户登录成功",
-        fastlog.String("username", "zhangsan"),
-        fastlog.Int("age", 30),
-        fastlog.Bool("vip", true),
-    )
-
-    err := errors.New("库存不足")
-    logger.ErrorFields("下单失败",
-        fastlog.String("orderId", "A123"),
-        fastlog.Error("err", err),
-    )
-}
-```
-
-### 预设配置模式（推荐）
-
-FastLog 提供了 3 种便捷模式构造函数，覆盖常见使用场景：
-
-```go
-package main
-
-import "gitee.com/MM-Q/fastlog"
-
-func main() {
-    // 方式1：使用默认日志记录器（最简单）
-    logger := fastlog.Default()
-    defer logger.Close()
-    
-    // 方式2：开发模式：文件+控制台、详细格式、彩色加粗、快速刷新
-    devCfg := fastlog.DevConfig("logs", "dev.log")
-    logger := fastlog.NewFLog(devCfg)
-    defer logger.Close()
-
-    // 方式3：生产模式：仅文件、结构化格式、压缩、长期保留
-    // prodCfg := fastlog.ProdConfig("logs", "prod.log")
-    
-    // 方式4：终端模式：仅控制台、时间戳简洁格式、彩色加粗
-    // consoleCfg := fastlog.ConsoleConfig()
-
-    // 记录日志
-    logger.Info("应用程序启动")
-    logger.Debugf("用户ID: %d, 操作: %s", 12345, "登录")
-    logger.Warn("内存使用率较高: 85%")
-    logger.Error("数据库连接失败")
-}
-```
-
-#### 可用的预设配置模式
-
-- `Default()` - 默认模式：文件+控制台、默认格式、INFO级别、彩色加粗、按日期目录存放和按天轮转
-- `DevConfig(logDir, logFile)` - 开发模式：文件+控制台、Detailed、DEBUG、彩色加粗、FlushInterval≈200ms、短期保留（示例：MaxFiles=5 / MaxAge=7）
-- `ProdConfig(logDir, logFile)` - 生产模式：仅文件、Structured、INFO、无装饰、压缩、MaxSize=100MB、FlushInterval≈1s、长期保留（30天 / 24个）
-- `ConsoleConfig()` - 终端模式：仅控制台、Timestamp、DEBUG、彩色加粗、FlushInterval≈500ms（不写文件）
-
-## 📝 日志格式
-
-FastLog 支持6种不同的日志格式：
-
-| 格式名称 | 枚举值 | 说明 |
-|---------|--------|------|
-| Def | `fastlog.Def` | 默认格式，包含时间、级别、文件、函数、行号等完整信息 |
-| Json | `fastlog.Json` | JSON 格式输出，便于日志分析和处理 |
-| Timestamp | `fastlog.Timestamp` | 时间格式 |
-| KVFmt | `fastlog.KVFmt` | 键值对格式 |
-| LogFmt | `fastlog.LogFmt` | 日志格式 |
-| Custom | `fastlog.Custom` | 自定义格式，直接输出原始消息 |
-
-### 格式示例
-
-#### 1. Def 格式
-```
-2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
-2025-01-15T10:30:46 | ERROR   | database.go:Connect:23 - 数据库连接失败
-```
-
-#### 2. JSON 格式
-```json
-{"time":"2025-01-15T10:30:45","level":"INFO","caller":"main.go:main:15","message":"用户登录成功"}
-{"time":"2025-01-15T10:30:46","level":"ERROR","caller":"database.go:Connect:23","message":"数据库连接失败"}
-```
-
-#### 3. Timestamp 格式
-```
-2025-01-15T10:30:45 INFO  用户登录成功
-2025-01-15T10:30:46 ERROR 数据库连接失败
-```
-
-#### 4. KVFmt 键值对格式
-```
-time=2025-01-15T10:30:45 level=INFO message=用户登录成功
-time=2025-01-15T10:30:46 level=ERROR message=数据库连接失败
-```
-
-#### 5. LogFmt 日志格式
-```
-2025-01-15T10:30:45 [INFO ] 用户登录成功 [username=张三, age=30]
-2025-01-15T10:30:46 [ERROR] database.go:Connect:23 数据库连接失败
-```
-
-#### 6. Custom 格式
-```go
-// 使用 Custom 格式时，直接输出传入的消息内容
-logger.Info("自定义格式的日志消息")  // 输出: 自定义格式的日志消息
-```
-
-## 🎯 核心特性详解
-
-### 同步写入与关闭
-- 当前实现为同步写入，调用日志方法会直接格式化并写出到目标（文件/控制台）。
-- 优雅关闭：Close 返回错误用于传递关闭阶段的异常；在测试中对 Close 的错误均进行显式处理，保证资源释放。
-
-### 配置校验与安全
-- validateConfig 对关键字段进行严格校验：输出目标至少启用一个、级别/格式范围合法、大小/天数/数量不越界。
-- 路径安全：对日志目录与文件名进行路径穿越检测（禁止包含“..”）。
-- 可选项：支持本地时间命名与压缩轮转，便于生产环境长期保留。
-
-### 日志轮转功能
-FastLog 基于轮转参数支持常见的日志管理策略：
-
-```go
-config := fastlog.NewFastLogConfig("logs", "app.log")
-config.MaxSize = 10                          // 文件大小超过 10MB 时轮转
-config.MaxAge = 7                            // 保留 7 天的日志文件
-config.MaxFiles = 5                          // 最多保留 5 个备份文件
-config.LocalTime = true                      // 使用本地时间命名
-config.Compress = true                       // 启用压缩功能
-config.DateDirLayout = true                  // 启用按日期目录存放轮转后的日志
-config.RotateByDay = true                    // 启用按天轮转
-config.CompressType = comprx.CompressTypeZip // 压缩类型
-```
-
-轮转后的日志文件命名格式示例：`app_202501010301.log`
-
-## 💡 最佳实践
-
-### 1. 日志级别使用建议
-
-- **DEBUG**: 仅在开发和调试时使用，包含详细的程序执行信息
-- **INFO**: 记录程序的正常运行信息，如启动、关闭、重要操作等
-- **WARN**: 记录警告信息，程序可以继续运行但需要注意
-- **ERROR**: 记录错误信息，程序遇到问题但可以恢复
-- **FATAL**: 记录致命错误，程序无法继续运行
-
-### 2. 配置与性能建议
-
-```go
-// 推荐：根据场景选择合适的预设配置
-// 生产环境（仅文件、结构化、长期保留、压缩）
-logger := fastlog.NewFLog(fastlog.ProdConfig("logs", "app.log"))
-
-// 开发环境（文件+控制台、详细信息、彩色加粗、快速刷新）
-logger := fastlog.NewFLog(fastlog.DevConfig("logs", "debug.log"))
-
-// 终端环境（仅控制台、时间戳简洁格式、彩色加粗）
-logger := fastlog.NewFLog(fastlog.ConsoleConfig())
-
-// 自定义配置（在预设不满足需求时使用）
-config := fastlog.NewFastLogConfig("logs", "app.log")
-config.FlushInterval = 1 * time.Second    // 增加刷新间隔减少 IO（根据需求调整）
-config.LogLevel = fastlog.INFO            // 生产环境避免 DEBUG 噪音
-config.MaxSize = 100                      // 增大文件大小减少轮转频率
-
-// 使用格式化方法，避免不必要的字符串拼接
-logger.Infof("用户 %s 执行操作 %s", username, action)  // 推荐
-// logger.Info("用户 " + username + " 执行操作 " + action)  // 不推荐
-```
-
-### 3. 错误处理建议
-
-```go
-// 推荐：在关键位置使用 defer 并显式处理 Close 的错误（满足 errcheck）
-func main() {
-    logger := fastlog.NewFLog(config)
-    defer func() {
-        logger.Info("程序正在关闭...")
-        if err := logger.Close(); err != nil {
-            // 生产环境可记录到标准错误或告警系统
-            // 此处简单打印或忽略均可根据需要处理
-            _ = err
-        }
-    }()
-  
-    // 业务逻辑...
-}
-```
-
-## 🔧 依赖信息
-
-FastLog 依赖以下外部库（与 go.mod 保持一致）：
-
-```go
-require (
-    gitee.com/MM-Q/colorlib v1.3.2      // 终端颜色与样式
-    gitee.com/MM-Q/logrotatex v1.2.3    // 日志文件轮转（大小/时间/数量、压缩、本地时间）
-    gitee.com/MM-Q/comprx v0.1.6        // 压缩工具
-    gitee.com/MM-Q/go-kit v0.0.13       // 常用工具集
-)
-```
-
-- colorlib：提供终端颜色输出与样式支持
-- logrotatex：提供日志文件轮转功能，支持按大小、时间和数量轮转，以及压缩与本地时间
-- comprx：提供压缩工具支持
-- go-kit：提供通用工具函数（如字符串/配置等）
-
-## 📋 版本要求
-
-- Go 版本：1.25.0 或更高版本
-- 操作系统：支持 Windows、Linux、macOS
-
-## ❓ 常见问题
-
-### Q: 如何在生产环境中使用？
-
-A: 建议在生产环境中：
-- 设置日志级别为 INFO 或更高（避免 DEBUG 噪音）
-- 使用 Structured 或 JSON 格式便于日志分析
-- 禁用控制台输出，仅输出到文件（ProdConfig 默认如此）
-- 配置合适的日志轮转策略（MaxSize/MaxAge/MaxFiles，建议启用压缩）
-
-### Q: 如何处理高并发场景？
-
-A: 当前实现为同步写入，建议：
-- 使用 `ProdConfig("logs", "app.log")`，开启压缩与结构化格式
-- 将日志级别设为 INFO 或更高，减少无关日志
-- 适度增大 `FlushInterval`（如 1s）与 `MaxSize`（如 100MB），降低 I/O 频率
-- 采用结构化/JSON 格式，便于后续日志聚合与分析
-
-### Q: 日志文件过大怎么办？
-
-A: 配置日志轮转参数：
-```go
-config.MaxSize = 50      // 50MB 轮转（可根据场景调整为 100MB）
-config.MaxAge = 7        // 保留 7 天
-config.MaxFiles = 10     // 最多 10 个备份
-config.Compress = true   // 启用压缩
-```
-
-### Q: 如何自定义日志格式？
-
-A: 使用 Custom 格式：
-```go
-config.LogFormat = fastlog.Custom
-logger.Info("自定义格式的消息")  // 直接输出原始消息
-```
-
-## 🤝 贡献指南
-
-欢迎贡献代码！请遵循以下步骤：
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 创建 Pull Request
-
-### 开发规范
-
-- 遵循 Go 代码规范
-- 添加必要的单元测试
-- 更新相关文档
-- 确保所有测试通过
-
-## 📄 许可证
-
-本项目采用 GPL 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
-
-## 📞 联系方式
-
-- 项目主页：[https://deepwiki.com/QiaoMuDe/fastlog](https://deepwiki.com/QiaoMuDe/fastlog)
-- Gitee：[https://gitee.com/MM-Q/fastlog](https://gitee.com/MM-Q/fastlog)
-- GitHub：[https://github.com/QiaoMuDe/fastlog](https://github.com/QiaoMuDe/fastlog)
-
-## 📚 相关文档
-
-- [API 文档](./APIDOC.md) - 详细的 API 参考文档
 
 ---
 
-<div align="center">
+## 核心特性
 
-**FastLog** - 让日志记录更简单、更高效！ 🚀
+| 特性 | 说明 |
+|------|------|
+| 🚀 **高性能** | 零分配 Field 结构体、对象池复用 Entry、无锁原子采样、避免反射 |
+| 🎨 **彩色输出** | 基于 [color](https://gitee.com/MM-Q/color) 库，自动检测日志级别着色，支持 `NoColor` 开关，兼容 Windows |
+| 📋 **三级 API** | 标准日志 `Info()`、格式化日志 `Infof()`、结构化日志 `Infow()` |
+| 🔧 **Config 配置** | 场景化配置函数，开箱即用，支持自定义调整 |
+| 📝 **多格式支持** | 内置 5 种格式：Def、JSON、Timestamp、KV、LogFmt，支持自定义 |
+| 🧩 **结构化字段** | 12 种字段类型，类型安全，零装箱分配 |
+| 🎯 **日志采样** | 固定桶 + atomic 无锁设计，参考 zap，有效防洪 |
+| 🔌 **多路输出** | `MultiWriter` 同时输出到多个目标 |
+| 🧪 **场景化配置** | `NewConfig()`、`Dev()`、`Prod()`、`Console()`、`Docker()` 覆盖常见场景 |
+| 🔒 **线程安全** | `sync.Mutex` 保证写入安全 |
+| 📦 **一站式集成** | 基于 [logrotatex](https://gitee.com/MM-Q/logrotatex) 实现日志轮转、缓冲写入，[comprx](https://gitee.com/MM-Q/comprx) 实现压缩，用户无感知 |
 
-</div>
+---
+
+## 安装
+
+```bash
+go get gitee.com/MM-Q/fastlog
+```
+
+然后在代码中引入：
+
+```go
+import "gitee.com/MM-Q/fastlog"
+```
+
+---
+
+## 快速开始
+
+### 最简单的用法
+
+```go
+package main
+
+import "gitee.com/MM-Q/fastlog"
+
+func main() {
+    logger := fastlog.New(fastlog.Default())
+    defer func() { _ = logger.Close() }()
+
+    logger.Info("应用启动成功")
+    logger.Warnf("磁盘使用率: %.1f%%", 85.3)
+    logger.Errorw("数据库连接失败", fastlog.String("db", "mysql"))
+}
+```
+
+### 开发调试模式
+
+```go
+logger := fastlog.New(fastlog.Dev("logs/dev.log"))
+defer func() { _ = logger.Close() }()
+
+logger.Debug("进入函数 processOrder")           // 彩色输出
+logger.Info("订单处理完成")
+logger.Error("数据库连接超时")                    // 带调用者信息
+```
+
+### 生产环境模式
+
+```go
+logger := fastlog.New(fastlog.Prod("/var/log/app.log"))
+defer func() { _ = logger.Close() }()
+
+logger.Info("服务启动")                          // 只写入文件，WARN 及以上级别
+logger.Warn("连接数接近上限")
+```
+
+### 容器/Docker 模式
+
+```go
+logger := fastlog.New(fastlog.Docker())
+defer func() { _ = logger.Close() }()
+
+logger.Info("容器启动")                          // JSON 格式输出到 stdout
+```
+
+---
+
+## 使用指南
+
+### 场景化配置函数
+
+FastLog 提供了 6 种场景化配置函数，覆盖最常见的使用场景：
+
+| 函数 | 级别 | 输出 | 格式 | 调用者 | 采样 | 轮转 | 适用场景 |
+|------|------|------|------|--------|------|------|----------|
+| `NewConfig(path)` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | 通用默认 |
+| `Default()` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | 快速上手 |
+| `Dev(path)` | DEBUG | 终端+文件 | Def | ✅ | ❌ | ❌ | 开发调试 |
+| `Prod(path)` | WARN | 仅文件 | Def | ❌ | ✅ | ✅ | 生产环境 |
+| `Console()` | DEBUG | 仅终端 | Def | ❌ | ❌ | ❌ | 本地调试 |
+| `Docker()` | WARN | 仅终端 | JSON | ❌ | ✅ | ❌ | 容器/K8s |
+
+```go
+// 开发环境：DEBUG 级别、彩色输出、调用者信息
+logger := fastlog.New(fastlog.Dev("logs/dev.log"))
+
+// 生产环境：WARN 级别、文件输出、压缩、异步清理
+logger := fastlog.New(fastlog.Prod("/var/log/app.log"))
+
+// 容器环境：JSON 格式、stdout 输出
+logger := fastlog.New(fastlog.Docker())
+
+// 纯控制台：本地调试
+logger := fastlog.New(fastlog.Console())
+```
+
+### 自定义配置
+
+基于场景化配置进行修改：
+
+```go
+// 基于生产环境配置，调整为 ERROR 级别
+cfg := fastlog.Prod("/var/log/app.log")
+cfg.Level = fastlog.ERROR
+cfg.Compress = false  // 关闭压缩
+
+logger := fastlog.New(cfg)
+defer func() { _ = logger.Close() }()
+```
+
+### 完整自定义配置
+
+```go
+cfg := &fastlog.Config{
+    Level:         fastlog.INFO,
+    Formatter:     fastlog.JSON{},
+    Caller:        true,
+    OutputConsole: true,
+    OutputFile:    true,
+    LogPath:       "logs/app.log",
+    MaxSize:       100,
+    MaxFiles:      7,
+    Compress:      true,
+}
+
+logger := fastlog.New(cfg)
+defer func() { _ = logger.Close() }()
+```
+
+### 结构化字段
+
+```go
+logger.Infow("用户登录",
+    fastlog.String("username", "alice"),
+    fastlog.Int("attempts", 3),
+    fastlog.Bool("vip", true),
+    fastlog.Duration("elapsed", 45*time.Millisecond),
+    fastlog.Error(err),
+    fastlog.Any("metadata", map[string]string{"ip": "192.168.1.1"}),
+)
+```
+
+**三级 API 对应关系：**
+
+| 级别 | 标准 | 格式化 | 结构化 |
+|------|------|--------|--------|
+| DEBUG | `Debug(msg)` | `Debugf(fmt, args...)` | `Debugw(msg, fields...)` |
+| INFO | `Info(msg)` | `Infof(fmt, args...)` | `Infow(msg, fields...)` |
+| WARN | `Warn(msg)` | `Warnf(fmt, args...)` | `Warnw(msg, fields...)` |
+| ERROR | `Error(msg)` | `Errorf(fmt, args...)` | `Errorw(msg, fields...)` |
+| FATAL | `Fatal(msg)` | `Fatalf(fmt, args...)` | `Fatalw(msg, fields...)` |
+| PANIC | `Panic(msg)` | `Panicf(fmt, args...)` | `Panicw(msg, fields...)` |
+
+### 多种格式
+
+```go
+// Def 格式（默认）
+logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
+// 输出: 2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
+
+// JSON 格式
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.Formatter = fastlog.JSON{}
+logger := fastlog.New(cfg)
+// 输出: {"time":"2025-01-15T10:30:45","level":"INFO","message":"用户登录成功"}
+
+// Timestamp 格式
+cfg.Formatter = fastlog.Timestamp{}
+// 输出: 2025-01-15T10:30:45 INFO 用户登录成功
+
+// KV 格式
+cfg.Formatter = fastlog.KV{}
+// 输出: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
+
+// LogFmt 格式
+cfg.Formatter = fastlog.LogFmt{}
+// 输出: 2025-01-15T10:30:45 [INFO ] 用户登录成功 [username=alice, count=42]
+```
+
+### 彩色输出
+
+```go
+// 默认配置已启用彩色输出
+logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
+
+// 禁用彩色输出
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.NoColor = true
+logger := fastlog.New(cfg)
+```
+
+**颜色映射：**
+
+| 级别 | 颜色 | 效果 |
+|------|------|------|
+| DEBUG | 青色 | `SCyan` |
+| INFO | 蓝色 | `SBlue` |
+| WARN | 黄色 | `SYellow` |
+| ERROR | 红色 | `SRed` |
+| FATAL | 红色加粗 | `FgRed + Bold` |
+| PANIC | 紫色加粗 | `FgMagenta + Bold` |
+
+### 日志采样
+
+```go
+// 使用默认采样配置（10秒窗口，前3条放行，之后每10条放行1条）
+logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
+
+// 自定义采样配置
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.SamplerTick = 30 * time.Second      // 30秒窗口
+cfg.SamplerInitial = 5                  // 前5条放行
+cfg.SamplerThereafter = 20              // 之后每20条放行1条
+logger := fastlog.New(cfg)
+
+for i := 0; i < 100; i++ {
+    logger.Error("数据库连接超时")     // 大量重复日志仅部分写入
+}
+```
+
+### 多路输出
+
+```go
+// 同时输出到终端和文件（NewConfig 默认行为）
+logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
+
+// 手动创建多路输出
+cfg := &fastlog.Config{
+    Level:         fastlog.INFO,
+    Formatter:     fastlog.Def{},
+    OutputConsole: true,
+    OutputFile:    true,
+    LogPath:       "logs/app.log",
+}
+logger := fastlog.New(cfg)
+
+logger.Info("这条日志同时输出到控制台和文件")
+```
+
+---
+
+## API 文档
+
+### Logger 创建
+
+| 函数 | 说明 |
+|------|------|
+| `New(cfg *Config) *Logger` | 创建 Logger，传入配置实例 |
+| `Default() *Config` | 默认配置（INFO + 双输出 + 采样） |
+| `NewConfig(path) *Config` | 通用配置（双输出） |
+| `Dev(path) *Config` | 开发配置（DEBUG + Caller） |
+| `Prod(path) *Config` | 生产配置（WARN + 仅文件 + 压缩） |
+| `Console() *Config` | 控制台配置（DEBUG + 仅终端） |
+| `Docker() *Config` | 容器配置（WARN + JSON + stdout） |
+
+### 日志记录方法
+
+每条日志方法对应三种变体：
+
+| 级别 | 标准 | 格式化 | 结构化 |
+|------|------|--------|--------|
+| DEBUG | `Debug(msg)` | `Debugf(fmt, args...)` | `Debugw(msg, fields...)` |
+| INFO | `Info(msg)` | `Infof(fmt, args...)` | `Infow(msg, fields...)` |
+| WARN | `Warn(msg)` | `Warnf(fmt, args...)` | `Warnw(msg, fields...)` |
+| ERROR | `Error(msg)` | `Errorf(fmt, args...)` | `Errorw(msg, fields...)` |
+| FATAL | `Fatal(msg)` | `Fatalf(fmt, args...)` | `Fatalw(msg, fields...)` |
+| PANIC | `Panic(msg)` | `Panicf(fmt, args...)` | `Panicw(msg, fields...)` |
+
+**生命周期方法：**
+
+| 方法 | 说明 |
+|------|------|
+| `Sync() error` | 刷新日志到存储 |
+| `Close() error` | 关闭 Logger，释放资源 |
+
+### Config 配置项
+
+| 配置项 | 类型 | 说明 |
+|--------|------|------|
+| `Level` | `Level` | 日志级别 |
+| `Formatter` | `Formatter` | 格式化器 |
+| `Caller` | `bool` | 是否记录调用者信息 |
+| `Fields` | `[]Field` | 预设字段 |
+| `SamplerTick` | `time.Duration` | 采样时间窗口 |
+| `SamplerInitial` | `int` | 采样初始放行数 |
+| `SamplerThereafter` | `int` | 采样后续放行间隔 |
+| `OutputConsole` | `bool` | 是否输出到终端 |
+| `NoColor` | `bool` | 是否禁用彩色输出 |
+| `OutputFile` | `bool` | 是否输出到文件 |
+| `LogPath` | `string` | 日志文件路径 |
+| `Async` | `bool` | 是否异步清理 |
+| `MaxSize` | `int` | 单文件最大大小（MB） |
+| `MaxFiles` | `int` | 保留的历史文件数 |
+| `MaxAge` | `int` | 保留天数 |
+| `Compress` | `bool` | 是否压缩历史文件 |
+| `CompressType` | `comprx.CompressType` | 压缩类型 |
+| `LocalTime` | `bool` | 是否使用本地时间 |
+| `DateDirLayout` | `bool` | 是否按日期目录存放 |
+| `RotateByDay` | `bool` | 是否按天轮转 |
+| `MaxBufferSize` | `int` | 缓冲区大小（字节） |
+| `SyncInterval` | `time.Duration` | 自动同步间隔 |
+
+### 自定义格式示例
+
+```go
+// 自定义格式：实现 Formatter 接口即可
+type MyFormatter struct{}
+
+func (f MyFormatter) Format(entry *fastlog.Entry) ([]byte, error) {
+    return []byte(entry.Level.String() + ": " + entry.Message + "\n"), nil
+}
+
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.Formatter = MyFormatter{}
+logger := fastlog.New(cfg)
+logger.Info("使用自定义格式")     // 输出: INFO: 使用自定义格式
+```
+
+---
+
+## 日志格式
+
+| 格式 | 结构体 | 输出示例 |
+|------|--------|----------|
+| 默认 | `Def` | `2025-01-15T10:30:45 \| INFO \| main.go:main:15 - 消息` |
+| JSON | `JSON` | `{"time":"...","level":"INFO","message":"..."}` |
+| 时间戳 | `Timestamp` | `2025-01-15T10:30:45 INFO 消息` |
+| 键值对 | `KV` | `time=... level=INFO message=...` |
+| LogFmt | `LogFmt` | `2025-01-15T10:30:45 [INFO ] 消息 [key=val]` |
+
+---
+
+## 字段类型
+
+| 构造函数 | Go 类型 | 取值方法 |
+|----------|---------|----------|
+| `fastlog.String(key, val)` | `string` | `Field.String()` |
+| `fastlog.Int(key, val)` | `int` | `Field.Int()` |
+| `fastlog.Int64(key, val)` | `int64` | `Field.Int64()` |
+| `fastlog.Uint(key, val)` | `uint` | `Field.Uint()` |
+| `fastlog.Uint64(key, val)` | `uint64` | `Field.Uint64()` |
+| `fastlog.Float64(key, val)` | `float64` | `Field.Float64()` |
+| `fastlog.Bool(key, val)` | `bool` | `Field.Bool()` |
+| `fastlog.Time(key, val)` | `time.Time` | `Field.Time()` |
+| `fastlog.Duration(key, val)` | `time.Duration` | `File.DurationVal()` |
+| `fastlog.Error(err)` | `error` | 键名固定为 `"error"` |
+| `fastlog.Err(key, err)` | `error` | 自定义键名 |
+| `fastlog.Any(key, val)` | `interface{}` | `Field.Interface` |
+| `fastlog.Stack()` | — | 当前堆栈信息 |
+
+---
+
+## 测试
+
+```bash
+# 运行所有测试
+go test ./...
+
+# 运行并查看详细输出
+go test -v ./...
+
+# 运行特定测试
+go test -v -run TestSampler ./...
+
+# 检查代码覆盖率
+go test -cover ./...
+```
+
+当前测试覆盖全部核心文件，按优先级从底层到上层覆盖：
+
+| 优先级 | 被测组件 | 关键测点 |
+|--------|----------|----------|
+| P0 | 日志级别 | String / Enabled / ParseLevel / AllLevels |
+| P0 | 字段系统 | 构造函数 / 取值方法 / 类型不匹配 / nil 边界 |
+| P1 | 日志采样 | 放行规则 / 窗口重置 / 独立计数 / 边界值 |
+| P1 | 格式化器 | 5 种格式输出模板 / JSON 合法性 / 空 Entry |
+| P2 | 写入器 | ColorWriter / MultiWriter / 错误处理 |
+| P3 | Logger | 配置生效 / 级别过滤 / 采样集成 / 生命周期 |
+
+---
+
+## 许可证
+
+本项目采用 **MIT 许可证**。详情请参见 [LICENSE](LICENSE) 文件。
+
+---
+
+## 贡献指南
+
+欢迎贡献！请遵循以下流程：
+
+1. **Fork** 本仓库
+2. 创建特性分支：`git checkout -b feat/your-feature`
+3. 提交改动：`git commit -m "feat: 添加 XXX 功能"`
+4. 推送分支：`git push origin feat/your-feature`
+5. 创建 **Pull Request**
+
+### 开发规范
+
+- 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/) 规范
+- 新增功能需附带对应的单元测试
+- 运行 `go vet ./...` 和 `go test ./...` 确保无错误
+
+---
+
+## 相关链接
+
+- **仓库地址**: [gitee.com/MM-Q/fastlog](https://gitee.com/MM-Q/fastlog)
+- **Go 官方**: [go.dev](https://go.dev)
+- **依赖库**:
+  - [color](https://gitee.com/MM-Q/color) — 终端彩色输出
+  - [go-json](https://github.com/goccy/go-json) — 高性能 JSON 序列化
+  - [logrotatex](https://gitee.com/MM-Q/logrotatex) — 日志轮转和缓冲写入
+  - [comprx](https://gitee.com/MM-Q/comprx) — 日志压缩
+- **参考项目**: [zap](https://github.com/uber-go/zap)
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://gitee.com/MM-Q">M乔木</a>
+  <br>
+  <a href="https://gitee.com/MM-Q/fastlog">gitee.com/MM-Q/fastlog</a>
+</p>

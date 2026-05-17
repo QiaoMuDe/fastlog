@@ -1,274 +1,115 @@
 package fastlog
 
 import (
-	"gitee.com/MM-Q/fastlog/internal/config"
-	"gitee.com/MM-Q/fastlog/internal/flog"
-	"gitee.com/MM-Q/fastlog/internal/types"
+	"fmt"
+	"strings"
+	"time"
 )
 
-// LogLevel 定义为位掩码类型，每一位代表一个日志级别
-//
-// 支持的日志级别:
-//   - DEBUG: 调试级别
-//   - INFO: 信息级别
-//   - WARN: 警告级别
-//   - ERROR: 错误级别
-//   - FATAL: 致命错误级别
-//   - NONE: 不记录任何日志级别
-type LogLevel = types.LogLevel
+// Level 表示日志级别
+type Level int8
 
-// LogLevel 日志级别
+// 日志级别常量
 const (
-	DEBUG = types.DEBUG // 调试级别
-	INFO  = types.INFO  // 信息级别
-	WARN  = types.WARN  // 警告级别
-	ERROR = types.ERROR // 错误级别
-	FATAL = types.FATAL // 致命错误级别
-	NONE  = types.NONE  // 不记录任何日志级别
+	DEBUG Level = iota + 1 // 调试级别 (1)
+	INFO                   // 信息级别 (2)
+	WARN                   // 警告级别 (3)
+	ERROR                  // 错误级别 (4)
+	FATAL                  // 致命级别 (5)
+	PANIC                  // 恐慌级别 (6)
 )
 
-// LogFormatType 日志格式选项
-//
-// 格式:
-//   - Detailed: 详细格式
-//   - Json: json格式
-//   - Timestamp: 时间格式
-//   - KVFmt: 键值对格式
-//   - LogFmt: logfmt格式
-//   - Custom: 自定义格式
-type LogFormatType = types.LogFormatType
-
+// 日志级别名称常量
 const (
-	Def       = types.Def       // 默认格式
-	Json      = types.Json      // json格式
-	Timestamp = types.Timestamp // 时间格式
-	KVFmt     = types.KVFmt     // 键值对格式
-	LogFmt    = types.LogFmt    // 日志格式
-	Custom    = types.Custom    // 自定义格式
+	LevelNameDebug = "DEBUG"
+	LevelNameInfo  = "INFO"
+	LevelNameWarn  = "WARN"
+	LevelNameError = "ERROR"
+	LevelNameFatal = "FATAL"
+	LevelNamePanic = "PANIC"
 )
 
-// FastLogConfig 定义一个配置结构体, 用于配置日志记录器
-type FastLogConfig = config.FastLogConfig
+// String 返回级别的字符串表示
+func (l Level) String() string {
+	switch l {
+	case DEBUG:
+		return LevelNameDebug
+	case INFO:
+		return LevelNameInfo
+	case WARN:
+		return LevelNameWarn
+	case ERROR:
+		return LevelNameError
+	case FATAL:
+		return LevelNameFatal
+	case PANIC:
+		return LevelNamePanic
+	default:
+		return fmt.Sprintf("Level(%d)", l)
+	}
+}
 
-// NewFastLogConfig 创建一个新的FastLogConfig实例, 用于配置日志记录器。
+// Enabled 检查是否启用该级别 (lvl >= l 时启用)
 //
 // 参数:
-//   - logDirName: 日志目录名称, 默认为"applogs"。
-//   - logFileName: 日志文件名称, 默认为"app.log"。
+//   - lvl: 要检查的级别
 //
-// 返回值:
-//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-var NewFastLogConfig = config.NewFastLogConfig
+// 返回:
+//   - bool: 是否启用该级别
+func (l Level) Enabled(lvl Level) bool {
+	return lvl >= l
+}
 
-// NewCfg 是 NewFastLogConfig 的简写, 用于创建一个新的FastLogConfig实例。
+// ParseLevel 从字符串解析日志级别
 //
 // 参数:
-//   - logDirName: 日志目录名称, 默认为"applogs"。
-//   - logFileName: 日志文件名称, 默认为"app.log"。
+//   - s: 要解析的字符串
 //
-// 返回值:
-//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-var NewCfg = config.NewFastLogConfig
+// 返回:
+//   - Level: 解析后的日志级别
+//   - error: 如果解析失败
+func ParseLevel(s string) (Level, error) {
+	switch strings.ToUpper(s) {
+	case LevelNameDebug:
+		return DEBUG, nil
+	case LevelNameInfo:
+		return INFO, nil
+	case LevelNameWarn:
+		return WARN, nil
+	case LevelNameError:
+		return ERROR, nil
+	case LevelNameFatal:
+		return FATAL, nil
+	case LevelNamePanic:
+		return PANIC, nil
+	default:
+		return INFO, fmt.Errorf("unknown level: %s", s)
+	}
+}
 
-// DevConfig 创建一个开发环境下的FastLogConfig实例
+// AllLevels 返回所有日志级别
 //
-// 参数:
-//   - logDirName: 日志目录名
-//   - logFileName: 日志文件名
-//
-// 返回值:
-//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-//
-// 特性:
-//   - 启用详细日志格式
-//   - 设置日志级别为DEBUG
-//   - 设置最大日志文件保留数量为5
-//   - 设置最大日志文件保留天数为7天
-var DevConfig = config.DevConfig
+// 返回:
+//   - []Level: 包含所有日志级别的切片
+func AllLevels() []Level {
+	return []Level{DEBUG, INFO, WARN, ERROR, FATAL, PANIC}
+}
 
-// ProdConfig 创建一个生产环境下的FastLogConfig实例
-//
-// 参数:
-//   - logDirName: 日志目录名
-//   - logFileName: 日志文件名
-//
-// 返回值:
-//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-//
-// 特性:
-//   - 启用日志文件压缩
-//   - 禁用控制台输出
-//   - 设置最大日志文件保留天数为30天
-//   - 设置最大日志文件保留数量为24个
-var ProdConfig = config.ProdConfig
+// Formatter 定义日志格式化器接口
+type Formatter interface {
+	// Format 将日志条目格式化为字节数组
+	Format(entry *Entry) ([]byte, error)
+}
 
-// ConsoleConfig 创建一个控制台环境下的FastLogConfig实例
-//
-// 返回值:
-//   - *FastLogConfig: 一个指向FastLogConfig实例的指针。
-//
-// 特性:
-//   - 禁用文件输出
-//   - 设置日志级别为DEBUG
-var ConsoleConfig = config.ConsoleConfig
+// Entry 表示一条日志记录
+type Entry struct {
+	Time    time.Time // 时间戳
+	Level   Level     // 日志级别
+	Message string    // 日志消息
+	Caller  string    // 调用者信息: file.go:func:line
+	Fields  []Field   // 键值对字段
+}
 
-// FLog 是一个高性能的日志记录器, 支持键值对风格的使用和标准库fmt类似的使用,
-// 同时提供了丰富的配置选项, 如日志级别、输出格式、日志轮转等。
-type FLog = flog.FLog
-
-// Default 创建一个默认配置的日志记录器并返回
-//
-// 返回值:
-//   - *FLog: 一个指向FLog实例的指针。
-//
-// 默认配置:
-//   - 日志目录: "logs"
-//   - 日志文件名: "app.log"
-//   - 日志级别: INFO
-//   - 日志格式: Def
-//   - 最大日志文件大小: 10MB
-//   - 最大日志文件保留天数: 0 (不做限制)
-//   - 最大日志文件保留数量: 0 (不做限制)
-//   - 是否使用本地时间: true
-//   - 是否启用日志文件压缩: false
-//   - 是否启用终端颜色: true
-//   - 是否启用终端字体加粗: true
-//   - 缓冲区大小: 256KB
-//   - 刷新间隔: 1秒
-//   - 是否异步清理日志: false
-//   - 是否获取调用者信息: false
-//   - 是否将日志输出到控制台: true
-//   - 是否将日志输出到文件: true
-//   - 是否启用按日期目录存放轮转后的日志: true
-//   - 是否启用按天轮转: true
-//   - 压缩类型: comprx.CompressTypeZip
-var Default = flog.Default
-
-// NewFLog 创建一个新的FLog实例, 用于记录日志。
-//
-// 参数:
-//   - config: 一个指向FastLogConfig实例的指针, 用于配置日志记录器。
-//
-// 返回值:
-//   - *FLog: 一个指向FLog实例的指针。
-var NewFLog = flog.NewFLog
-
-// String 添加字符串字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为字符串。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var String = flog.String
-
-// Int 添加整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Int = flog.Int
-
-// Int64 添加64位整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为64位整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Int64 = flog.Int64
-
-// Float64 添加64位浮点数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为64位浮点数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Float64 = flog.Float64
-
-// Bool 添加布尔字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为布尔值。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Bool = flog.Bool
-
-// Time 添加时间字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为time.Time类型。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Time = flog.Time
-
-// Duration 添加持续时间字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为time.Duration类型。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Duration = flog.Duration
-
-// Uint64 添加64位无符号整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为64位无符号整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Uint64 = flog.Uint64
-
-// Uint32 添加32位无符号整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为32位无符号整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Uint32 = flog.Uint32
-
-// Uint16 添加16位无符号整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为16位无符号整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Uint16 = flog.Uint16
-
-// Uint8 添加8位无符号整数字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为8位无符号整数。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Uint8 = flog.Uint8
-
-// Error 添加错误字段
-//
-// 参数:
-//   - key: 字段的键名, 不能为空字符串。
-//   - value: 字段值, 必须为error类型。
-//
-// 返回值:
-//   - *Field: 一个指向 Field 实例的指针。
-var Error = flog.Error
+// callerSkip 是 getCaller 的跳过层数常量
+// 用于跳过日志库内部调用栈, 直接定位到用户的调用位置
+const callerSkip = 3

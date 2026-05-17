@@ -6,18 +6,13 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"gitee.com/MM-Q/fastlog/internal/types"
 )
 
 // TestWithLog 打印多组模拟 HTTP 请求的日志（无断言）
 func TestWithLog(t *testing.T) {
 	// 配置日志
-	cfg := ConsoleConfig()
-	cfg.LogFormat = types.Def // 使用默认/键值对格式，便于阅读
-	cfg.Color = true          // 开启颜色，便于阅读
-	cfg.CallerInfo = false
-	log := NewFLog(cfg)
+	cfg := Console()
+	log := New(cfg)
 
 	// 定义多组用例
 	cases := []struct {

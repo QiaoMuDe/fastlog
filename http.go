@@ -48,7 +48,7 @@ func (lw *logWriter) WriteHeader(code int) {
 //
 // 返回:
 //   - http.Handler: 中间件处理后的处理器
-func LogRequest(log *FLog, next http.Handler) http.Handler {
+func LogRequest(log *Logger, next http.Handler) http.Handler {
 	if log == nil || next == nil {
 		log.Fatal("fastlog: invalid arguments")
 	}
@@ -69,7 +69,7 @@ func LogRequest(log *FLog, next http.Handler) http.Handler {
 		duration := time.Since(startTime)
 
 		// 打印HTTP日志
-		log.InfoFields("[HTTP LOG]",
+		log.Infow("[HTTP LOG]",
 			String("method", r.Method),            // 请求方法
 			String("path", r.URL.Path),            // 请求路径
 			Int("status", lw.statusCode),          // HTTP状态码
