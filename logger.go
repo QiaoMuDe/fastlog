@@ -413,25 +413,26 @@ func (l *Logger) Close() error {
 //   - string: 调用者信息, 格式为 "文件名:函数名:行号"
 //   - error: 如果获取调用者信息失败
 func getCaller(skip int) string {
+	// 获取调用栈信息: pc=程序计数器, file=文件名, line=行号
 	pc, file, line, ok := runtime.Caller(skip)
 	if !ok {
-		return ""
+		return "?:?:0"
 	}
 
-	fn := runtime.FuncForPC(pc)
-	if fn == nil {
-		return ""
-	}
-
-	// 获取函数名最后一个点之后的部分
-	fnName := fn.Name()
-	if i := strings.LastIndexByte(fnName, '.'); i >= 0 {
-		fnName = fnName[i+1:]
-	}
-
-	// 获取文件名
+	// 取文件名最后一段, 如 "path/to/main.go" → "main.go"
 	file = filepath.Base(file)
 
+	// 通过 PC 获取函数名, 获取失败时用 "?" 保底
+	fnName := "?"
+	if fn := runtime.FuncForPC(pc); fn != nil {
+		fnName = fn.Name()
+		// 取完整函数名最后一个点之后的部分, 如 "main.main" → "main"
+		if i := strings.LastIndexByte(fnName, '.'); i >= 0 {
+			fnName = fnName[i+1:]
+		}
+	}
+
+	// 格式化调用者信息
 	return fmt.Sprintf("%s:%s:%d", file, fnName, line)
 }
 
