@@ -4,12 +4,12 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go)](https://go.dev) [![License](https://img.shields.io/badge/License-MIT-green)](#许可证) [![Stars](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fgitee.com%2Fapi%2Fv5%2Frepos%2FMM-Q%2Ffastlog&query=%24.stargazers_count&label=Stars&color=red&suffix=%20%E2%AD%90)](https://gitee.com/MM-Q/fastlog) [![Go Reference](https://img.shields.io/badge/Reference-pkg.go.dev-00ADD8)](https://pkg.go.dev/gitee.com/MM-Q/fastlog)
 
+</div>
+
 **FastLog** 是一个轻量级、高性能的 Go 日志库，专注于简洁 API 与生产可用性的平衡。
 受 [zap](https://github.com/uber-go/zap) 启发，采用零分配字段设计、对象池复用、无锁采样等优化手段，同时提供友好的三级 API 和场景化的配置模式。
 
 > 项目地址：[gitee.com/MM-Q/fastlog](https://gitee.com/MM-Q/fastlog)
-
-</div>
 
 ---
 
