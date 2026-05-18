@@ -1,6 +1,6 @@
 # FastLog 项目分析报告
 
-> 生成时间：2026-05-18
+> 生成时间：2026-05-19
 > 分析对象：FastLog - Go 语言高性能一站式日志库
 
 ---
@@ -35,6 +35,10 @@ fastlog/
 ├── http.go             # HTTP 请求日志中间件
 ├── http_test.go        # HTTP 中间件测试
 │
+├── docs/
+│   ├── timeformat-design.md    # 可配置时间格式设计方案
+│   └── Go语言日志库功能与高级特性完整指南.md
+│
 └── examples/
     ├── basic/          # 基础功能演示
     │   └── main.go
@@ -55,14 +59,14 @@ fastlog/
 | 文件 | 行数 | 作用 | 规范程度 |
 |------|------|------|----------|
 | `go.mod` | ~21 | Go 模块定义，Go 1.25，依赖 goccy/go-json + color + logrotatex + comprx | ✅ 标准规范 |
-| `logger.go` | ~415 | Level 体系 + Entry 结构体 + Logger 实现 + EntryPool + getCaller（fastlog.go 合入） | ✅ 集中清晰 |
-| `logger_test.go` | ~461 | Logger 单元测试（含格式化/结构化/采样/EntryPool/getCaller/边界测试） | ✅ 覆盖完善 |
-| `config.go` | ~369 | Config 结构体 + 6 种场景化配置函数 + Validate/Clone/NewWriter/NewSampler | ✅ 设计合理 |
-| `config_test.go` | ~320 | Config 单元测试（场景配置/Validate/Clone/NewWriter/NewSampler） | ✅ 新增覆盖 |
-| `field.go` | ~309 | Field 结构体 + 12 种类型构造函数 + 取值方法 | ✅ 设计合理 |
+| `logger.go` | ~425 | Level 体系 + Entry 结构体 + Logger 实现 + EntryPool + getCaller（fastlog.go 合入） | ✅ 集中清晰 |
+| `logger_test.go` | ~530 | Logger 单元测试（含格式化/结构化/采样/EntryPool/getCaller/动态级别/边界测试） | ✅ 覆盖完善 |
+| `config.go` | ~374 | Config 结构体 + 6 种场景化配置函数 + Validate/Clone/NewWriter/NewSampler + DefaultTimeFormat 常量 | ✅ 设计合理 |
+| `config_test.go` | ~340 | Config 单元测试（场景配置/Validate/Clone/NewWriter/NewSampler/TimeFormat） | ✅ 新增覆盖 |
+| `field.go` | ~309 | Field 结构体 + 12 种类型构造函数 + 取值方法（已统一使用 DefaultTimeFormat） | ✅ 设计合理 |
 | `field_test.go` | ~362 | Field 单元测试（含 toInterface/Any 更多类型/边界值） | ✅ 覆盖完善 |
-| `formatter.go` | ~193 | Formatter 接口 + 5 种格式实现（Def/JSON/Simple/KV/Compact） | ✅ 扩展性强 |
-| `formatter_test.go` | ~335 | Formatter 单元测试（含 JSON 全字段类型/未知级别/formatField） | ✅ 覆盖完善 |
+| `formatter.go` | ~190 | Formatter 接口 + 5 种格式实现（Def/JSON/Simple/KV/Compact，时间格式改为 entry.TimeFormat） | ✅ 扩展性强 |
+| `formatter_test.go` | ~435 | Formatter 单元测试（含 JSON 全字段类型/未知级别/formatField/自定义时间格式） | ✅ 覆盖完善 |
 | `writer.go` | ~149 | ConsoleWriter + ColorWriter + MultiWriter | ✅ 实现完整 |
 | `writer_test.go` | ~184 | Writer 单元测试 | ✅ 覆盖完善 |
 | `sampler.go` | ~114 | Sampler（固定桶 + atomic）+ DefaultSampler 常量 | ✅ 新功能 |
@@ -82,6 +86,8 @@ fastlog/
   - `fastlog.go` 已删除，Level/Entry/callerSkip 迁入 `logger.go`，Formatter 接口迁入 `formatter.go`
   - `config_test.go` 新增（P0 缺口补全）
   - `examples/formats/` 新增（5 种格式 × 3 种方法 × 10 条的完整对比）
+  - `docs/timeformat-design.md` 新增（可配置时间格式设计方案）
+  - `fastlog_test.go` 新增动态级别测试（6 个子测试）
 
 ---
 
@@ -105,7 +111,7 @@ fastlog/
 
 **核心功能**：
 - **Config 结构体**：一站式配置所有日志参数
-  - 基础配置：Level、Formatter、Caller、Fields、采样器参数
+  - 基础配置：Level、Formatter、Caller、Fields、采样器参数、TimeFormat
   - 终端配置：OutputConsole、NoColor
   - 文件配置：OutputFile、LogPath、Async、MaxSize、MaxFiles、MaxAge、Compress、CompressType、LocalTime、DateDirLayout、RotateByDay
   - 缓冲配置：MaxBufferSize、SyncInterval
@@ -126,6 +132,8 @@ fastlog/
 - 集成 logrotatex 日志轮转库
 - 集成 comprx 压缩库
 - 配置驱动，无需手动管理写入器生命周期
+- 时间格式通过 DefaultTimeFormat 统一管理，一处修改全局生效
+- Entry.TimeFormat 传递而非接口变更，非破坏性设计
 
 #### 2.2.2 日志记录器模块 (logger.go + formatter.go)
 
@@ -169,6 +177,7 @@ fastlog/
 - **零分配设计**：使用包含所有类型字段的 struct，避免 interface{} 类型断言
 - **私有字段 + 3 个公开方法**：`Key()` / `Type()` / `Value()`（统一返回字符串）
 - **私有方法**：`anyString()`（Any 类型转字符串）、`toInterface()`（转回 interface{}，供 JSON 格式化器使用）
+- Time 类型的 Format 调用统一使用 `DefaultTimeFormat` 常量
 
 #### 2.2.4 写入器模块 (writer.go)
 
@@ -280,6 +289,8 @@ Validate() 验证配置
     ↓
 Clone() 深拷贝配置
     ↓
+应用默认值（Level 0→INFO, Formatter nil→Def{}, TimeFormat ""→DefaultTimeFormat）
+    ↓
 config.NewWriter() 创建写入器（可能包含 logrotatex）
     ↓
 config.NewSampler() 创建采样器
@@ -329,19 +340,25 @@ config.NewSampler() 创建采样器
 | P0 | 集成 logrotatex | 一站式日志解决方案，内置轮转和缓冲 |
 | P0 | 场景化配置函数 | NewConfig/Default/Dev/Prod/Console/Docker |
 | P0 | config_test.go 新增 | P0 缺口补全，覆盖场景配置/Validate/Clone/NewWriter/NewSampler |
-| P1 | 单元测试全面扩充 | 从 18 个测试用例增至 52 个 |
+| P0 | TimeFormat 配置化 | Config.TimeFormat → Entry.TimeFormat → Formatter，时间格式可配置，默认 RFC3339 |
+| P0 | DefaultTimeFormat 常量 | 统一常量化，修改一处全局生效，field.go 三处 time.Format 同步引用 |
+| P1 | 单元测试全面扩充 | 从 18 个测试用例增至 58+ 个 |
 | P1 | 示例更新 | 适配新的 Config API + 新增 formats 示例 |
+| P2 | Logger 注释增强 | 明确标注必须通过 New() 构造，禁止直接声明 |
 | P2 | getCaller 保底逻辑 | 每字段独立保底，失败时用 `"?"` 标记 |
 | P2 | 采样默认值对齐 | 三处统一引用 `DefaultSamplerTick/Initial/Thereafter` 常量 |
 | P2 | 动态级别调整 | 基于 `atomic.Int32` 实现运行时无锁切换日志级别 |
+| P3 | Group/Namespace/LogValuer 决策 | 分析后放弃实现，文档保留作为参考 |
 
 ### 6.3 待优化点
 
 | 优先级 | 优化项 | 说明 |
 |--------|--------|------|
-| P2 | Hook 机制 | 支持日志拦截和处理 |
+| P2 | Hook 机制 | 支持日志拦截和处理（前置/后置） |
+| P2 | 上下文传播 | With 方法创建子 Logger、Context 集成 |
 | P2 | 更多格式化器 | 如 LTSV、Syslog 格式 |
 | P3 | http_test.go 补充断言 | 当前仅为视觉验证 |
+| P3 | 对象池 PutEntry 清理优化 | 分析是否减少 reset 操作 |
 
 ---
 
@@ -355,8 +372,9 @@ config.NewSampler() 创建采样器
 4. **高性能导向**：对象池、原子采样、避免反射
 5. **结构化日志**：支持 12 种字段类型，便于日志分析
 6. **多格式支持**：5 种内置格式，支持自定义
-7. **线程安全**：Mutex 保证写入安全，atomic 保证采样无锁
-8. **测试覆盖**：52 个测试用例，涵盖正常路径、错误路径、边界场景
+7. **时间格式可配置**：Config.TimeFormat 控制日志时间戳和字段时间值格式，DefaultTimeFormat 常量统一管理
+8. **线程安全**：Mutex 保证写入安全，atomic 保证采样无锁
+9. **测试覆盖**：58+ 个测试用例，涵盖正常路径、错误路径、边界场景
 
 ### 7.2 当前状态
 
@@ -365,7 +383,9 @@ config.NewSampler() 创建采样器
 - **logrotatex 集成** ✅ 完成
 - **场景化配置函数** ✅ 完成（NewConfig/Default/Dev/Prod/Console/Docker）
 - **动态级别调整** ✅ 完成（SetLevel/Level + atomic.Int32）
-- **单元测试** ✅ 完成（58 个用例）
+- **时间格式可配置** ✅ 完成（TimeFormat + DefaultTimeFormat 常量）
+- **Logger 注释增强** ✅ 完成（明确禁止直接声明）
+- **单元测试** ✅ 完成（58+ 个用例）
 - **示例** ✅ 完成（7 个示例目录）
 - **文件结构清理** ✅ 完成（fastlog.go 已合并删除）
 
@@ -373,24 +393,24 @@ config.NewSampler() 创建采样器
 
 | 文件 | 行数 | 功能 |
 |------|------|------|
-| config.go | ~369 | 配置管理 + 场景化函数 |
-| logger.go | ~415 | Level 体系 + Logger 实现 + EntryPool（含原 fastlog.go） |
-| formatter.go | ~193 | Formatter 接口 + 5 种内置格式（含原 fastlog.go 接口） |
-| field.go | ~309 | 字段系统 |
+| config.go | ~374 | 配置管理 + 场景化函数 + DefaultTimeFormat 常量 |
+| logger.go | ~425 | Level 体系 + Logger 实现 + EntryPool（含原 fastlog.go） |
+| formatter.go | ~190 | Formatter 接口 + 5 种内置格式（含原 fastlog.go 接口） |
+| field.go | ~309 | 字段系统（统一使用 DefaultTimeFormat） |
 | writer.go | ~149 | 写入器 |
 | sampler.go | ~114 | 日志采样 + 默认常量 |
-| **源码合计** | **~1549** | - |
-| config_test.go | ~320 | Config 测试 |
-| logger_test.go | ~461 | Logger 测试 |
+| **源码合计** | **~1561** | - |
+| config_test.go | ~340 | Config 测试 |
+| logger_test.go | ~530 | Logger 测试 |
 | field_test.go | ~362 | Field 测试 |
-| formatter_test.go | ~335 | Formatter 测试 |
+| formatter_test.go | ~435 | Formatter 测试 |
 | writer_test.go | ~184 | Writer 测试 |
 | sampler_test.go | ~101 | Sampler 测试 |
-| fastlog_test.go | ~92 | Level 基础测试 |
+| fastlog_test.go | ~279 | Level 基础 + 动态级别测试 |
 | http_test.go | ~73 | HTTP 中间件测试 |
-| **测试合计** | **~1928** | **52 个测试用例** |
+| **测试合计** | **~2304** | **58+ 个测试用例** |
 
 ---
 
 > **报告完成**
-> 已更新项目记忆，反映最新文件结构、测试覆盖、采样常量治理和代码优化变更。
+> 已更新项目记忆，反映最新文件结构、测试覆盖、采样常量治理、时间格式可配置化和代码优化变更。

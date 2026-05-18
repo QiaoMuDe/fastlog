@@ -1,17 +1,18 @@
 # 对话历史总结
 
-> 生成时间：2026-05-18
-> 项目：FastLog (原 FLog) — Go 语言高性能一站式日志库
-> 仓库迁移：gitee.com/MM-Q/flog → gitee.com/MM-Q/fastlog
+> 生成时间：2026-05-19
+> 项目：FastLog — Go 语言高性能一站式日志库
+> 仓库地址：gitee.com/MM-Q/fastlog
 
 ---
 
 ## 一、概述
 
-本对话跨越两个阶段：
+本对话记录跨越三个阶段：
 
-- **第一阶段**（历史对话）：仓库迁移、README 更新、Field 结构体重构、项目优化（PutEntry 清空、NewSampler 校验、填充宽度调整）
-- **第二阶段**（当前对话）：采样默认值常量治理、fastlog.go 合并删除、getCaller 保底逻辑、新增 formats 示例、测试全面扩充（18 → 52 用例）、AGENTS.md 更新
+- **第一阶段**（历史对话）：仓库迁移 `flog → fastlog`、README 更新、Field 结构体重构、项目优化（PutEntry 清空、NewSampler 校验、填充宽度调整）
+- **第二阶段**（上一对话）：采样默认值常量治理、fastlog.go 合并删除、getCaller 保底逻辑、新增 formats 示例、测试全面扩充（18 → 52 用例）、AGENTS.md 更新
+- **第三阶段**（当前对话）：Group/Namespace/LogValuer 方案分析并放弃、时间格式可配置化（Config TimeFormat + Entry TimeFormat + Formatter 替换 + DefaultTimeFormat 常量 + field.go 统一）、功能文档更新、AGENTS.md/README.md 全面更新
 
 以下为各阶段的详细记录。
 
@@ -304,64 +305,167 @@ const (
 
 ---
 
-## 十二、AGENTS.md 更新（第二阶段）
+## 十二、Group/Namespace/LogValuer 方案分析（第三阶段）
 
-全面更新 [AGENTS.md](file:///d:/峡谷/Dev/本地项目/fastlog/AGENTS.md) 反映所有变更：
-- 目录结构：移除 `fastlog.go`，新增 `config_test.go`、`examples/formats/`
-- 文件作用说明：更新行数和描述
-- 模块分析：合并 fastlog.go 到 logger.go/formatter.go
-- 代码统计：源码 ~1549 行，测试 ~1928 行
-- 已完成项目：补充采样常量治理、getCaller 保底、测试扩充等
+### 12.1 讨论背景
+
+用户提出为字段系统添加嵌套分组能力，参考 zap 的 `zap.Namespace` 和 slog 的 `slog.Group`。
+
+### 12.2 三种方案迭代
+
+| 方案 | 描述 | 问题 |
+|------|------|------|
+| **Group 函数** | `Group(key, fields...)` 返回 `[]Field`，需 `...` 展开 | 使用不方便 |
+| **Namespace 标记** | 返回一个标记 Field，后续字段自动加前缀 | 编码器需额外逻辑处理前缀 |
+| **WithGroup 子 Logger** | `l.WithGroup("user").Infow(...)` | 需克隆 Logger，涉及 Mutex/atomic 值拷贝安全问题 |
+
+### 12.3 最终决策
+
+**放弃实现**。分析认为该功能使用场景有限，且实现复杂度过高（值拷贝、前缀传递等），保留设计方案文档 [docs/group-logvaluer-design.md](file:///d:/峡谷/Dev/本地项目/fastlog/docs/group-logvaluer-design.md) 作为参考。
+
+### 12.4 LogValuer 接口
+
+短暂实现后回滚，用户反馈"感觉这有点多余了，我直接格式化不是也行"。决定删除代码，保留文档。
 
 ---
 
-## 十三、当前文件状态
+## 十三、时间格式可配置化（第三阶段）
+
+### 13.1 背景
+
+5 种格式化器均硬编码 `time.RFC3339`，用户无法自定义时间格式。
+
+### 13.2 设计方案
+
+采用 **Entry 传递而非接口变更** 的非破坏性方案：
+
+```
+Config.TimeFormat → Entry.TimeFormat → Formatter 直接使用 entry.TimeFormat
+    ↓ (默认)             ↓ (log 方法赋值)       ↓ (5 处替换)
+  time.RFC3339         entry.TimeFormat          entry.Time.Format(entry.TimeFormat)
+```
+
+### 13.3 改动清单
+
+| 文件 | 改动 | 行数 |
+|------|------|------|
+| `config.go` | 新增 `TimeFormat` 字段 + `DefaultTimeFormat` 常量 + NewConfig 默认值 | ~10 行 |
+| `logger.go` | Entry 加 `TimeFormat` 字段 + log 赋值 + New() 兜底默认值 | ~8 行 |
+| `formatter.go` | 5 种格式替换 `time.RFC3339` → `entry.TimeFormat` + 移除无用 import | ~6 行 |
+| `field.go` | 3 处 `time.RFC3339` 替换为 `DefaultTimeFormat`（Value() 1处 + toInterface() 2处） | ~3 行 |
+
+### 13.4 常量管理
+
+```go
+// config.go
+const DefaultTimeFormat = time.RFC3339
+```
+
+源码中 5 处引用统一使用该常量，修改一处全局生效。
+
+### 13.5 默认值链路
+
+```
+NewConfig() → TimeFormat: DefaultTimeFormat       ← 构造函数设默认
+New()       → if "" { TimeFormat = DefaultTimeFormat }  ← 兜底（直接 new Config 的情况）
+log()       → entry.TimeFormat = l.config.TimeFormat    ← 热路径直接赋值，无分支判断
+```
+
+### 13.6 性能评估
+
+| 操作 | 之前 | 之后 | 差异 |
+|------|------|------|------|
+| Entry 大小 | ~84 字节 | ~100 字节 | +16 字节（堆上，池化管理） |
+| `time.Format` | 常量参数 | 变量参数 | 无差异 |
+| 热路径分支 | — | 无新增 | 赋值无需判断 |
+
+### 13.7 测试
+
+- `config_test.go`：默认值、自定义格式、场景配置 TimeFormat 验证
+- `formatter_test.go`：Def/JSON/Simple/Compact 四种格式自定义时间格式验证
+- 全量测试 58+ 个用例全部通过
+
+---
+
+## 十四、功能文档更新（第三阶段）
+
+### 14.1 Go语言日志库功能与高级特性完整指南
+
+已实现功能用删除线标记，更新内容：
+
+| 章节 | 新增删除线 | 说明 |
+|------|-----------|------|
+| 三、1. 高性能优化 | 零分配设计、避免反射、批量写入、异步写入 | Field 零分配 + Entry 池化、类型安全 API、logrotatex 批量/异步 |
+| 三、2. 日志采样 | 固定采样率、首条全量采样 | SamplerInitial/SamplerThereafter 已实现 |
+| 三、6. 其他高级功能 | 日志缓冲、同步刷新 | logrotatex BufferedWriter + Sync() |
+| 四、性能优化要点 | 减少内存分配、避免反射、批量写入、异步写入 | 表格式同步更新 |
+
+### 14.2 AGENTS.md 更新
+
+全面更新反映第三阶段变更：
+
+| 更新项 | 内容 |
+|--------|------|
+| 生成时间 | 2026-05-19 |
+| 目录结构 | 新增 `docs/` 目录（timeformat-design.md） |
+| 文件行数 | 源码 ~1561 行，测试 ~2304 行，58+ 用例 |
+| Config 配置 | 新增 TimeFormat 字段 + DefaultTimeFormat 常量 |
+| 已完成项目 | 新增 TimeFormat 配置化、DefaultTimeFormat 常量、Logger 注释增强、Group/LogValuer 决策记录 |
+| 待优化点 | 新增上下文传播、对象池清理优化 |
+| 核心特点 | 新增时间格式可配置 |
+
+### 14.3 README.md 精简
+
+- 新增核心特性：时间格式可配置
+- 快速开始保留 4 个场景示例（Default/Dev/Prod/Docker）
+- 使用指南保留关键代码片段（场景配置、结构化字段、多种格式、动态级别、彩色输出、采样、多路输出）
+- 删除完整 API 文档和 Config 配置项表（用户表示后续补上）
+
+---
+
+## 十五、设计文档
+
+| 文档 | 位置 | 说明 |
+|------|------|------|
+| Group/Namespace/LogValuer 设计方案 | `docs/group-logvaluer-design.md` | 记录了三种方案迭代过程，最终放弃实现 |
+| 时间格式可配置方案 | `docs/timeformat-design.md` | TimeFormat 完整设计方案，含数据流、性能分析、测试计划 |
+| Go 日志库功能指南 | `docs/Go语言日志库功能与高级特性完整指南.md` | 功能清单，已实现功能已用删除线标记 |
+
+---
+
+## 十六、当前文件状态
 
 | 文件 | 行数 | 状态 | 说明 |
 |------|------|------|------|
-| `logger.go` | ~415 | ✅ 合并 | Level + Entry + Logger 实现 + EntryPool（原 fastlog.go 合入） |
-| `logger_test.go` | ~461 | ✅ 扩充 | 52 个用例涵盖所有方法/边界/错误路径 |
-| `config.go` | ~369 | ✅ 稳定 | Config + 6 种场景化配置函数 |
-| `config_test.go` | ~320 | ✅ 新增 | 场景配置/Validate/Clone/NewWriter/NewSampler |
-| `field.go` | ~309 | ✅ 重构 | 字段私有化，Key()/Type()/Value() 三方法 |
-| `field_test.go` | ~362 | ✅ 扩充 | 含 toInterface/Any 更多类型/边界值 |
-| `formatter.go` | ~193 | ✅ 合并 | Formatter 接口 + 5 种内置格式 |
-| `formatter_test.go` | ~335 | ✅ 扩充 | 含 JSON 全字段类型/未知级别/formatField |
+| `logger.go` | ~425 | ✅ 稳定 | Level + Entry + Logger + TimeFormat 赋值 + 注释增强 |
+| `logger_test.go` | ~530 | ✅ 扩充 | 含格式化/结构化/采样/动态级别/TimeFormat |
+| `config.go` | ~374 | ✅ 稳定 | Config + 场景配置 + DefaultTimeFormat 常量 |
+| `config_test.go` | ~340 | ✅ 扩充 | 含 TimeFormat 测试 |
+| `field.go` | ~309 | ✅ 重构+优化 | 字段私有化 + 统一 DefaultTimeFormat |
+| `field_test.go` | ~362 | ✅ 稳定 | 边界值全覆盖 |
+| `formatter.go` | ~190 | ✅ 优化 | 时间格式改为 entry.TimeFormat |
+| `formatter_test.go` | ~435 | ✅ 扩充 | 含自定义时间格式测试 |
 | `writer.go` | ~149 | ✅ 稳定 | ConsoleWriter + ColorWriter + MultiWriter |
 | `writer_test.go` | ~184 | ✅ 稳定 | Writer 单元测试 |
-| `sampler.go` | ~114 | ✅ 已修 | 参数校验 + 默认常量治理 |
+| `sampler.go` | ~114 | ✅ 稳定 | 参数校验 + 默认常量治理 |
 | `sampler_test.go` | ~101 | ✅ 稳定 | Sampler 单元测试 |
-| `fastlog_test.go` | ~92 | ✅ 稳定 | Level 基础类型测试 |
+| `fastlog_test.go` | ~279 | ✅ 扩充 | Level 基础 + 动态级别测试 |
 | `http.go` | ~60 | ✅ 稳定 | HTTP 请求日志中间件 |
 | `http_test.go` | ~73 | ⚠️ 视觉验证 | 无断言 |
-| `README.md` | - | ✅ 更新 | fastlog 迁移 + 依赖库标注 |
-| `AGENTS.md` | ~390 | ✅ 更新 | 反映所有最新变更 |
-| `CLAUDE.md` | - | ✅ 稳定 | AI 编码行为准则 |
 
 ### 代码统计
 
 | 分类 | 文件数 | 行数 |
 |------|--------|------|
-| 源码 | 6 | ~1,549 |
-| 测试 | 8 | ~1,928（52 个用例） |
+| 源码 | 6 | ~1,561 |
+| 测试 | 8 | ~2,304（58+ 个用例） |
 | 示例 | 4 目录 | 4 个 main.go |
-| **总计** | **18** | **~3,477** |
+| 文档 | 4 | 设计/方案/指南/历史 |
+| **总计** | **~22** | **~4,000+** |
 
 ---
 
-## 十四、技术栈
-
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Go | 1.25 | 编程语言 |
-| gitee.com/MM-Q/color | v1.0.4 | 终端彩色输出 |
-| github.com/goccy/go-json | v0.10.6 | 高性能 JSON 序列化 |
-| gitee.com/MM-Q/logrotatex | latest | 日志轮转和缓冲写入 |
-| gitee.com/MM-Q/comprx | latest | 日志压缩 |
-
----
-
-## 十五、关键设计决策汇总
+## 十七、关键设计决策汇总
 
 | 决策 | 结果 | 原因 |
 |------|------|------|
@@ -369,7 +473,6 @@ const (
 | Field 设计 | 私有字段 + Key()/Type()/Value() | 只在格式化时使用，简化 API |
 | Field 内部存储 | 保持各类型字段 | 零分配，避免 interface{} 装箱 |
 | 日志级别方案 | 数值比较（保持现状） | 更直观，性能无差异 |
-| Field 类型字段名 | typ | Go 常用简写 |
 | 采样默认值 | tick=10s, initial=3, thereafter=10 | 三处统一常量引用 |
 | 采样兜底值 | initial=3, thereafter=10 | 对齐 NewConfig 默认值 |
 | 填充宽度 | 6 字符 | 最小对齐宽度 |
@@ -377,9 +480,14 @@ const (
 | PutEntry 清空 | 补充 Message/Time | 风格统一，大消息场景 |
 | fastlog.go 去留 | 删除，内容拆入 logger.go + formatter.go | 内容太少，避免空文件 |
 | getCaller 保底 | 每字段独立保底，失败用 "?" | 容忍局部失败，不丢失全部信息 |
-| 测试覆盖 | 52 个用例，涵盖正常/错误/边界 | 保障重构安全 |
+| **Group/Namespace** | ❌ **放弃实现** | 使用场景有限，实现复杂 |
+| **LogValuer 接口** | ❌ **已回滚删除** | 可直接格式化替代，文档保留参考 |
+| **时间格式可配置** | ✅ **Entry.TimeFormat 传递，不改接口** | 非破坏性、零性能影响 |
+| **DefaultTimeFormat 常量** | ✅ **config.go 定义，统一引用** | 一处修改全局生效 |
+| **TimeFormat 空值兜底** | ✅ **New() 中处理，热路径零分支** | 验证在 Validate 取消，改为构造函数兜底 |
+| **Logger 注释** | ✅ **明确禁止直接声明** | 避免误用导致 panic |
 
 ---
 
 > **报告完成**
-> 记录了跨两个对话阶段的所有讨论、决策和代码修改，便于后续 AI 无缝对接继续开发。
+> 记录了跨三个对话阶段的所有讨论、决策和代码修改，便于后续 AI 无缝对接继续开发。

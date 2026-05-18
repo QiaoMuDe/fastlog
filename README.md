@@ -21,6 +21,7 @@
 | 🎨 **彩色输出** | 基于 [color](https://gitee.com/MM-Q/color) 库，自动检测日志级别着色，支持 `NoColor` 开关，兼容 Windows |
 | 📋 **三级 API** | 标准日志 `Info()`、格式化日志 `Infof()`、结构化日志 `Infow()` |
 | 🔧 **Config 配置** | 场景化配置函数，开箱即用，支持自定义调整 |
+| ⏰ **时间格式可配置** | 通过 `TimeFormat` 自定义时间格式，默认 RFC3339，`DefaultTimeFormat` 常量统一管理 |
 | 📝 **多格式支持** | 内置 5 种格式：Def、JSON、Simple、KV、Compact，支持自定义 |
 | 🧩 **结构化字段** | 12 种字段类型，类型安全，零装箱分配 |
 | 🎯 **日志采样** | 固定桶 + atomic 无锁设计，参考 zap，有效防洪 |
@@ -183,7 +184,7 @@ logger.Infow("用户登录",
 | FATAL | `Fatal(msg)` | `Fatalf(fmt, args...)` | `Fatalw(msg, fields...)` |
 | PANIC | `Panic(msg)` | `Panicf(fmt, args...)` | `Panicw(msg, fields...)` |
 
-### 多种格式
+### 多种格式输出
 
 ```go
 // Def 格式（默认）
@@ -295,119 +296,6 @@ logger := fastlog.New(cfg)
 
 logger.Info("这条日志同时输出到控制台和文件")
 ```
-
----
-
-## API 文档
-
-### Logger 创建
-
-| 函数 | 说明 |
-|------|------|
-| `New(cfg *Config) *Logger` | 创建 Logger，传入配置实例 |
-| `Default() *Config` | 默认配置（INFO + 双输出 + 采样） |
-| `NewConfig(path) *Config` | 通用配置（双输出） |
-| `Dev(path) *Config` | 开发配置（DEBUG + Caller） |
-| `Prod(path) *Config` | 生产配置（WARN + 仅文件 + 压缩） |
-| `Console() *Config` | 控制台配置（DEBUG + 仅终端） |
-| `Docker() *Config` | 容器配置（WARN + JSON + stdout） |
-
-### 日志记录方法
-
-每条日志方法对应三种变体：
-
-| 级别 | 标准 | 格式化 | 结构化 |
-|------|------|--------|--------|
-| DEBUG | `Debug(msg)` | `Debugf(fmt, args...)` | `Debugw(msg, fields...)` |
-| INFO | `Info(msg)` | `Infof(fmt, args...)` | `Infow(msg, fields...)` |
-| WARN | `Warn(msg)` | `Warnf(fmt, args...)` | `Warnw(msg, fields...)` |
-| ERROR | `Error(msg)` | `Errorf(fmt, args...)` | `Errorw(msg, fields...)` |
-| FATAL | `Fatal(msg)` | `Fatalf(fmt, args...)` | `Fatalw(msg, fields...)` |
-| PANIC | `Panic(msg)` | `Panicf(fmt, args...)` | `Panicw(msg, fields...)` |
-
-**生命周期方法：**
-
-| 方法 | 说明 |
-|------|------|
-| `SetLevel(level Level)` | 动态设置日志级别，立即生效 |
-| `Level() Level` | 获取当前日志级别 |
-| `Sync() error` | 刷新日志到存储 |
-| `Close() error` | 关闭 Logger，释放资源 |
-
-### Config 配置项
-
-| 配置项 | 类型 | 说明 |
-|--------|------|------|
-| `Level` | `Level` | 日志级别 |
-| `Formatter` | `Formatter` | 格式化器 |
-| `Caller` | `bool` | 是否记录调用者信息 |
-| `Fields` | `[]Field` | 预设字段 |
-| `SamplerTick` | `time.Duration` | 采样时间窗口 |
-| `SamplerInitial` | `int` | 采样初始放行数 |
-| `SamplerThereafter` | `int` | 采样后续放行间隔 |
-| `OutputConsole` | `bool` | 是否输出到终端 |
-| `NoColor` | `bool` | 是否禁用彩色输出 |
-| `OutputFile` | `bool` | 是否输出到文件 |
-| `LogPath` | `string` | 日志文件路径 |
-| `Async` | `bool` | 是否异步清理 |
-| `MaxSize` | `int` | 单文件最大大小（MB） |
-| `MaxFiles` | `int` | 保留的历史文件数 |
-| `MaxAge` | `int` | 保留天数 |
-| `Compress` | `bool` | 是否压缩历史文件 |
-| `CompressType` | `comprx.CompressType` | 压缩类型 |
-| `LocalTime` | `bool` | 是否使用本地时间 |
-| `DateDirLayout` | `bool` | 是否按日期目录存放 |
-| `RotateByDay` | `bool` | 是否按天轮转 |
-| `MaxBufferSize` | `int` | 缓冲区大小（字节） |
-| `SyncInterval` | `time.Duration` | 自动同步间隔 |
-
-### 自定义格式示例
-
-```go
-// 自定义格式：实现 Formatter 接口即可
-type MyFormatter struct{}
-
-func (f MyFormatter) Format(entry *fastlog.Entry) ([]byte, error) {
-    return []byte(entry.Level.String() + ": " + entry.Message + "\n"), nil
-}
-
-cfg := fastlog.NewConfig("logs/app.log")
-cfg.Formatter = MyFormatter{}
-logger := fastlog.New(cfg)
-logger.Info("使用自定义格式")     // 输出: INFO: 使用自定义格式
-```
-
----
-
-## 日志格式
-
-| 格式 | 结构体 | 输出示例 |
-|------|--------|----------|
-| 默认 | `Def` | `2025-01-15T10:30:45 \| INFO \| main.go:main:15 - 消息` |
-| JSON | `JSON` | `{"time":"...","level":"INFO","message":"..."}` |
-| 简单 | `Simple` | `2025-01-15T10:30:45 INFO 消息` |
-| 键值对 | `KV` | `time=... level=INFO message=...` |
-| 极简 | `Compact` | `[I] 2025-01-15 10:30:45 消息 \| key=val` |
-
----
-
-## 字段类型
-
-| 构造函数 | Go 类型 | 取值方法 |
-|----------|---------|----------|
-| `fastlog.String(key, val)` | `string` | `Field.String()` |
-| `fastlog.Int(key, val)` | `int` | `Field.Int()` |
-| `fastlog.Int64(key, val)` | `int64` | `Field.Int64()` |
-| `fastlog.Uint(key, val)` | `uint` | `Field.Uint()` |
-| `fastlog.Uint64(key, val)` | `uint64` | `Field.Uint64()` |
-| `fastlog.Float64(key, val)` | `float64` | `Field.Float64()` |
-| `fastlog.Bool(key, val)` | `bool` | `Field.Bool()` |
-| `fastlog.Time(key, val)` | `time.Time` | `Field.Time()` |
-| `fastlog.Duration(key, val)` | `time.Duration` | `File.DurationVal()` |
-| `fastlog.Error(err)` | `error` | 键名固定为 `"error"` |
-| `fastlog.Err(key, err)` | `error` | 自定义键名 |
-| `fastlog.Any(key, val)` | `interface{}` | `Field.Interface` |
-| `fastlog.Stack()` | — | 当前堆栈信息 |
 
 ---
 
