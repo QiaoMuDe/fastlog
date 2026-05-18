@@ -103,11 +103,12 @@ func AllLevels() []Level {
 
 // Entry 表示一条日志记录
 type Entry struct {
-	Time    time.Time // 时间戳
-	Level   Level     // 日志级别
-	Message string    // 日志消息
-	Caller  string    // 调用者信息: file.go:func:line
-	Fields  []Field   // 键值对字段
+	Time       time.Time // 时间戳
+	Level      Level     // 日志级别
+	Message    string    // 日志消息
+	Caller     string    // 调用者信息: file.go:func:line
+	Fields     []Field   // 键值对字段
+	TimeFormat string    // 时间格式, 从 Config.TimeFormat 传递
 }
 
 // callerSkip 是 getCaller 的跳过层数常量
@@ -151,6 +152,9 @@ func New(cfg *Config) *Logger {
 	}
 	if config.Formatter == nil {
 		config.Formatter = Def{}
+	}
+	if config.TimeFormat == "" {
+		config.TimeFormat = DefaultTimeFormat
 	}
 
 	// 创建写入器
@@ -218,6 +222,7 @@ func (l *Logger) log(level Level, msg string, fields []Field) {
 	entry.Time = time.Now()                                     // 时间戳
 	entry.Level = level                                         // 日志级别
 	entry.Message = msg                                         // 日志消息
+	entry.TimeFormat = l.config.TimeFormat                      // 时间格式
 	entry.Fields = append(entry.Fields[:0], l.config.Fields...) // 添加配置中的字段
 	entry.Fields = append(entry.Fields, fields...)              // 添加用户提供的字段
 

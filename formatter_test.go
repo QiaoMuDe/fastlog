@@ -10,11 +10,12 @@ import (
 
 func makeEntry(msg, caller string, fields ...Field) *Entry {
 	return &Entry{
-		Time:    time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
-		Level:   INFO,
-		Message: msg,
-		Caller:  caller,
-		Fields:  fields,
+		Time:       time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
+		Level:      INFO,
+		Message:    msg,
+		Caller:     caller,
+		Fields:     fields,
+		TimeFormat: DefaultTimeFormat,
 	}
 }
 
@@ -176,7 +177,7 @@ func TestCompactFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
 		b, _ := Compact{}.Format(entry)
-		want := "[I] 2026-01-15 10:30:45 hello\n"
+		want := "[I] 2026-01-15T10:30:45Z hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Compact.Format() = %q, want %q", got, want)
 		}
@@ -185,7 +186,7 @@ func TestCompactFormat(t *testing.T) {
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
 		b, _ := Compact{}.Format(entry)
-		want := "[I] 2026-01-15 10:30:45 hello | k=v\n"
+		want := "[I] 2026-01-15T10:30:45Z hello | k=v\n"
 		if got := string(b); got != want {
 			t.Errorf("Compact.Format() with fields = %q, want %q", got, want)
 		}
@@ -196,18 +197,19 @@ func TestCompactFormat(t *testing.T) {
 			level Level
 			want  string
 		}{
-			{DEBUG, "[D] 2026-01-15 10:30:45 hello\n"},
-			{INFO, "[I] 2026-01-15 10:30:45 hello\n"},
-			{WARN, "[W] 2026-01-15 10:30:45 hello\n"},
-			{ERROR, "[E] 2026-01-15 10:30:45 hello\n"},
-			{FATAL, "[F] 2026-01-15 10:30:45 hello\n"},
-			{PANIC, "[P] 2026-01-15 10:30:45 hello\n"},
+			{DEBUG, "[D] 2026-01-15T10:30:45Z hello\n"},
+			{INFO, "[I] 2026-01-15T10:30:45Z hello\n"},
+			{WARN, "[W] 2026-01-15T10:30:45Z hello\n"},
+			{ERROR, "[E] 2026-01-15T10:30:45Z hello\n"},
+			{FATAL, "[F] 2026-01-15T10:30:45Z hello\n"},
+			{PANIC, "[P] 2026-01-15T10:30:45Z hello\n"},
 		}
 		for _, tt := range tests {
 			entry := &Entry{
-				Time:    time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
-				Level:   tt.level,
-				Message: "hello",
+				Time:       time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
+				Level:      tt.level,
+				Message:    "hello",
+				TimeFormat: DefaultTimeFormat,
 			}
 			b, _ := Compact{}.Format(entry)
 			if got := string(b); got != tt.want {
@@ -391,5 +393,69 @@ func TestJSONFormatEmptyFields(t *testing.T) {
 	}
 	if data["message"] != "hello" {
 		t.Errorf("JSON empty fields message = %v", data["message"])
+	}
+}
+
+func TestDefFormatWithCustomTimeFormat(t *testing.T) {
+	entry := &Entry{
+		Time:       time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
+		Level:      INFO,
+		Message:    "测试",
+		TimeFormat: time.DateTime,
+	}
+
+	b, _ := Def{}.Format(entry)
+	output := string(b)
+
+	if !strings.Contains(output, "2026-01-15 10:30:45") {
+		t.Errorf("Def format with DateTime should contain '2026-01-15 10:30:45', got: %s", output)
+	}
+}
+
+func TestJSONFormatWithCustomTimeFormat(t *testing.T) {
+	entry := &Entry{
+		Time:       time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
+		Level:      INFO,
+		Message:    "测试",
+		TimeFormat: time.RFC3339Nano,
+	}
+
+	b, _ := JSON{}.Format(entry)
+	output := string(b)
+
+	if !strings.Contains(output, "2026-01-15T10:30:45Z") {
+		t.Errorf("JSON format with RFC3339Nano should contain '2026-01-15T10:30:45Z', got: %s", output)
+	}
+}
+
+func TestSimpleFormatWithCustomTimeFormat(t *testing.T) {
+	entry := &Entry{
+		Time:       time.Date(2026, 6, 18, 15, 30, 0, 0, time.UTC),
+		Level:      INFO,
+		Message:    "test",
+		TimeFormat: "2006-01-02",
+	}
+
+	b, _ := Simple{}.Format(entry)
+	output := string(b)
+
+	if !strings.HasPrefix(output, "2026-06-18") {
+		t.Errorf("Simple format with custom format should start with '2026-06-18', got: %s", output)
+	}
+}
+
+func TestCompactFormatWithCustomTimeFormat(t *testing.T) {
+	entry := &Entry{
+		Time:       time.Date(2026, 6, 18, 15, 30, 0, 0, time.UTC),
+		Level:      INFO,
+		Message:    "test",
+		TimeFormat: time.UnixDate,
+	}
+
+	b, _ := Compact{}.Format(entry)
+	output := string(b)
+
+	if !strings.Contains(output, "Thu Jun 18 15:30:00 UTC 2026") {
+		t.Errorf("Compact format with UnixDate should contain time, got: %s", output)
 	}
 }

@@ -148,77 +148,77 @@ func TestValidate(t *testing.T) {
 	})
 
 	t.Run("no output", func(t *testing.T) {
-		cfg := &Config{}
+		cfg := &Config{TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when no output set")
 		}
 	})
 
 	t.Run("file output without path", func(t *testing.T) {
-		cfg := &Config{OutputFile: true}
+		cfg := &Config{OutputFile: true, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when OutputFile=true but no LogPath")
 		}
 	})
 
 	t.Run("negative MaxSize", func(t *testing.T) {
-		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxSize: -1}
+		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxSize: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when MaxSize < 0")
 		}
 	})
 
 	t.Run("negative MaxFiles", func(t *testing.T) {
-		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxFiles: -1}
+		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxFiles: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when MaxFiles < 0")
 		}
 	})
 
 	t.Run("negative MaxAge", func(t *testing.T) {
-		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxAge: -1}
+		cfg := &Config{OutputFile: true, LogPath: "/tmp/test.log", MaxAge: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when MaxAge < 0")
 		}
 	})
 
 	t.Run("sampler negative initial", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, SamplerTick: time.Second, SamplerInitial: -1, SamplerThereafter: 10}
+		cfg := &Config{OutputConsole: true, SamplerTick: time.Second, SamplerInitial: -1, SamplerThereafter: 10, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when SamplerInitial < 0")
 		}
 	})
 
 	t.Run("sampler negative thereafter", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, SamplerTick: time.Second, SamplerInitial: 3, SamplerThereafter: -1}
+		cfg := &Config{OutputConsole: true, SamplerTick: time.Second, SamplerInitial: 3, SamplerThereafter: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when SamplerThereafter < 0")
 		}
 	})
 
 	t.Run("buffer size too small", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, MaxBufferSize: 1000}
+		cfg := &Config{OutputConsole: true, MaxBufferSize: 1000, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when MaxBufferSize < 64KB")
 		}
 	})
 
 	t.Run("sync interval too short", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, SyncInterval: 100 * time.Millisecond}
+		cfg := &Config{OutputConsole: true, SyncInterval: 100 * time.Millisecond, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when SyncInterval < 500ms")
 		}
 	})
 
 	t.Run("negative MaxBufferSize", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, MaxBufferSize: -1}
+		cfg := &Config{OutputConsole: true, MaxBufferSize: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when MaxBufferSize < 0")
 		}
 	})
 
 	t.Run("negative SyncInterval", func(t *testing.T) {
-		cfg := &Config{OutputConsole: true, SyncInterval: -1}
+		cfg := &Config{OutputConsole: true, SyncInterval: -1, TimeFormat: DefaultTimeFormat}
 		if err := cfg.Validate(); err == nil {
 			t.Errorf("Validate() should error when SyncInterval < 0")
 		}
@@ -352,8 +352,43 @@ func TestValidateZeroValues(t *testing.T) {
 		MaxSize:       0,
 		MaxFiles:      0,
 		MaxAge:        0,
+		TimeFormat:    DefaultTimeFormat,
 	}
 	if err := cfg.Validate(); err != nil {
 		t.Errorf("Validate() with zero MaxSize/MaxFiles/MaxAge error = %v, want nil", err)
 	}
+}
+
+func TestConfigTimeFormat(t *testing.T) {
+	t.Run("default time format", func(t *testing.T) {
+		cfg := Default()
+		if cfg.TimeFormat != DefaultTimeFormat {
+			t.Errorf("Default().TimeFormat = %q, want %q", cfg.TimeFormat, DefaultTimeFormat)
+		}
+	})
+
+	t.Run("custom time format", func(t *testing.T) {
+		cfg := NewConfig("logs/app.log")
+		cfg.TimeFormat = time.DateTime
+		if err := cfg.Validate(); err != nil {
+			t.Errorf("Validate() with DateTime format error = %v, want nil", err)
+		}
+	})
+
+	t.Run("scenario configs have time format", func(t *testing.T) {
+		dev := Dev("test.log")
+		if dev.TimeFormat != DefaultTimeFormat {
+			t.Errorf("Dev().TimeFormat = %q, want %q", dev.TimeFormat, DefaultTimeFormat)
+		}
+
+		prod := Prod("test.log")
+		if prod.TimeFormat != DefaultTimeFormat {
+			t.Errorf("Prod().TimeFormat = %q, want %q", prod.TimeFormat, DefaultTimeFormat)
+		}
+
+		docker := Docker()
+		if docker.TimeFormat != DefaultTimeFormat {
+			t.Errorf("Docker().TimeFormat = %q, want %q", docker.TimeFormat, DefaultTimeFormat)
+		}
+	})
 }

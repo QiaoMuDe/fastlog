@@ -9,6 +9,9 @@ import (
 	"gitee.com/MM-Q/logrotatex"
 )
 
+// DefaultTimeFormat 默认时间格式
+const DefaultTimeFormat = time.RFC3339
+
 // NewConfig 创建一个默认配置实例
 //
 // 默认配置同时输出到终端和文件, 适用于开发和测试环境。
@@ -26,6 +29,7 @@ import (
 //   - Compress: false, CompressType: Gz, LocalTime: true
 //   - DateDirLayout: true, RotateByDay: true
 //   - MaxBufferSize: 256KB, SyncInterval: 1s
+//   - TimeFormat: DefaultTimeFormat, 时间格式, 默认: time.RFC3339
 //
 // 参数:
 //   - logPath: 日志文件路径
@@ -63,6 +67,9 @@ func NewConfig(logPath string) *Config {
 		// 缓冲写入配置
 		MaxBufferSize: 256 * 1024,      // 缓冲区最大大小 (字节) , 零值默认 256KB。
 		SyncInterval:  1 * time.Second, // 同步间隔, 零值默认 1秒。
+
+		// 时间格式
+		TimeFormat: DefaultTimeFormat, // 时间格式, 默认: time.RFC3339
 	}
 }
 
@@ -84,6 +91,7 @@ func NewConfig(logPath string) *Config {
 //   - Compress: false, CompressType: Gz, LocalTime: true
 //   - DateDirLayout: true, RotateByDay: true
 //   - MaxBufferSize: 256KB, SyncInterval: 1s
+//   - TimeFormat: DefaultTimeFormat, 时间格式, 默认: time.RFC3339
 //
 // 返回:
 //   - *Config: 配置实例, 所有字段都设置了默认值
@@ -281,6 +289,11 @@ type Config struct {
 
 	// SyncInterval 自动同步间隔, 零值默认 1 秒
 	SyncInterval time.Duration
+
+	// TimeFormat 时间格式
+	// 默认 time.RFC3339，支持 Go time 包所有格式常量
+	// 常用值: time.RFC3339, time.DateTime, time.TimeOnly
+	TimeFormat string
 }
 
 // NewSampler 根据配置创建采样器

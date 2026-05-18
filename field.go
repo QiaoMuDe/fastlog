@@ -88,7 +88,7 @@ func (f Field) Value() string {
 		return strconv.FormatBool(f.boolVal)
 
 	case TimeType:
-		return f.timeVal.Format(time.RFC3339)
+		return f.timeVal.Format(DefaultTimeFormat)
 
 	case DurationType:
 		return f.duration.String()
@@ -152,7 +152,7 @@ func (f Field) anyString() string {
 		return strconv.FormatBool(val)
 
 	case time.Time:
-		return val.Format(time.RFC3339)
+		return val.Format(DefaultTimeFormat)
 
 	case time.Duration:
 		return val.String()
@@ -185,7 +185,7 @@ func (f Field) toInterface() interface{} {
 		return f.boolVal
 
 	case TimeType:
-		return f.timeVal.Format(time.RFC3339)
+		return f.timeVal.Format(DefaultTimeFormat)
 
 	case DurationType:
 		return f.duration.String()

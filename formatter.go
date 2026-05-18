@@ -3,7 +3,6 @@ package fastlog
 import (
 	"bytes"
 	"fmt"
-	"time"
 
 	"github.com/goccy/go-json"
 )
@@ -30,7 +29,7 @@ func (f Def) Format(entry *Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
 	// 时间戳
-	buf.WriteString(entry.Time.Format(time.RFC3339))
+	buf.WriteString(entry.Time.Format(entry.TimeFormat))
 	buf.WriteString(" | ")
 
 	// 级别 (左对齐, 6字符宽度)
@@ -78,7 +77,7 @@ func (f JSON) Format(entry *Entry) ([]byte, error) {
 	data := make(map[string]interface{}, cap)
 
 	// 添加基础字段
-	data["time"] = entry.Time.Format(time.RFC3339)
+	data["time"] = entry.Time.Format(entry.TimeFormat)
 	data["level"] = entry.Level.String()
 	data["message"] = entry.Message
 
@@ -117,7 +116,7 @@ type Simple struct{}
 func (f Simple) Format(entry *Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
-	buf.WriteString(entry.Time.Format(time.RFC3339))
+	buf.WriteString(entry.Time.Format(entry.TimeFormat))
 	buf.WriteByte(' ')
 	buf.WriteString(entry.Level.String())
 	buf.WriteByte(' ')
@@ -153,7 +152,7 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
 	buf.WriteString("time=")
-	buf.WriteString(entry.Time.Format(time.RFC3339))
+	buf.WriteString(entry.Time.Format(entry.TimeFormat))
 	buf.WriteString(" level=")
 	buf.WriteString(entry.Level.String())
 	buf.WriteString(" message=")
@@ -195,7 +194,7 @@ func (f Compact) Format(entry *Entry) ([]byte, error) {
 	buf.WriteString("] ")
 
 	// 时间（年月日时分秒）
-	buf.WriteString(entry.Time.Format("2006-01-02 15:04:05"))
+	buf.WriteString(entry.Time.Format(entry.TimeFormat))
 	buf.WriteByte(' ')
 
 	// 消息

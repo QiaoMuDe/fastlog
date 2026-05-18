@@ -104,6 +104,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         WARN,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 		})
 
 		if l.Level() != WARN {
@@ -116,6 +117,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         INFO,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 			Formatter:     &testFormatter{buf: buf},
 		})
 
@@ -152,6 +154,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         ERROR,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 			Formatter:     &testFormatter{buf: buf},
 		})
 
@@ -183,6 +186,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         INFO,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 		})
 
 		// 多次切换级别
@@ -211,6 +215,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         INFO,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 		})
 
 		// 并发设置级别和读取级别
@@ -247,6 +252,7 @@ func TestLoggerDynamicLevel(t *testing.T) {
 		l := New(&Config{
 			Level:         PANIC,
 			OutputConsole: true,
+			TimeFormat:    DefaultTimeFormat,
 			Formatter:     &testFormatter{buf: buf},
 		})
 
