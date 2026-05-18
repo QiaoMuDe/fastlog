@@ -42,7 +42,11 @@ fastlog/
     │   └── main.go
     ├── sampler/        # 采样器演示
     │   └── main.go
-    └── formats/        # 5 种格式完整对比（新增）
+    ├── formats/        # 5 种格式完整对比（新增）
+    │   └── main.go
+    ├── webbench/       # Web 高并发日志写入演示（新增）
+    │   └── main.go
+    └── asyncbench/     # 异步轮转/压缩演示（新增）
         └── main.go
 ```
 
@@ -57,7 +61,7 @@ fastlog/
 | `config_test.go` | ~320 | Config 单元测试（场景配置/Validate/Clone/NewWriter/NewSampler） | ✅ 新增覆盖 |
 | `field.go` | ~309 | Field 结构体 + 12 种类型构造函数 + 取值方法 | ✅ 设计合理 |
 | `field_test.go` | ~362 | Field 单元测试（含 toInterface/Any 更多类型/边界值） | ✅ 覆盖完善 |
-| `formatter.go` | ~193 | Formatter 接口 + 5 种格式实现（Def/JSON/Timestamp/KV/LogFmt） | ✅ 扩展性强 |
+| `formatter.go` | ~193 | Formatter 接口 + 5 种格式实现（Def/JSON/Simple/KV/Compact） | ✅ 扩展性强 |
 | `formatter_test.go` | ~335 | Formatter 单元测试（含 JSON 全字段类型/未知级别/formatField） | ✅ 覆盖完善 |
 | `writer.go` | ~149 | ConsoleWriter + ColorWriter + MultiWriter | ✅ 实现完整 |
 | `writer_test.go` | ~184 | Writer 单元测试 | ✅ 覆盖完善 |
@@ -90,7 +94,7 @@ fastlog/
 | **类型定义** | Level 体系 + Formatter 接口 + Entry 结构体 | `logger.go` + `formatter.go` | 基础支撑 |
 | **配置管理** | Config 结构体 + 6 种场景化配置函数 | `config.go` | 核心模块 |
 | **字段系统** | 支持结构化日志字段 | `field.go` | 基础支撑 |
-| **日志记录器** | 提供日志记录的核心能力 | `logger.go` | 核心模块 |
+| **日志记录器** | 提供日志记录的核心能力 + 动态级别调整 | `logger.go` | 核心模块 |
 | **格式化器** | 多种日志格式输出 | `formatter.go` | 基础支撑 |
 | **写入器** | 日志输出目标管理 | `writer.go` | 基础支撑 |
 | **采样器** | 日志采样防刷 | `sampler.go` | 基础支撑 |
@@ -137,6 +141,7 @@ fastlog/
 - 线程安全（`sync.Mutex`）
 - 对象池复用 Entry 减少 GC
 - `getCaller(skip)` 获取调用者信息，每字段独立保底（失败时用 `"?"`）
+- **动态级别调整**：运行时通过 `SetLevel()` / `Level()` 修改/获取日志级别，基于 `atomic.Int32` 实现无锁切换
 
 **格式化器**：
 - **Formatter 接口**定义在 `formatter.go` 中，与 5 种内置实现同文件
@@ -146,9 +151,9 @@ fastlog/
 |------|--------|----------|
 | 默认格式 | `Def` | `2025-01-15T10:30:45 \| INFO \| main.go:main:15 - 消息` |
 | JSON 格式 | `JSON` | `{"time":"...","level":"INFO","message":"..."}` |
-| 时间戳格式 | `Timestamp` | `2025-01-15T10:30:45 INFO 消息` |
+| 简单格式 | `Simple` | `2025-01-15T10:30:45 INFO 消息` |
 | 键值对格式 | `KV` | `time=... level=INFO message=...` |
-| LogFmt 格式 | `LogFmt` | `2025-01-15T10:30:45 [INFO ] 消息 [key=value]` |
+| 极简格式 | `Compact` | `[I] 2025-01-15 10:30:45 消息 | key=value` |
 
 **核心依赖**：
 - Config 结构体（配置管理）
@@ -328,6 +333,7 @@ config.NewSampler() 创建采样器
 | P1 | 示例更新 | 适配新的 Config API + 新增 formats 示例 |
 | P2 | getCaller 保底逻辑 | 每字段独立保底，失败时用 `"?"` 标记 |
 | P2 | 采样默认值对齐 | 三处统一引用 `DefaultSamplerTick/Initial/Thereafter` 常量 |
+| P2 | 动态级别调整 | 基于 `atomic.Int32` 实现运行时无锁切换日志级别 |
 
 ### 6.3 待优化点
 
@@ -358,8 +364,9 @@ config.NewSampler() 创建采样器
 - **Config 配置系统** ✅ 完成
 - **logrotatex 集成** ✅ 完成
 - **场景化配置函数** ✅ 完成（NewConfig/Default/Dev/Prod/Console/Docker）
-- **单元测试** ✅ 完成（52 个用例）
-- **示例** ✅ 完成（4 个示例目录）
+- **动态级别调整** ✅ 完成（SetLevel/Level + atomic.Int32）
+- **单元测试** ✅ 完成（58 个用例）
+- **示例** ✅ 完成（7 个示例目录）
 - **文件结构清理** ✅ 完成（fastlog.go 已合并删除）
 
 ### 7.3 代码统计

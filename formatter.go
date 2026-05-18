@@ -100,11 +100,11 @@ func (f JSON) Format(entry *Entry) ([]byte, error) {
 	return b, nil
 }
 
-// Timestamp 时间戳格式
+// Simple 简单格式
 // 格式: 2025-01-15T10:30:45 INFO  用户登录成功
-type Timestamp struct{}
+type Simple struct{}
 
-// Format 实现时间戳格式
+// Format 实现简单格式
 //
 // 参数:
 //   - entry: 日志条目
@@ -112,7 +112,7 @@ type Timestamp struct{}
 // 返回:
 //   - []byte: 格式化后的字节数组
 //   - error: 如果格式化失败
-func (f Timestamp) Format(entry *Entry) ([]byte, error) {
+func (f Simple) Format(entry *Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
 	buf.WriteString(entry.Time.Format(time.RFC3339))
@@ -173,11 +173,12 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// LogFmt LogFmt 格式
-// 格式: 2025-01-15T10:30:45 [INFO ] 用户登录成功 [username=张三, age=30]
-type LogFmt struct{}
+// Compact 极简格式
+// 格式: [I] 2025-01-15 10:30:45 用户登录成功
+// 特点: 级别首字母 + 完整时间，简洁易读，适合容器环境
+type Compact struct{}
 
-// Format 实现 LogFmt 格式
+// Format 实现 Compact 格式
 //
 // 参数:
 //   - entry: 日志条目
@@ -185,32 +186,32 @@ type LogFmt struct{}
 // 返回:
 //   - []byte: 格式化后的字节数组
 //   - error: 如果格式化失败
-func (f LogFmt) Format(entry *Entry) ([]byte, error) {
+func (f Compact) Format(entry *Entry) ([]byte, error) {
 	var buf bytes.Buffer
 
-	buf.WriteString(entry.Time.Format(time.RFC3339))
-	buf.WriteString(" [")
-	_, _ = fmt.Fprintf(&buf, "%-5s", entry.Level.String())
+	// 级别首字母
+	buf.WriteByte('[')
+	buf.WriteByte(entry.Level.String()[0])
 	buf.WriteString("] ")
 
-	if entry.Caller != "" {
-		buf.WriteString(entry.Caller)
-		buf.WriteByte(' ')
-	}
+	// 时间（年月日时分秒）
+	buf.WriteString(entry.Time.Format("2006-01-02 15:04:05"))
+	buf.WriteByte(' ')
 
+	// 消息
 	buf.WriteString(entry.Message)
 
+	// 字段（简化为 key=value 形式）
 	if len(entry.Fields) > 0 {
-		buf.WriteString(" [")
+		buf.WriteString(" | ")
 		for i, field := range entry.Fields {
 			if i > 0 {
-				buf.WriteString(", ")
+				buf.WriteByte(' ')
 			}
 			buf.WriteString(field.Key())
 			buf.WriteByte('=')
 			buf.WriteString(field.Value())
 		}
-		buf.WriteByte(']')
 	}
 
 	buf.WriteByte('\n')

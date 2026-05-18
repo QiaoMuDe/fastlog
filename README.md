@@ -21,13 +21,14 @@
 | 🎨 **彩色输出** | 基于 [color](https://gitee.com/MM-Q/color) 库，自动检测日志级别着色，支持 `NoColor` 开关，兼容 Windows |
 | 📋 **三级 API** | 标准日志 `Info()`、格式化日志 `Infof()`、结构化日志 `Infow()` |
 | 🔧 **Config 配置** | 场景化配置函数，开箱即用，支持自定义调整 |
-| 📝 **多格式支持** | 内置 5 种格式：Def、JSON、Timestamp、KV、LogFmt，支持自定义 |
+| 📝 **多格式支持** | 内置 5 种格式：Def、JSON、Simple、KV、Compact，支持自定义 |
 | 🧩 **结构化字段** | 12 种字段类型，类型安全，零装箱分配 |
 | 🎯 **日志采样** | 固定桶 + atomic 无锁设计，参考 zap，有效防洪 |
 | 🔌 **多路输出** | `MultiWriter` 同时输出到多个目标 |
 | 🧪 **场景化配置** | `NewConfig()`、`Dev()`、`Prod()`、`Console()`、`Docker()` 覆盖常见场景 |
 | 🔒 **线程安全** | `sync.Mutex` 保证写入安全 |
 | 📦 **一站式集成** | 基于 [logrotatex](https://gitee.com/MM-Q/logrotatex) 实现日志轮转、缓冲写入，[comprx](https://gitee.com/MM-Q/comprx) 实现压缩，用户无感知 |
+| 🎚️ **动态级别** | 运行时通过 `SetLevel()` 调整日志级别，无需重启，基于 `atomic.Int32` 无锁实现 |
 
 ---
 
@@ -195,18 +196,45 @@ cfg.Formatter = fastlog.JSON{}
 logger := fastlog.New(cfg)
 // 输出: {"time":"2025-01-15T10:30:45","level":"INFO","message":"用户登录成功"}
 
-// Timestamp 格式
-cfg.Formatter = fastlog.Timestamp{}
+// Simple 格式
+cfg.Formatter = fastlog.Simple{}
 // 输出: 2025-01-15T10:30:45 INFO 用户登录成功
 
 // KV 格式
 cfg.Formatter = fastlog.KV{}
 // 输出: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
 
-// LogFmt 格式
-cfg.Formatter = fastlog.LogFmt{}
-// 输出: 2025-01-15T10:30:45 [INFO ] 用户登录成功 [username=alice, count=42]
+// Compact 格式
+cfg.Formatter = fastlog.Compact{}
+// 输出: [I] 2025-01-15 10:30:45 用户登录成功 | username=alice count=42
 ```
+
+### 动态设置日志级别
+
+运行时动态调整日志级别，无需重启程序，立即生效：
+
+```go
+logger := fastlog.New(fastlog.Prod("/var/log/app.log"))
+
+// 初始 WARN 级别
+logger.Info("这条不会输出")  // 被过滤
+
+// 动态调整为 DEBUG 级别
+logger.SetLevel(fastlog.DEBUG)
+
+// 后续日志立即使用新级别
+logger.Info("现在可以输出了")  // 输出
+logger.Debug("调试信息")       // 输出
+
+// 获取当前级别
+currentLevel := logger.Level()
+fmt.Println(currentLevel)  // DEBUG
+```
+
+**使用场景：**
+- 生产环境出问题，临时开启 DEBUG 排查，无需重启服务
+- 根据系统负载动态调整日志详细程度
+- 通过 HTTP API 热更新日志级别
 
 ### 彩色输出
 
@@ -224,10 +252,10 @@ logger := fastlog.New(cfg)
 
 | 级别 | 颜色 | 效果 |
 |------|------|------|
-| DEBUG | 青色 | `SCyan` |
-| INFO | 蓝色 | `SBlue` |
-| WARN | 黄色 | `SYellow` |
-| ERROR | 红色 | `SRed` |
+| DEBUG | 青色 | `FgCyan + Bold` |
+| INFO | 蓝色 | `FgBlue + Bold` |
+| WARN | 黄色 | `FgYellow + Bold` |
+| ERROR | 红色加粗 | `FgRed + Bold` |
 | FATAL | 红色加粗 | `FgRed + Bold` |
 | PANIC | 紫色加粗 | `FgMagenta + Bold` |
 
@@ -301,6 +329,8 @@ logger.Info("这条日志同时输出到控制台和文件")
 
 | 方法 | 说明 |
 |------|------|
+| `SetLevel(level Level)` | 动态设置日志级别，立即生效 |
+| `Level() Level` | 获取当前日志级别 |
 | `Sync() error` | 刷新日志到存储 |
 | `Close() error` | 关闭 Logger，释放资源 |
 
@@ -355,9 +385,9 @@ logger.Info("使用自定义格式")     // 输出: INFO: 使用自定义格式
 |------|--------|----------|
 | 默认 | `Def` | `2025-01-15T10:30:45 \| INFO \| main.go:main:15 - 消息` |
 | JSON | `JSON` | `{"time":"...","level":"INFO","message":"..."}` |
-| 时间戳 | `Timestamp` | `2025-01-15T10:30:45 INFO 消息` |
+| 简单 | `Simple` | `2025-01-15T10:30:45 INFO 消息` |
 | 键值对 | `KV` | `time=... level=INFO message=...` |
-| LogFmt | `LogFmt` | `2025-01-15T10:30:45 [INFO ] 消息 [key=val]` |
+| 极简 | `Compact` | `[I] 2025-01-15 10:30:45 消息 \| key=val` |
 
 ---
 

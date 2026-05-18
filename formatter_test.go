@@ -123,22 +123,22 @@ func TestJSONFormat(t *testing.T) {
 	})
 }
 
-func TestTimestampFormat(t *testing.T) {
+func TestSimpleFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
-		b, _ := Timestamp{}.Format(entry)
+		b, _ := Simple{}.Format(entry)
 		want := "2026-01-15T10:30:45Z INFO hello\n"
 		if got := string(b); got != want {
-			t.Errorf("Timestamp.Format() = %q, want %q", got, want)
+			t.Errorf("Simple.Format() = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
-		b, _ := Timestamp{}.Format(entry)
+		b, _ := Simple{}.Format(entry)
 		want := "2026-01-15T10:30:45Z INFO hello k=v\n"
 		if got := string(b); got != want {
-			t.Errorf("Timestamp.Format() with fields = %q, want %q", got, want)
+			t.Errorf("Simple.Format() with fields = %q, want %q", got, want)
 		}
 	})
 }
@@ -172,31 +172,47 @@ func TestKVFormat(t *testing.T) {
 	})
 }
 
-func TestLogFmtFormat(t *testing.T) {
+func TestCompactFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
-		b, _ := LogFmt{}.Format(entry)
-		want := "2026-01-15T10:30:45Z [INFO ] hello\n"
+		b, _ := Compact{}.Format(entry)
+		want := "[I] 2026-01-15 10:30:45 hello\n"
 		if got := string(b); got != want {
-			t.Errorf("LogFmt.Format() = %q, want %q", got, want)
-		}
-	})
-
-	t.Run("with caller", func(t *testing.T) {
-		entry := makeEntry("hello", "main.go:main:10")
-		b, _ := LogFmt{}.Format(entry)
-		want := "2026-01-15T10:30:45Z [INFO ] main.go:main:10 hello\n"
-		if got := string(b); got != want {
-			t.Errorf("LogFmt.Format() with caller = %q, want %q", got, want)
+			t.Errorf("Compact.Format() = %q, want %q", got, want)
 		}
 	})
 
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
-		b, _ := LogFmt{}.Format(entry)
-		want := "2026-01-15T10:30:45Z [INFO ] hello [k=v]\n"
+		b, _ := Compact{}.Format(entry)
+		want := "[I] 2026-01-15 10:30:45 hello | k=v\n"
 		if got := string(b); got != want {
-			t.Errorf("LogFmt.Format() with fields = %q, want %q", got, want)
+			t.Errorf("Compact.Format() with fields = %q, want %q", got, want)
+		}
+	})
+
+	t.Run("different levels", func(t *testing.T) {
+		tests := []struct {
+			level Level
+			want  string
+		}{
+			{DEBUG, "[D] 2026-01-15 10:30:45 hello\n"},
+			{INFO, "[I] 2026-01-15 10:30:45 hello\n"},
+			{WARN, "[W] 2026-01-15 10:30:45 hello\n"},
+			{ERROR, "[E] 2026-01-15 10:30:45 hello\n"},
+			{FATAL, "[F] 2026-01-15 10:30:45 hello\n"},
+			{PANIC, "[P] 2026-01-15 10:30:45 hello\n"},
+		}
+		for _, tt := range tests {
+			entry := &Entry{
+				Time:    time.Date(2026, 1, 15, 10, 30, 45, 0, time.UTC),
+				Level:   tt.level,
+				Message: "hello",
+			}
+			b, _ := Compact{}.Format(entry)
+			if got := string(b); got != tt.want {
+				t.Errorf("Compact.Format() level %v = %q, want %q", tt.level, got, tt.want)
+			}
 		}
 	})
 }

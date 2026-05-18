@@ -71,33 +71,33 @@ func printFormats() {
 	_ = jsonLogger.Close()
 
 	// =========================================================
-	// 3. Timestamp 格式
+	// 3. Simple 格式
 	// 格式: 2025-01-15T10:30:45 INFO 消息
 	// =========================================================
-	tsLogger := fastlog.New(&fastlog.Config{
+	simpleLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.DEBUG,
 		OutputConsole: true,
-		Formatter:     fastlog.Timestamp{},
+		Formatter:     fastlog.Simple{},
 	})
-	printHeader("Timestamp 格式 - Info")
+	printHeader("Simple 格式 - Info")
 	for i := 0; i < 10; i++ {
-		tsLogger.Info(fmt.Sprintf("用户登录操作 第%d次", i+1))
+		simpleLogger.Info(fmt.Sprintf("用户登录操作 第%d次", i+1))
 	}
 
-	printHeader("Timestamp 格式 - Infof")
+	printHeader("Simple 格式 - Infof")
 	for i := 0; i < 10; i++ {
-		tsLogger.Infof("用户 %s 登录 %s, 第%d次", "admin", "控制台", i+1)
+		simpleLogger.Infof("用户 %s 登录 %s, 第%d次", "admin", "控制台", i+1)
 	}
 
-	printHeader("Timestamp 格式 - Infow")
+	printHeader("Simple 格式 - Infow")
 	for i := 0; i < 10; i++ {
-		tsLogger.Infow("用户操作",
+		simpleLogger.Infow("用户操作",
 			fastlog.String("user", "admin"),
 			fastlog.Int("seq", i+1),
 			fastlog.String("action", "login"),
 		)
 	}
-	_ = tsLogger.Close()
+	_ = simpleLogger.Close()
 
 	// =========================================================
 	// 4. KV 格式 (键值对格式)
@@ -129,33 +129,33 @@ func printFormats() {
 	_ = kvLogger.Close()
 
 	// =========================================================
-	// 5. LogFmt 格式
-	// 格式: 2025-01-15T10:30:45 [INFO ] 消息 [key=val, key=val]
+	// 5. Compact 格式 (极简格式)
+	// 格式: [I] 2025-01-15 10:30:45 用户登录成功 | user=admin seq=1 action=login
 	// =========================================================
-	logfmtLogger := fastlog.New(&fastlog.Config{
+	compactLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.DEBUG,
 		OutputConsole: true,
-		Formatter:     fastlog.LogFmt{},
+		Formatter:     fastlog.Compact{},
 	})
-	printHeader("LogFmt 格式 - Info")
+	printHeader("Compact 格式 - Info")
 	for i := 0; i < 10; i++ {
-		logfmtLogger.Info(fmt.Sprintf("用户登录操作 第%d次", i+1))
+		compactLogger.Info(fmt.Sprintf("用户登录操作 第%d次", i+1))
 	}
 
-	printHeader("LogFmt 格式 - Infof")
+	printHeader("Compact 格式 - Infof")
 	for i := 0; i < 10; i++ {
-		logfmtLogger.Infof("用户 %s 登录 %s, 第%d次", "admin", "控制台", i+1)
+		compactLogger.Infof("用户 %s 登录 %s, 第%d次", "admin", "控制台", i+1)
 	}
 
-	printHeader("LogFmt 格式 - Infow")
+	printHeader("Compact 格式 - Infow")
 	for i := 0; i < 10; i++ {
-		logfmtLogger.Infow("用户操作",
+		compactLogger.Infow("用户操作",
 			fastlog.String("user", "admin"),
 			fastlog.Int("seq", i+1),
 			fastlog.String("action", "login"),
 		)
 	}
-	_ = logfmtLogger.Close()
+	_ = compactLogger.Close()
 }
 
 func printHeader(title string) {

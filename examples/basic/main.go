@@ -24,6 +24,9 @@ func main() {
 
 	// 示例 6: 日志采样
 	example6()
+
+	// 示例 7: 动态设置日志级别
+	example7()
 }
 
 // example1 基础使用示例
@@ -58,13 +61,13 @@ func example2() {
 		fastlog.Int("count", 42),
 	)
 
-	// 时间戳格式
-	tsLogger := fastlog.New(&fastlog.Config{
+	// Simple 格式
+	simpleLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.INFO,
 		OutputConsole: true,
-		Formatter:     fastlog.Timestamp{},
+		Formatter:     fastlog.Simple{},
 	})
-	tsLogger.Info("时间戳格式日志")
+	simpleLogger.Info("Simple 格式日志")
 
 	// 键值对格式
 	kvLogger := fastlog.New(&fastlog.Config{
@@ -74,13 +77,13 @@ func example2() {
 	})
 	kvLogger.Info("键值对格式日志")
 
-	// LogFmt 格式
-	logfmtLogger := fastlog.New(&fastlog.Config{
+	// Compact 格式
+	compactLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.INFO,
 		OutputConsole: true,
-		Formatter:     fastlog.LogFmt{},
+		Formatter:     fastlog.Compact{},
 	})
-	logfmtLogger.Info("LogFmt 格式日志")
+	compactLogger.Info("Compact 格式日志")
 }
 
 // example3 键值对字段示例
@@ -165,4 +168,47 @@ func example6() {
 
 	// 不同消息不受采样影响
 	logger.Errorw("磁盘空间不足", fastlog.String("disk", "/dev/sda1"))
+}
+
+// example7 动态设置日志级别示例
+func example7() {
+	println("\n=== 示例 7: 动态设置日志级别 ===")
+
+	logger := fastlog.New(&fastlog.Config{
+		Level:         fastlog.INFO,
+		OutputConsole: true,
+		Formatter:     fastlog.Def{},
+	})
+	defer func() { _ = logger.Close() }()
+
+	// 初始级别为 INFO
+	println("当前日志级别:", logger.Level())
+	println("--- 输出 INFO 级别日志 ---")
+	logger.Info("INFO 日志: 应用启动")
+	logger.Debug("DEBUG 日志: 详细调试信息") // 不会输出
+
+	// 动态调整为 DEBUG 级别
+	println("\n动态调整为 DEBUG 级别")
+	logger.SetLevel(fastlog.DEBUG)
+	println("当前日志级别:", logger.Level())
+	println("--- 输出 DEBUG 级别日志 ---")
+	logger.Debug("DEBUG 日志: 现在可以看到调试信息了")
+	logger.Info("INFO 日志: 普通信息")
+
+	// 动态提升为 WARN 级别
+	println("\n动态提升为 WARN 级别")
+	logger.SetLevel(fastlog.WARN)
+	println("当前日志级别:", logger.Level())
+	println("--- 输出 WARN 级别日志 ---")
+	logger.Info("INFO 日志: 这条被过滤了") // 不会输出
+	logger.Warn("WARN 日志: 警告信息")
+	logger.Error("ERROR 日志: 错误信息")
+
+	// 再次调整为 ERROR 级别
+	println("\n动态调整为 ERROR 级别")
+	logger.SetLevel(fastlog.ERROR)
+	println("当前日志级别:", logger.Level())
+	println("--- 输出 ERROR 级别日志 ---")
+	logger.Warn("WARN 日志: 这条也被过滤了") // 不会输出
+	logger.Error("ERROR 日志: 仅输出错误")
 }

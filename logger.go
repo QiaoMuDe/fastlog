@@ -8,11 +8,12 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 // Level 表示日志级别
-type Level int8
+type Level int32
 
 // 日志级别常量
 const (
@@ -119,6 +120,7 @@ type Logger struct {
 	writer  io.WriteCloser // 日志写入器
 	sampler *Sampler       // 日志采样器, nil 表示不启用采样
 	mu      sync.Mutex     // 日志记录器的互斥锁
+	level   atomic.Int32   // 运行时日志级别, 支持动态调整, 初始化时从 config.Level 设置
 }
 
 // New 创建一个新的日志记录器
@@ -161,12 +163,34 @@ func New(cfg *Config) *Logger {
 	// 创建采样器
 	sampler := config.NewSampler()
 
-	// 返回日志记录器实例
-	return &Logger{
-		config:  config,
-		writer:  writer,
-		sampler: sampler,
+	// 创建日志记录器实例
+	l := &Logger{
+		config:  config,         // 日志配置
+		writer:  writer,         // 日志写入器
+		sampler: sampler,        // 日志采样器
+		level:   atomic.Int32{}, // 运行时日志级别, 初始化时从 config.Level 设置
 	}
+
+	// 以 Config.Level 作为运行时级别的初始值
+	l.level.Store(int32(config.Level))
+
+	return l
+}
+
+// SetLevel 运行时动态修改日志级别, 立即生效
+//
+// 参数:
+//   - level: 新的日志级别
+func (l *Logger) SetLevel(level Level) {
+	l.level.Store(int32(level))
+}
+
+// Level 返回当前运行时日志级别
+//
+// 返回:
+//   - Level: 当前日志级别
+func (l *Logger) Level() Level {
+	return Level(l.level.Load())
 }
 
 // log 记录日志的核心方法
@@ -176,7 +200,8 @@ func New(cfg *Config) *Logger {
 //   - msg: 日志消息
 //   - fields: 日志字段
 func (l *Logger) log(level Level, msg string, fields []Field) {
-	if !l.config.Level.Enabled(level) {
+	// 检查日志级别是否启用, 如果未启用则直接返回
+	if !Level(l.level.Load()).Enabled(level) {
 		return
 	}
 
@@ -190,11 +215,11 @@ func (l *Logger) log(level Level, msg string, fields []Field) {
 	defer PutEntry(entry)
 
 	// 填充日志条目
-	entry.Time = time.Now()
-	entry.Level = level
-	entry.Message = msg
-	entry.Fields = append(entry.Fields[:0], l.config.Fields...)
-	entry.Fields = append(entry.Fields, fields...)
+	entry.Time = time.Now()                                     // 时间戳
+	entry.Level = level                                         // 日志级别
+	entry.Message = msg                                         // 日志消息
+	entry.Fields = append(entry.Fields[:0], l.config.Fields...) // 添加配置中的字段
+	entry.Fields = append(entry.Fields, fields...)              // 添加用户提供的字段
 
 	// 记录调用者信息
 	if l.config.Caller {

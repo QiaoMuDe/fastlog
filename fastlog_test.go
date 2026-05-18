@@ -1,6 +1,7 @@
 package fastlog
 
 import (
+	"bytes"
 	"testing"
 )
 
@@ -95,4 +96,178 @@ func TestAllLevels(t *testing.T) {
 			t.Errorf("AllLevels()[%d] = %v, want %v", i, levels[i], want[i])
 		}
 	}
+}
+
+// TestLoggerDynamicLevel 测试动态级别调整功能
+func TestLoggerDynamicLevel(t *testing.T) {
+	t.Run("initial level from config", func(t *testing.T) {
+		l := New(&Config{
+			Level:         WARN,
+			OutputConsole: true,
+		})
+
+		if l.Level() != WARN {
+			t.Errorf("initial level should be WARN, got %v", l.Level())
+		}
+	})
+
+	t.Run("set level changes behavior", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		l := New(&Config{
+			Level:         INFO,
+			OutputConsole: true,
+			Formatter:     &testFormatter{buf: buf},
+		})
+
+		// INFO 级别可以输出 INFO 日志
+		buf.Reset()
+		l.Info("info message")
+		if buf.Len() == 0 {
+			t.Errorf("INFO should pass at INFO level")
+		}
+
+		// 提升到 WARN 级别
+		l.SetLevel(WARN)
+		if l.Level() != WARN {
+			t.Errorf("level should be WARN after SetLevel, got %v", l.Level())
+		}
+
+		// WARN 级别抑制 INFO 日志
+		buf.Reset()
+		l.Info("should be suppressed")
+		if buf.Len() > 0 {
+			t.Errorf("INFO should be suppressed at WARN level, got: %q", buf.String())
+		}
+
+		// WARN 级别允许 WARN 日志
+		buf.Reset()
+		l.Warn("warn message")
+		if buf.Len() == 0 {
+			t.Errorf("WARN should pass at WARN level")
+		}
+	})
+
+	t.Run("set level to DEBUG enables all", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		l := New(&Config{
+			Level:         ERROR,
+			OutputConsole: true,
+			Formatter:     &testFormatter{buf: buf},
+		})
+
+		// ERROR 级别抑制 INFO
+		buf.Reset()
+		l.Info("should be suppressed")
+		if buf.Len() > 0 {
+			t.Errorf("INFO should be suppressed at ERROR level")
+		}
+
+		// 降级到 DEBUG
+		l.SetLevel(DEBUG)
+
+		// DEBUG 级别允许所有日志
+		buf.Reset()
+		l.Debug("debug message")
+		if buf.Len() == 0 {
+			t.Errorf("DEBUG should pass at DEBUG level")
+		}
+
+		buf.Reset()
+		l.Info("info message")
+		if buf.Len() == 0 {
+			t.Errorf("INFO should pass at DEBUG level")
+		}
+	})
+
+	t.Run("multiple level changes", func(t *testing.T) {
+		l := New(&Config{
+			Level:         INFO,
+			OutputConsole: true,
+		})
+
+		// 多次切换级别
+		l.SetLevel(DEBUG)
+		if l.Level() != DEBUG {
+			t.Errorf("level should be DEBUG")
+		}
+
+		l.SetLevel(WARN)
+		if l.Level() != WARN {
+			t.Errorf("level should be WARN")
+		}
+
+		l.SetLevel(ERROR)
+		if l.Level() != ERROR {
+			t.Errorf("level should be ERROR")
+		}
+
+		l.SetLevel(INFO)
+		if l.Level() != INFO {
+			t.Errorf("level should be INFO")
+		}
+	})
+
+	t.Run("set level concurrent safe", func(t *testing.T) {
+		l := New(&Config{
+			Level:         INFO,
+			OutputConsole: true,
+		})
+
+		// 并发设置级别和读取级别
+		done := make(chan bool, 10)
+
+		// 5 个 goroutine 设置不同级别
+		for i := 0; i < 5; i++ {
+			go func(idx int) {
+				levels := []Level{DEBUG, INFO, WARN, ERROR, FATAL}
+				l.SetLevel(levels[idx%5])
+				done <- true
+			}(i)
+		}
+
+		// 5 个 goroutine 读取级别
+		for i := 0; i < 5; i++ {
+			go func() {
+				_ = l.Level()
+				done <- true
+			}()
+		}
+
+		// 等待所有 goroutine 完成
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+
+		// 如果并发不安全，上面的代码会触发 data race
+		// go test -race 会检测到
+	})
+
+	t.Run("level affects all log methods", func(t *testing.T) {
+		buf := &bytes.Buffer{}
+		l := New(&Config{
+			Level:         PANIC,
+			OutputConsole: true,
+			Formatter:     &testFormatter{buf: buf},
+		})
+
+		// PANIC 级别抑制所有其他级别
+		buf.Reset()
+		l.Debug("debug")
+		l.Info("info")
+		l.Warn("warn")
+		l.Error("error")
+		if buf.Len() > 0 {
+			t.Errorf("all levels should be suppressed at PANIC level")
+		}
+
+		// 降级到 DEBUG
+		l.SetLevel(DEBUG)
+
+		// DEBUG 级别允许所有级别
+		l.Debug("debug2")
+		l.Info("info2")
+		l.Warn("warn2")
+		l.Error("error2")
+		// 注意：不测试 FATAL 和 PANIC，因为它们会退出/崩溃
+	})
 }

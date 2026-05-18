@@ -74,16 +74,16 @@ func (c *ColorWriter) Write(p []byte) (n int, err error) {
 	var colored string
 	switch level {
 	case DEBUG:
-		colored = color.SCyan(string(p))
+		colored = color.New(color.FgCyan, color.Bold).Sprint(string(p))
 
 	case INFO:
-		colored = color.SBlue(string(p))
+		colored = color.New(color.FgBlue, color.Bold).Sprint(string(p))
 
 	case WARN:
-		colored = color.SYellow(string(p))
+		colored = color.New(color.FgYellow, color.Bold).Sprint(string(p))
 
 	case ERROR:
-		colored = color.SRed(string(p))
+		colored = color.New(color.FgRed, color.Bold).Sprint(string(p))
 
 	case FATAL:
 		colored = color.New(color.FgRed, color.Bold).Sprint(string(p))
