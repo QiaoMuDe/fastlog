@@ -198,6 +198,19 @@ func (f Field) toInterface() interface{} {
 	}
 }
 
+// Format 将字段格式化为 key=value 形式
+//
+// 返回:
+//   - string: 格式化后的字段字符串，格式为 "key=value"
+//
+// 示例:
+//
+//	field := fastlog.String("user", "admin")
+//	result := field.Format() // 返回 "user=admin"
+func (f Field) Format() string {
+	return f.key + "=" + f.Value()
+}
+
 // Stack 创建一个堆栈字段
 //
 // 返回:

@@ -53,7 +53,7 @@ func (f Def) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(formatField(field))
+			buf.WriteString(field.Format())
 		}
 	}
 
@@ -96,6 +96,8 @@ func (f JSON) Format(entry *Entry) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// 添加换行符
 	b = append(b, '\n')
 	return b, nil
 }
@@ -127,7 +129,7 @@ func (f Simple) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(formatField(field))
+			buf.WriteString(field.Format())
 		}
 	}
 
@@ -164,9 +166,7 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 
 	for _, field := range entry.Fields {
 		buf.WriteByte(' ')
-		buf.WriteString(field.Key())
-		buf.WriteByte('=')
-		buf.WriteString(field.Value())
+		buf.WriteString(field.Format())
 	}
 
 	buf.WriteByte('\n')
@@ -208,23 +208,10 @@ func (f Compact) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
-			buf.WriteString(field.Key())
-			buf.WriteByte('=')
-			buf.WriteString(field.Value())
+			buf.WriteString(field.Format())
 		}
 	}
 
 	buf.WriteByte('\n')
 	return buf.Bytes(), nil
-}
-
-// formatField 格式化字段为 key=value 形式
-//
-// 参数:
-//   - f: 字段
-//
-// 返回:
-//   - string: 格式化后的字段字符串
-func formatField(f Field) string {
-	return f.Key() + "=" + f.Value()
 }

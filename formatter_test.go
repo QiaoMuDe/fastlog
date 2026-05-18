@@ -270,27 +270,29 @@ func TestJSONFormatAllFieldTypes(t *testing.T) {
 	}
 }
 
-// ======== formatField 函数测试 ========
+// ======== Field.Format 方法测试 ========
 
 var errFmtTest = fmt.Errorf("test error")
 
-func TestFormatField(t *testing.T) {
+func TestFieldFormat(t *testing.T) {
 	t.Run("string field", func(t *testing.T) {
 		f := String("key", "value")
-		if got := formatField(f); got != "key=value" {
-			t.Errorf("formatField() = %q, want 'key=value'", got)
+		if got := f.Format(); got != "key=value" {
+			t.Errorf("Field.Format() = %q, want 'key=value'", got)
 		}
 	})
 
 	t.Run("int field", func(t *testing.T) {
-		if got := formatField(Int("n", 42)); got != "n=42" {
-			t.Errorf("formatField(Int) = %q", got)
+		f := Int("n", 42)
+		if got := f.Format(); got != "n=42" {
+			t.Errorf("Field.Format(Int) = %q", got)
 		}
 	})
 
 	t.Run("bool field", func(t *testing.T) {
-		if got := formatField(Bool("flag", true)); got != "flag=true" {
-			t.Errorf("formatField(Bool) = %q", got)
+		f := Bool("flag", true)
+		if got := f.Format(); got != "flag=true" {
+			t.Errorf("Field.Format(Bool) = %q", got)
 		}
 	})
 }
