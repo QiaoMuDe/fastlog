@@ -116,6 +116,20 @@ type Entry struct {
 const callerSkip = 3
 
 // Logger 日志记录器
+//
+// Logger 是 FastLog 的核心日志记录器, 提供日志记录、级别控制、采样等功能。
+// 支持 6 种日志级别: DEBUG, INFO, WARN, ERROR, FATAL, PANIC。
+// 支持三种调用方式: 标准日志 (Info)、格式化日志 (Infof)、结构化日志 (Infow)。
+//
+// 必须通过 fastlog.New(cfg) 构造函数创建, 切勿直接声明空结构体使用。
+// 直接声明 Logger{} 会导致内部 writer/sampler 等关键字段为 nil, 引发 panic。
+//
+// 使用示例:
+//
+//	cfg := fastlog.NewConfig("logs/app.log")
+//	logger := fastlog.New(cfg)
+//	defer func() { _ = logger.Close() }()
+//	logger.Info("服务启动成功")
 type Logger struct {
 	config  *Config        // 日志配置
 	writer  io.WriteCloser // 日志写入器
