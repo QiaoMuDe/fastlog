@@ -52,7 +52,7 @@ func (f Def) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(field.Format())
+			buf.WriteString(field.formatWithTimeFormat(entry.TimeFormat))
 		}
 	}
 
@@ -88,7 +88,7 @@ func (f JSON) Format(entry *Entry) ([]byte, error) {
 
 	// 添加字段
 	for _, field := range entry.Fields {
-		data[field.Key()] = field.toInterface()
+		data[field.Key()] = field.toInterfaceWithTimeFormat(entry.TimeFormat)
 	}
 
 	b, err := json.Marshal(data)
@@ -128,7 +128,7 @@ func (f Simple) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteString(", ")
 			}
-			buf.WriteString(field.Format())
+			buf.WriteString(field.formatWithTimeFormat(entry.TimeFormat))
 		}
 	}
 
@@ -165,7 +165,7 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 
 	for _, field := range entry.Fields {
 		buf.WriteByte(' ')
-		buf.WriteString(field.Format())
+		buf.WriteString(field.formatWithTimeFormat(entry.TimeFormat))
 	}
 
 	buf.WriteByte('\n')
@@ -208,7 +208,7 @@ func (f Compact) Format(entry *Entry) ([]byte, error) {
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
-			buf.WriteString(field.Format())
+			buf.WriteString(field.formatWithTimeFormat(entry.TimeFormat))
 		}
 	}
 

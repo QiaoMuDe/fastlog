@@ -212,6 +212,45 @@ func (f Field) Format() string {
 	return f.key + "=" + f.Value()
 }
 
+// valueWithTimeFormat 返回字段值字符串，TimeType 使用指定格式
+//
+// 参数:
+//   - tf: 时间格式，仅对 TimeType 生效
+//
+// 返回:
+//   - string: 字段值的字符串表示
+func (f Field) valueWithTimeFormat(tf string) string {
+	if f.typ == TimeType {
+		return f.timeVal.Format(tf)
+	}
+	return f.Value()
+}
+
+// formatWithTimeFormat 将字段格式化为 key=value 形式，TimeType 使用指定格式
+//
+// 参数:
+//   - tf: 时间格式，仅对 TimeType 生效
+//
+// 返回:
+//   - string: 格式化后的字段字符串
+func (f Field) formatWithTimeFormat(tf string) string {
+	return f.key + "=" + f.valueWithTimeFormat(tf)
+}
+
+// toInterfaceWithTimeFormat 将字段值转换为 interface{}，TimeType 使用指定格式
+//
+// 参数:
+//   - tf: 时间格式，仅对 TimeType 生效
+//
+// 返回:
+//   - interface{}: 字段值的 interface{} 表示
+func (f Field) toInterfaceWithTimeFormat(tf string) interface{} {
+	if f.typ == TimeType {
+		return f.timeVal.Format(tf)
+	}
+	return f.toInterface()
+}
+
 // Stack 创建一个堆栈字段
 //
 // 返回:
