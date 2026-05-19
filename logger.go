@@ -503,9 +503,9 @@ func GetEntry() *Entry {
 // 参数:
 //   - e: 要放回池的日志条目
 func PutEntry(e *Entry) {
-	e.Fields = e.Fields[:0]
-	e.Caller = ""
-	e.Message = ""
-	e.Time = time.Time{}
-	EntryPool.Put(e)
+	e.Fields = e.Fields[:0] // 清空字段列表
+	e.Caller = ""           // 清空调用者信息
+	e.Message = ""          // 清空日志消息
+	e.Time = time.Time{}    // 清空时间戳
+	EntryPool.Put(e)        // 放回池
 }
