@@ -173,8 +173,9 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 }
 
 // Compact 极简格式
-// 格式: [I] 2025-01-15 10:30:45 用户登录成功
-// 特点: 级别首字母 + 完整时间，简洁易读，适合容器环境
+// 格式: [I] 2025-01-15T10:30:45Z 用户登录成功
+// 特点: 级别首字母 + 时间戳，简洁易读，适合容器环境
+// 时间格式遵循 Config.TimeFormat，默认 time.RFC3339
 type Compact struct{}
 
 // Format 实现 Compact 格式
@@ -193,7 +194,7 @@ func (f Compact) Format(entry *Entry) ([]byte, error) {
 	buf.WriteByte(entry.Level.String()[0])
 	buf.WriteString("] ")
 
-	// 时间（年月日时分秒）
+	// 时间戳 (格式遵循 entry.TimeFormat)
 	buf.WriteString(entry.Time.Format(entry.TimeFormat))
 	buf.WriteByte(' ')
 

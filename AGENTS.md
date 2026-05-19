@@ -161,7 +161,7 @@ fastlog/
 | JSON 格式 | `JSON` | `{"time":"...","level":"INFO","message":"..."}` |
 | 简单格式 | `Simple` | `2025-01-15T10:30:45 INFO 消息` |
 | 键值对格式 | `KV` | `time=... level=INFO message=...` |
-| 极简格式 | `Compact` | `[I] 2025-01-15 10:30:45 消息 | key=value` |
+| 极简格式 | `Compact` | `[I] 2025-01-15T10:30:45Z 消息 \| key=value` |
 
 **核心依赖**：
 - Config 结构体（配置管理）

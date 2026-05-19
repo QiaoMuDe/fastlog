@@ -1,6 +1,7 @@
 package fastlog
 
 import (
+	"fmt"
 	"runtime/debug"
 	"strconv"
 	"time"
@@ -161,7 +162,7 @@ func (f Field) anyString() string {
 		return val.Error()
 
 	default:
-		return ""
+		return fmt.Sprintf("%v", val)
 	}
 }
 

@@ -205,9 +205,9 @@ cfg.Formatter = fastlog.Simple{}
 cfg.Formatter = fastlog.KV{}
 // 输出: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
 
-// Compact 格式
+// Compact 格式（时间格式遵循 TimeFormat，默认 RFC3339）
 cfg.Formatter = fastlog.Compact{}
-// 输出: [I] 2025-01-15 10:30:45 用户登录成功 | username=alice count=42
+// 输出: [I] 2025-01-15T10:30:45Z 用户登录成功 | username=alice count=42
 ```
 
 ### 动态设置日志级别

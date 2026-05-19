@@ -340,8 +340,8 @@ func TestFieldAnyExtraTypes(t *testing.T) {
 
 	t.Run("unrecognized struct type", func(t *testing.T) {
 		type custom struct{ x int }
-		if got := Any("k", custom{x: 1}).Value(); got != "" {
-			t.Errorf("Any(struct{}) Value = %q, want ''", got)
+		if got := Any("k", custom{x: 1}).Value(); got != "{1}" {
+			t.Errorf("Any(struct{}) Value = %q, want '{1}'", got)
 		}
 	})
 }
