@@ -2,7 +2,9 @@ package fastlog
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"path/filepath"
 	"time"
 
 	"gitee.com/MM-Q/comprx"
@@ -17,19 +19,30 @@ const DefaultTimeFormat = time.RFC3339
 // 默认配置同时输出到终端和文件, 适用于开发和测试环境。
 //
 // 默认配置详情:
-//   - Level: INFO
-//   - Formatter: Def{}
-//   - Caller: false
-//   - Fields: []Field{}
-//   - SamplerTick: DefaultSamplerTick, SamplerInitial: DefaultSamplerInitial,
-//     SamplerThereafter: DefaultSamplerThereafter
-//   - OutputConsole: true, NoColor: false
-//   - OutputFile: true, LogPath: 参数指定
-//   - Async: false, MaxSize: 20MB, MaxFiles: 24, MaxAge: 7天
-//   - Compress: false, CompressType: Gz, LocalTime: true
-//   - DateDirLayout: true, RotateByDay: true
-//   - MaxBufferSize: 256KB, SyncInterval: 1s
-//   - TimeFormat: DefaultTimeFormat, 时间格式, 默认: time.RFC3339
+//   - Level: INFO - 日志级别为信息级别
+//   - Formatter: Def{} - 使用默认格式输出
+//   - Caller: false - 不记录调用者信息
+//   - Fields: []Field{} - 无预设字段
+//   - SamplerTick: 10s - 采样窗口为10秒
+//   - SamplerInitial: 3 - 前3条日志放行
+//   - SamplerThereafter: 10 - 之后每10条放行1条
+//   - LevelRouter: false - 不启用级别路由
+//   - OutputConsole: true - 输出到终端
+//   - NoColor: false - 启用彩色输出
+//   - OutputFile: true - 输出到文件
+//   - LogPath: 参数指定 - 日志文件路径由参数指定
+//   - Async: false - 不启用异步清理
+//   - MaxSize: 20MB - 单文件最大20MB
+//   - MaxFiles: 24 - 保留24个历史文件
+//   - MaxAge: 7天 - 保留7天日志
+//   - Compress: false - 不压缩历史日志
+//   - CompressType: Gz - 压缩类型为gzip
+//   - LocalTime: true - 使用本地时间命名
+//   - DateDirLayout: true - 按日期目录存放
+//   - RotateByDay: true - 按天轮转文件
+//   - MaxBufferSize: 256KB - 缓冲区256KB
+//   - SyncInterval: 1s - 每秒同步
+//   - TimeFormat: RFC3339 - 时间格式为RFC3339
 //
 // 参数:
 //   - logPath: 日志文件路径
@@ -46,6 +59,7 @@ func NewConfig(logPath string) *Config {
 		SamplerTick:       DefaultSamplerTick,       // 每 DefaultSamplerTick 一个窗口
 		SamplerInitial:    DefaultSamplerInitial,    // 前 DefaultSamplerInitial 条放行
 		SamplerThereafter: DefaultSamplerThereafter, // 之后每 DefaultSamplerThereafter 条放行 1 条
+		LevelRouter:       false,                    // 是否启用级别路由, 零值默认 false
 
 		// 终端输出配置
 		OutputConsole: true,  // 是否输出到终端 (彩色自动检测)
@@ -78,20 +92,30 @@ func NewConfig(logPath string) *Config {
 // 默认配置同时输出到终端和文件, 适用于开发和测试环境。
 //
 // 默认配置详情:
-//   - LogPath: "logs/app.log"
-//   - Level: INFO
-//   - Formatter: Def{}
-//   - Caller: false
-//   - Fields: []Field{}
-//   - SamplerTick: DefaultSamplerTick, SamplerInitial: DefaultSamplerInitial,
-//     SamplerThereafter: DefaultSamplerThereafter
-//   - OutputConsole: true, NoColor: false
-//   - OutputFile: true, LogPath: 参数指定
-//   - Async: false, MaxSize: 20MB, MaxFiles: 24, MaxAge: 7天
-//   - Compress: false, CompressType: Gz, LocalTime: true
-//   - DateDirLayout: true, RotateByDay: true
-//   - MaxBufferSize: 256KB, SyncInterval: 1s
-//   - TimeFormat: DefaultTimeFormat, 时间格式, 默认: time.RFC3339
+//   - Level: INFO - 日志级别为信息级别
+//   - Formatter: Def{} - 使用默认格式输出
+//   - Caller: false - 不记录调用者信息
+//   - Fields: []Field{} - 无预设字段
+//   - SamplerTick: 10s - 采样窗口为10秒
+//   - SamplerInitial: 3 - 前3条日志放行
+//   - SamplerThereafter: 10 - 之后每10条放行1条
+//   - LevelRouter: false - 不启用级别路由
+//   - OutputConsole: true - 输出到终端
+//   - NoColor: false - 启用彩色输出
+//   - OutputFile: true - 输出到文件
+//   - LogPath: 参数指定 - 日志文件路径由参数指定
+//   - Async: false - 不启用异步清理
+//   - MaxSize: 20MB - 单文件最大20MB
+//   - MaxFiles: 24 - 保留24个历史文件
+//   - MaxAge: 7天 - 保留7天日志
+//   - Compress: false - 不压缩历史日志
+//   - CompressType: Gz - 压缩类型为gzip
+//   - LocalTime: true - 使用本地时间命名
+//   - DateDirLayout: true - 按日期目录存放
+//   - RotateByDay: true - 按天轮转文件
+//   - MaxBufferSize: 256KB - 缓冲区256KB
+//   - SyncInterval: 1s - 每秒同步
+//   - TimeFormat: RFC3339 - 时间格式为RFC3339
 //
 // 返回:
 //   - *Config: 配置实例, 所有字段都设置了默认值
@@ -294,6 +318,12 @@ type Config struct {
 	// 默认 time.RFC3339，支持 Go time 包所有格式常量
 	// 常用值: time.RFC3339, time.DateTime, time.TimeOnly
 	TimeFormat string
+
+	// LevelRouter 启用级别路由
+	// 为 true 时，自动在 LogPath 同级目录创建 {LEVEL}.log 文件
+	// 例: LogPath="logs/app.log" → 创建 logs/DEBUG.log, logs/INFO.log 等
+	// 注意：启用后，每条日志会同时写入主文件和对应级别专属文件
+	LevelRouter bool
 }
 
 // NewSampler 根据配置创建采样器
@@ -410,6 +440,22 @@ func (c *Config) Validate() error {
 		// MaxAge 不能为负数
 		if c.MaxAge < 0 {
 			return errors.New("max age must be >= 0")
+		}
+	}
+
+	// 验证级别路由配置
+	if c.LevelRouter {
+		// 必须设置文件输出
+		if !c.OutputFile || c.LogPath == "" {
+			return errors.New("level router requires file output and log path")
+		}
+		// 检查路径冲突：LogPath 不能与任何级别文件冲突
+		dir := filepath.Dir(c.LogPath)
+		for _, lvl := range AllLevels() {
+			lvlPath := filepath.Join(dir, lvl.String()+".log")
+			if lvlPath == c.LogPath {
+				return fmt.Errorf("log path %s conflicts with level file path", c.LogPath)
+			}
 		}
 	}
 

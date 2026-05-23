@@ -1,6 +1,7 @@
 package fastlog
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -136,6 +137,7 @@ type Logger struct {
 	sampler *Sampler       // 日志采样器, nil 表示不启用采样
 	mu      sync.Mutex     // 日志记录器的互斥锁
 	level   atomic.Int32   // 运行时日志级别, 支持动态调整, 初始化时从 config.Level 设置
+	hooks   []hook         // 内部 hooks, 用于级别路由等扩展功能
 }
 
 // New 创建一个新的日志记录器
@@ -192,7 +194,42 @@ func New(cfg *Config) *Logger {
 	// 以 Config.Level 作为运行时级别的初始值
 	l.level.Store(int32(config.Level))
 
+	// 如果启用级别路由，自动初始化 hooks
+	if config.LevelRouter {
+		l.initLevelHooks(config)
+	}
+
 	return l
+}
+
+// initLevelHooks 初始化级别路由 hooks（内部方法）
+// 为 >= cfg.Level 的每个级别创建专属文件 hook
+func (l *Logger) initLevelHooks(cfg *Config) {
+	dir := filepath.Dir(cfg.LogPath)
+
+	// 为 >= cfg.Level 的每个级别创建专属文件
+	for _, lvl := range AllLevels() {
+		if lvl < cfg.Level {
+			continue // 低于设置级别的级别不创建专属文件
+		}
+
+		// 创建级别专属配置
+		lvlCfg := cfg.Clone()
+		lvlCfg.LogPath = filepath.Join(dir, lvl.String()+".log")
+		lvlCfg.OutputConsole = false // 级别路由不输出到控制台，防止影响主日志记录
+		lvlCfg.LevelRouter = false   // 防止递归
+
+		// 创建写入器
+		writer := lvlCfg.NewWriter()
+		if writer != nil {
+			l.hooks = append(l.hooks, &levelHook{
+				level:  lvl, // 级别
+				writer: writer,
+			})
+		} else {
+			_, _ = fmt.Fprintf(os.Stderr, "failed to create level file: %s\n", lvlCfg.LogPath)
+		}
+	}
 }
 
 // SetLevel 运行时动态修改日志级别, 立即生效
@@ -252,12 +289,19 @@ func (l *Logger) log(level Level, msg string, fields []Field) {
 		return
 	}
 
-	// 写入日志
+	// 写入日志（主文件 + hooks）
 	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	_, err = l.writer.Write(data)
-	l.mu.Unlock()
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "write error: %v\n", err)
+	}
+
+	// 执行内部 hooks（级别路由）
+	// Fire 方法内部会检查级别是否匹配
+	for _, h := range l.hooks {
+		_ = h.Fire(entry, data) // 忽略 hook 错误，避免影响主流程
 	}
 }
 
@@ -434,10 +478,23 @@ func (l *Logger) Panicw(msg string, fields ...Field) {
 // 返回:
 //   - error: 同步过程中的错误, 如果写入器不支持同步则返回 nil
 func (l *Logger) Sync() error {
+	var errs []error
+
+	// 同步主写入器
 	if syncer, ok := l.writer.(interface{ Sync() error }); ok {
-		return syncer.Sync()
+		if err := syncer.Sync(); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+
+	// 同步所有 hooks
+	for _, h := range l.hooks {
+		if err := h.Sync(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // Close 关闭日志记录器
@@ -445,7 +502,21 @@ func (l *Logger) Sync() error {
 // 返回:
 //   - error: 关闭过程中的错误
 func (l *Logger) Close() error {
-	return l.writer.Close()
+	var errs []error
+
+	// 关闭主写入器
+	if err := l.writer.Close(); err != nil {
+		errs = append(errs, err)
+	}
+
+	// 关闭所有 hooks
+	for _, h := range l.hooks {
+		if err := h.Close(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // getCaller 获取调用者信息

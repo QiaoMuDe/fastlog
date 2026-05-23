@@ -283,10 +283,10 @@ Panic 同理：`ll.log(PANIC, ...)` + `ll.Sync()` + `panic(msg)`。
 ```go
 func NewLevelLogger(cfg *Config) *LevelLogger {
     if cfg == nil {
-        panic("fastlog: config is required for LevelLogger")
+        panic("config is required for LevelLogger")
     }
     if cfg.LogPath == "" {
-        panic("fastlog: LogPath is required for LevelLogger")
+        panic("LogPath is required for LevelLogger")
     }
 
     // 从 cfg.LogPath 提取目录
@@ -404,7 +404,7 @@ func (ll *LevelLogger) Close() error {
 for _, lvl := range allLevels {
     lvlPath := filepath.Join(dir, lvl.String()+".log")
     if lvlPath == cfg.LogPath {
-        panic(fmt.Sprintf("fastlog: LogPath %s conflicts with level file path", cfg.LogPath))
+        panic(fmt.Sprintf("LogPath %s conflicts with level file path", cfg.LogPath))
     }
 }
 ```

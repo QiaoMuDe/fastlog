@@ -50,7 +50,7 @@ func (lw *logWriter) WriteHeader(code int) {
 //   - http.Handler: 中间件处理后的处理器
 func LogRequest(log *Logger, next http.Handler) http.Handler {
 	if log == nil || next == nil {
-		log.Fatal("fastlog: invalid arguments")
+		log.Fatal("invalid arguments")
 	}
 
 	// 用HandlerFunc适配匿名函数，满足Handler接口

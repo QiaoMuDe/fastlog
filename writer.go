@@ -112,7 +112,7 @@ func (c *ColorWriter) Close() error {
 //   - p: 字节流数据
 //
 // 返回:
-//   - Level: 检测到的日志级别, 未识别时返回 INFO
+//   - Level: 检测到的日志级别, 未识别时返回 0
 func (c *ColorWriter) detectLevel(p []byte) Level {
 	// 从高优先级到低优先级匹配, 避免误判
 	for level := PANIC; level >= DEBUG; level-- {
@@ -120,7 +120,7 @@ func (c *ColorWriter) detectLevel(p []byte) Level {
 			return level
 		}
 	}
-	return INFO
+	return 0
 }
 
 // MultiWriter 多路写入器, 同时将日志写入多个输出目标

@@ -91,7 +91,7 @@ func TestDetectLevel(t *testing.T) {
 		{"PANIC", "[PANIC] msg", PANIC},
 		// 高优先级优先 (PANIC > DEBUG)
 		{"PANIC before DEBUG", "PANIC and DEBUG", PANIC},
-		{"no match", "some random text", INFO},
+		{"no match", "some random text", Level(0)},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
