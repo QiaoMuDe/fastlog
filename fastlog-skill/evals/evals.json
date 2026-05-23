@@ -1,0 +1,61 @@
+{
+  "skill_name": "fastlog",
+  "evals": [
+    {
+      "id": 1,
+      "name": "基础日志记录",
+      "prompt": "帮我写一个使用 fastlog 的基础示例，创建一个 Logger，记录 INFO 和 ERROR 级别的日志",
+      "expected_output": "包含 fastlog.New、logger.Info、logger.Error 的完整可运行代码，有 defer Close",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "生产环境配置",
+      "prompt": "我需要配置 fastlog 用于生产环境，日志文件放在 /var/log/myapp/app.log，只记录 WARN 及以上级别，启用级别路由功能",
+      "expected_output": "使用 fastlog.Prod 或 NewConfig 配置，启用 LevelRouter，正确的日志路径和级别",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "结构化日志字段",
+      "prompt": "用 fastlog 记录一条结构化日志，包含用户ID（整数）、用户名（字符串）、操作耗时（Duration）、是否成功（布尔值）",
+      "expected_output": "使用 Infow 方法，包含 fastlog.Int、fastlog.String、fastlog.Duration、fastlog.Bool 字段",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "Web服务集成",
+      "prompt": "创建一个 HTTP 服务，使用 fastlog 记录每个请求的方法、路径、IP 和处理时间",
+      "expected_output": "包含 http.HandleFunc、fastlog.Infow、结构化字段（method、path、ip、elapsed）的完整代码",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "动态调整日志级别",
+      "prompt": "用 fastlog 实现一个可以通过 HTTP 接口动态调整日志级别的服务",
+      "expected_output": "包含 logger.SetLevel、根据参数切换不同级别、返回当前级别的 HTTP 处理函数",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "容器环境配置",
+      "prompt": "配置 fastlog 用于 Docker 容器环境，输出 JSON 格式到 stdout",
+      "expected_output": "使用 fastlog.Docker()，JSON 格式，不输出到文件",
+      "files": []
+    },
+    {
+      "id": 7,
+      "name": "错误处理日志",
+      "prompt": "用 fastlog 记录数据库查询失败的错误，包含 SQL 语句和错误详情",
+      "expected_output": "使用 Errorw 方法，包含 fastlog.Error、fastlog.String 字段",
+      "files": []
+    },
+    {
+      "id": 8,
+      "name": "日志采样配置",
+      "prompt": "配置 fastlog 对 DEBUG 日志进行采样，10秒窗口内前5条放行，之后每20条放行1条",
+      "expected_output": "配置 SamplerTick、SamplerInitial、SamplerThereafter 参数",
+      "files": []
+    }
+  ]
+}
