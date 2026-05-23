@@ -30,6 +30,7 @@
 | 🔒 **线程安全** | `sync.Mutex` 保证写入安全 |
 | 📦 **一站式集成** | 基于 [logrotatex](https://gitee.com/MM-Q/logrotatex) 实现日志轮转、缓冲写入，[comprx](https://gitee.com/MM-Q/comprx) 实现压缩，用户无感知 |
 | 🎚️ **动态级别** | 运行时通过 `SetLevel()` 调整日志级别，无需重启，基于 `atomic.Int32` 无锁实现 |
+| 🗂️ **级别路由** | 通过 `LevelRouter` 启用，自动按级别分发到专属文件（如 ERROR.log），便于快速定位问题 |
 
 ---
 
@@ -104,14 +105,14 @@ logger.Info("容器启动")                          // JSON 格式输出到 std
 
 FastLog 提供了 6 种场景化配置函数，覆盖最常见的使用场景：
 
-| 函数 | 级别 | 输出 | 格式 | 调用者 | 采样 | 轮转 | 适用场景 |
-|------|------|------|------|--------|------|------|----------|
-| `NewConfig(path)` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | 通用默认 |
-| `Default()` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | 快速上手 |
-| `Dev(path)` | DEBUG | 终端+文件 | Def | ✅ | ❌ | ❌ | 开发调试 |
-| `Prod(path)` | WARN | 仅文件 | Def | ❌ | ✅ | ✅ | 生产环境 |
-| `Console()` | DEBUG | 仅终端 | Def | ❌ | ❌ | ❌ | 本地调试 |
-| `Docker()` | WARN | 仅终端 | JSON | ❌ | ✅ | ❌ | 容器/K8s |
+| 函数 | 级别 | 输出 | 格式 | 调用者 | 采样 | 轮转 | 级别路由 | 适用场景 |
+|------|------|------|------|--------|------|------|----------|----------|
+| `NewConfig(path)` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | 通用默认 |
+| `Default()` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | 快速上手 |
+| `Dev(path)` | DEBUG | 终端+文件 | Def | ✅ | ❌ | ❌ | ❌ | 开发调试 |
+| `Prod(path)` | WARN | 仅文件 | Def | ❌ | ✅ | ✅ | ✅ | 生产环境 |
+| `Console()` | DEBUG | 仅终端 | Def | ❌ | ❌ | ❌ | ❌ | 本地调试 |
+| `Docker()` | WARN | 仅终端 | JSON | ❌ | ✅ | ❌ | ❌ | 容器/K8s |
 
 ```go
 // 开发环境：DEBUG 级别、彩色输出、调用者信息
@@ -259,6 +260,42 @@ logger := fastlog.New(cfg)
 | ERROR | 红色加粗 | `FgRed + Bold` |
 | FATAL | 红色加粗 | `FgRed + Bold` |
 | PANIC | 紫色加粗 | `FgMagenta + Bold` |
+
+### 级别路由
+
+通过 `LevelRouter` 启用级别路由功能，日志会同时写入全量文件和级别专属文件：
+
+```go
+// 启用级别路由
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.LevelRouter = true  // 启用级别路由
+
+logger := fastlog.New(cfg)
+defer func() { _ = logger.Close() }()
+
+// 这些日志会同时写入 app.log 和对应的级别文件
+logger.Debug("调试信息")  // 写入 app.log + DEBUG.log
+logger.Info("业务信息")   // 写入 app.log + INFO.log
+logger.Warn("警告信息")   // 写入 app.log + WARN.log
+logger.Error("错误信息")  // 写入 app.log + ERROR.log
+```
+
+**生成的日志文件：**
+
+| 文件 | 说明 |
+|------|------|
+| `app.log` | 全量日志，包含所有级别 |
+| `DEBUG.log` | 仅包含 DEBUG 级别 |
+| `INFO.log` | 仅包含 INFO 级别 |
+| `WARN.log` | 仅包含 WARN 级别 |
+| `ERROR.log` | 仅包含 ERROR 级别 |
+| `FATAL.log` | 仅包含 FATAL 级别 |
+| `PANIC.log` | 仅包含 PANIC 级别 |
+
+**使用场景：**
+- 快速定位错误：直接查看 ERROR.log，无需在大文件中搜索
+- 分离关注点：运维关注 ERROR.log，开发关注 DEBUG.log
+- 监控集成：ERROR.log 可直接接入错误监控系统
 
 ### 日志采样
 

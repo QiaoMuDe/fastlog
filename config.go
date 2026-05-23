@@ -161,6 +161,7 @@ func Dev(logPath string) *Config {
 //   - MaxFiles: 14 (保留2周)
 //   - MaxAge: 14 (保留14天)
 //   - Compress: true (开启压缩, 节省磁盘)
+//   - LevelRouter: true (启用级别路由, 便于快速定位错误)
 //
 // 参数:
 //   - logPath: 日志文件路径
@@ -176,6 +177,7 @@ func Prod(logPath string) *Config {
 	cfg.MaxFiles = 14
 	cfg.MaxAge = 14
 	cfg.Compress = true
+	cfg.LevelRouter = true
 	return cfg
 }
 
