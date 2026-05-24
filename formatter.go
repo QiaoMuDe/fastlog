@@ -14,7 +14,7 @@ type Formatter interface {
 }
 
 // Def 默认格式
-// 格式: 2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
+// 格式: 2025-01-15 10:30:45 | INFO    | main.go:main:15 - 用户登录成功
 type Def struct{}
 
 // Format 实现默认格式化器
@@ -102,7 +102,7 @@ func (f JSON) Format(entry *Entry) ([]byte, error) {
 }
 
 // Simple 简单格式
-// 格式: 2025-01-15T10:30:45 INFO  用户登录成功
+// 格式: 2025-01-15 10:30:45 INFO  用户登录成功
 type Simple struct{}
 
 // Format 实现简单格式
@@ -137,7 +137,7 @@ func (f Simple) Format(entry *Entry) ([]byte, error) {
 }
 
 // KV 键值对格式
-// 格式: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
+// 格式: time=2025-01-15 10:30:45 level=INFO message=用户登录成功
 type KV struct{}
 
 // Format 实现键值对格式
@@ -173,9 +173,9 @@ func (f KV) Format(entry *Entry) ([]byte, error) {
 }
 
 // Compact 极简格式
-// 格式: [I] 2025-01-15T10:30:45Z 用户登录成功
+// 格式: [I] 2025-01-15 10:30:45 用户登录成功
 // 特点: 级别首字母 + 时间戳，简洁易读，适合容器环境
-// 时间格式遵循 Config.TimeFormat，默认 time.RFC3339
+// 时间格式遵循 Config.TimeFormat，默认 time.DateTime (2006-01-02 15:04:05)
 type Compact struct{}
 
 // Format 实现 Compact 格式

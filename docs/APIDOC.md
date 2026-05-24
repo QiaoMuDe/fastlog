@@ -534,7 +534,7 @@ Write 写入数据到控制台
 type Def struct{}
 ```
 
-Def 默认格式 格式: 2025-01-15T10:30:45 | INFO | main.go:main:15 - 用户登录成功
+Def 默认格式 格式: 2025-01-15 10:30:45 | INFO | main.go:main:15 - 用户登录成功
 
 #### func (f Def) Format
 
@@ -916,7 +916,7 @@ Format 实现 JSON 格式
 type KV struct{}
 ```
 
-KV 键值对格式 格式: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
+KV 键值对格式 格式: time=2025-01-15 10:30:45 level=INFO message=用户登录成功
 
 #### func (f KV) Format
 
@@ -1434,7 +1434,7 @@ Allow 判断是否放行这条日志
 type Simple struct{}
 ```
 
-Simple 简单格式 格式: 2025-01-15T10:30:45 INFO 用户登录成功
+Simple 简单格式 格式: 2025-01-15 10:30:45 INFO 用户登录成功
 
 #### func (f Simple) Format
 

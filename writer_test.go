@@ -27,7 +27,7 @@ func TestColorWriterNoColor(t *testing.T) {
 	buf := &bytes.Buffer{}
 	cw := &ColorWriter{w: buf, NoColor: true}
 
-	data := []byte("2026-01-15T10:30:45Z | INFO | hello\n")
+	data := []byte("2026-01-15 10:30:45 | INFO | hello\n")
 	n, err := cw.Write(data)
 	if err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -45,7 +45,7 @@ func TestColorWriterColorPassthrough(t *testing.T) {
 	cw := &ColorWriter{w: buf, NoColor: false}
 
 	// 包含 INFO 关键字的数据, 确保内容完整通过
-	data := []byte("2026-01-15T10:30:45Z | INFO | hello\n")
+	data := []byte("2026-01-15 10:30:45 | INFO | hello\n")
 	_, err := cw.Write(data)
 	if err != nil {
 		t.Fatalf("Write() error = %v", err)

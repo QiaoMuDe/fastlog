@@ -64,7 +64,7 @@ func (f Field) Type() FieldType {
 //   - UintType/Uint64Type: 转为 10 进制无符号字符串
 //   - Float64Type: 转为浮点数字符串
 //   - BoolType: 转为 "true" 或 "false"
-//   - TimeType: 转为 RFC3339 格式时间字符串
+//   - TimeType: 转为 DateTime 格式时间字符串 (2006-01-02 15:04:05)
 //   - DurationType: 转为持续时间字符串 (如 "1h30m")
 //   - AnyType: 使用 fmt.Sprintf("%v") 格式化
 //   - 其他类型: 返回空字符串

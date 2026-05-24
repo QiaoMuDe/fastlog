@@ -13,7 +13,7 @@ func main() {
 func printFormats() {
 	// =========================================================
 	// 1. Def 格式 (默认格式)
-	// 格式: 2025-01-15T10:30:45 | INFO    | main.go:main:15 - 消息
+	// 格式: 2025-01-15 10:30:45 | INFO    | main.go:main:15 - 消息
 	// =========================================================
 	defLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.DEBUG,
@@ -72,7 +72,7 @@ func printFormats() {
 
 	// =========================================================
 	// 3. Simple 格式
-	// 格式: 2025-01-15T10:30:45 INFO 消息
+	// 格式: 2025-01-15 10:30:45 INFO 消息
 	// =========================================================
 	simpleLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.DEBUG,
@@ -130,7 +130,7 @@ func printFormats() {
 
 	// =========================================================
 	// 5. Compact 格式 (极简格式, 时间格式遵循 TimeFormat)
-	// 格式: [I] 2025-01-15T10:30:45Z 用户登录成功 | user=admin seq=1 action=login
+	// 格式: [I] 2025-01-15 10:30:45 用户登录成功 | user=admin seq=1 action=login
 	// =========================================================
 	compactLogger := fastlog.New(&fastlog.Config{
 		Level:         fastlog.DEBUG,
