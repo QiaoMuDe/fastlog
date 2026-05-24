@@ -266,6 +266,16 @@ type Config struct {
 	// 例: LogPath="logs/app.log" → 创建 logs/DEBUG.log, logs/INFO.log 等
 	// 注意：启用后，每条日志会同时写入主文件和对应级别专属文件
 	LevelRouter bool
+
+	// BufferEnabled 是否启用缓冲写入
+	// true:  使用 BufferedWriter（默认），提升写入性能
+	// false: 直接使用 LogRotateX，无缓冲，立即落盘
+	//
+	// 使用建议：
+	//   - 开发环境：设为 false，立即看到日志，便于调试
+	//   - 生产环境：设为 true（默认），提升写入性能
+	//   - 高可靠性场景：设为 false，避免数据丢失风险
+	BufferEnabled bool
 }
 ```
 
@@ -321,6 +331,7 @@ Default 创建一个默认配置实例
 - `LocalTime`: true - 使用本地时间命名
 - `DateDirLayout`: true - 按日期目录存放
 - `RotateByDay`: true - 按天轮转文件
+- `BufferEnabled`: true - 启用缓冲写入
 - `MaxBufferSize`: 256KB - 缓冲区256KB
 - `SyncInterval`: 1s - 每秒同步
 - `TimeFormat`: RFC3339 - 时间格式为RFC3339
@@ -343,6 +354,7 @@ Dev 创建开发环境配置
 - `MaxSize`: 10MB (小文件, 便于查看)
 - `Compress`: false (不压缩, 快速写入)
 - `RotateByDay`: false (不按天轮转)
+- `BufferEnabled`: false (禁用缓冲, 立即写入, 便于调试)
 
 **参数:**
 - `logPath`: 日志文件路径
@@ -403,6 +415,7 @@ NewConfig 创建一个默认配置实例
 - `LocalTime`: true - 使用本地时间命名
 - `DateDirLayout`: true - 按日期目录存放
 - `RotateByDay`: true - 按天轮转文件
+- `BufferEnabled`: true - 启用缓冲写入
 - `MaxBufferSize`: 256KB - 缓冲区256KB
 - `SyncInterval`: 1s - 每秒同步
 - `TimeFormat`: RFC3339 - 时间格式为RFC3339
@@ -430,6 +443,7 @@ Prod 创建生产环境配置
 - `MaxAge`: 14 (保留14天)
 - `Compress`: true (开启压缩, 节省磁盘)
 - `LevelRouter`: true (启用级别路由, 便于快速定位错误)
+- `BufferEnabled`: true (启用缓冲, 提升写入性能)
 
 **参数:**
 - `logPath`: 日志文件路径

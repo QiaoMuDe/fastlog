@@ -31,6 +31,7 @@
 | 📦 **一站式集成** | 基于 [logrotatex](https://gitee.com/MM-Q/logrotatex) 实现日志轮转、缓冲写入，[comprx](https://gitee.com/MM-Q/comprx) 实现压缩，用户无感知 |
 | 🎚️ **动态级别** | 运行时通过 `SetLevel()` 调整日志级别，无需重启，基于 `atomic.Int32` 无锁实现 |
 | 🗂️ **级别路由** | 通过 `LevelRouter` 启用，自动按级别分发到专属文件（如 ERROR.log），便于快速定位问题 |
+| 💾 **缓冲控制** | 通过 `BufferEnabled` 控制是否启用缓冲写入，开发环境立即落盘，生产环境批量写入 |
 
 ---
 
@@ -105,14 +106,14 @@ logger.Info("容器启动")                          // JSON 格式输出到 std
 
 FastLog 提供了 6 种场景化配置函数，覆盖最常见的使用场景：
 
-| 函数 | 级别 | 输出 | 格式 | 调用者 | 采样 | 轮转 | 级别路由 | 适用场景 |
-|------|------|------|------|--------|------|------|----------|----------|
-| `NewConfig(path)` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | 通用默认 |
-| `Default()` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | 快速上手 |
-| `Dev(path)` | DEBUG | 终端+文件 | Def | ✅ | ❌ | ❌ | ❌ | 开发调试 |
-| `Prod(path)` | WARN | 仅文件 | Def | ❌ | ✅ | ✅ | ✅ | 生产环境 |
-| `Console()` | DEBUG | 仅终端 | Def | ❌ | ❌ | ❌ | ❌ | 本地调试 |
-| `Docker()` | WARN | 仅终端 | JSON | ❌ | ✅ | ❌ | ❌ | 容器/K8s |
+| 函数 | 级别 | 输出 | 格式 | 调用者 | 采样 | 轮转 | 级别路由 | 缓冲 | 适用场景 |
+|------|------|------|------|--------|------|------|----------|------|----------|
+| `NewConfig(path)` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | ✅ | 通用默认 |
+| `Default()` | INFO | 终端+文件 | Def | ❌ | ✅ | ✅ | ❌ | ✅ | 快速上手 |
+| `Dev(path)` | DEBUG | 终端+文件 | Def | ✅ | ❌ | ❌ | ❌ | ❌ | 开发调试 |
+| `Prod(path)` | WARN | 仅文件 | Def | ❌ | ✅ | ✅ | ✅ | ✅ | 生产环境 |
+| `Console()` | DEBUG | 仅终端 | Def | ❌ | ❌ | ❌ | ❌ | N/A | 本地调试 |
+| `Docker()` | WARN | 仅终端 | JSON | ❌ | ✅ | ❌ | ❌ | N/A | 容器/K8s |
 
 ```go
 // 开发环境：DEBUG 级别、彩色输出、调用者信息
@@ -237,6 +238,30 @@ fmt.Println(currentLevel)  // DEBUG
 - 生产环境出问题，临时开启 DEBUG 排查，无需重启服务
 - 根据系统负载动态调整日志详细程度
 - 通过 HTTP API 热更新日志级别
+
+### 缓冲控制
+
+通过 `BufferEnabled` 控制是否启用缓冲写入：
+
+```go
+// 默认配置启用缓冲（批量写入，性能更好）
+logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
+
+// 开发环境自动禁用缓冲（Dev 函数内部设置 BufferEnabled = false）
+logger := fastlog.New(fastlog.Dev("logs/dev.log"))
+
+// 手动禁用缓冲（立即落盘，数据更安全）
+cfg := fastlog.NewConfig("logs/app.log")
+cfg.BufferEnabled = false
+logger := fastlog.New(cfg)
+```
+
+**缓冲控制对比：**
+
+| 模式 | BufferEnabled | 特点 | 适用场景 |
+|------|---------------|------|----------|
+| 缓冲写入 | `true` | 批量写入磁盘，性能更好，有延迟 | 生产环境 |
+| 直接写入 | `false` | 立即落盘，数据安全，无延迟 | 开发调试、高可靠性场景 |
 
 ### 彩色输出
 

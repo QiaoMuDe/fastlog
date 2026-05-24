@@ -40,6 +40,7 @@ const DefaultTimeFormat = time.RFC3339
 //   - LocalTime: true - 使用本地时间命名
 //   - DateDirLayout: true - 按日期目录存放
 //   - RotateByDay: true - 按天轮转文件
+//   - BufferEnabled: true - 默认启用缓冲写入
 //   - MaxBufferSize: 256KB - 缓冲区256KB
 //   - SyncInterval: 1s - 每秒同步
 //   - TimeFormat: RFC3339 - 时间格式为RFC3339
@@ -79,6 +80,7 @@ func NewConfig(logPath string) *Config {
 		RotateByDay:   true,                  // 是否按天轮转文件
 
 		// 缓冲写入配置
+		BufferEnabled: true,            // 默认启用缓冲写入
 		MaxBufferSize: 256 * 1024,      // 缓冲区最大大小 (字节) , 零值默认 256KB。
 		SyncInterval:  1 * time.Second, // 同步间隔, 零值默认 1秒。
 
@@ -113,6 +115,7 @@ func NewConfig(logPath string) *Config {
 //   - LocalTime: true - 使用本地时间命名
 //   - DateDirLayout: true - 按日期目录存放
 //   - RotateByDay: true - 按天轮转文件
+//   - BufferEnabled: true - 默认启用缓冲写入
 //   - MaxBufferSize: 256KB - 缓冲区256KB
 //   - SyncInterval: 1s - 每秒同步
 //   - TimeFormat: RFC3339 - 时间格式为RFC3339
@@ -132,6 +135,7 @@ func Default() *Config {
 //   - MaxSize: 10MB (小文件, 便于查看)
 //   - Compress: false (不压缩, 快速写入)
 //   - RotateByDay: false (不按天轮转)
+//   - BufferEnabled: false (禁用缓冲, 立即写入, 便于调试)
 //
 // 参数:
 //   - logPath: 日志文件路径
@@ -148,6 +152,7 @@ func Dev(logPath string) *Config {
 	cfg.MaxSize = 10
 	cfg.Compress = false
 	cfg.RotateByDay = false
+	cfg.BufferEnabled = false // 开发环境禁用缓冲, 立即写入
 	return cfg
 }
 
@@ -317,15 +322,25 @@ type Config struct {
 	SyncInterval time.Duration
 
 	// TimeFormat 时间格式
-	// 默认 time.RFC3339，支持 Go time 包所有格式常量
+	// 默认 time.RFC3339, 支持 Go time 包所有格式常量
 	// 常用值: time.RFC3339, time.DateTime, time.TimeOnly
 	TimeFormat string
 
 	// LevelRouter 启用级别路由
-	// 为 true 时，自动在 LogPath 同级目录创建 {LEVEL}.log 文件
+	// 为 true 时, 自动在 LogPath 同级目录创建 {LEVEL}.log 文件
 	// 例: LogPath="logs/app.log" → 创建 logs/DEBUG.log, logs/INFO.log 等
-	// 注意：启用后，每条日志会同时写入主文件和对应级别专属文件
+	// 注意: 启用后, 每条日志会同时写入主文件和对应级别专属文件
 	LevelRouter bool
+
+	// BufferEnabled 是否启用缓冲写入
+	// true:  使用 BufferedWriter (默认) , 提升写入性能
+	// false: 直接使用 LogRotateX, 无缓冲, 立即落盘
+	//
+	// 使用建议:
+	//   - 开发环境: 设为 false, 立即看到日志, 便于调试
+	//   - 生产环境: 设为 true (默认) , 提升写入性能
+	//   - 高可靠性场景: 设为 false, 避免数据丢失风险
+	BufferEnabled bool
 }
 
 // NewSampler 根据配置创建采样器
@@ -379,7 +394,7 @@ func (c *Config) NewWriter() io.WriteCloser {
 
 // newFileWriter 创建文件写入器 (内部辅助方法)
 func (c *Config) newFileWriter() io.WriteCloser {
-	// 创建日志切割器
+	// 创建日志切割器 (核心写入器)
 	logger := &logrotatex.LogRotateX{
 		LogFilePath:   c.LogPath,       // 日志文件路径
 		MaxSize:       c.MaxSize,       // 最大日志文件大小, 单位为MB
@@ -393,13 +408,16 @@ func (c *Config) newFileWriter() io.WriteCloser {
 		CompressType:  c.CompressType,  // 压缩类型
 	}
 
-	// 配置缓冲写入器
+	// 如果禁用缓冲, 直接返回 LogRotateX (立即落盘)
+	if !c.BufferEnabled {
+		return logger
+	}
+
+	// 启用缓冲, 包装 BufferedWriter (批量写入, 性能更好)
 	bufCfg := &logrotatex.BufCfg{
 		SyncInterval:  c.SyncInterval,  // 同步间隔
 		MaxBufferSize: c.MaxBufferSize, // 缓冲区最大容量
 	}
-
-	// 返回带缓冲的批量写入器, 嵌入日志切割器
 	return logrotatex.NewBufferedWriter(logger, bufCfg)
 }
 
@@ -451,7 +469,7 @@ func (c *Config) Validate() error {
 		if !c.OutputFile || c.LogPath == "" {
 			return errors.New("level router requires file output and log path")
 		}
-		// 检查路径冲突：LogPath 不能与任何级别文件冲突
+		// 检查路径冲突: LogPath 不能与任何级别文件冲突
 		dir := filepath.Dir(c.LogPath)
 		for _, lvl := range AllLevels() {
 			lvlPath := filepath.Join(dir, lvl.String()+".log")
