@@ -145,22 +145,7 @@ defer func() { _ = logger.Close() }()
 
 ### 完整自定义配置
 
-```go
-cfg := &fastlog.Config{
-    Level:         fastlog.INFO,
-    Formatter:     fastlog.JSON{},
-    Caller:        true,
-    OutputConsole: true,
-    OutputFile:    true,
-    LogPath:       "logs/app.log",
-    MaxSize:       100,
-    MaxFiles:      7,
-    Compress:      true,
-}
-
-logger := fastlog.New(cfg)
-defer func() { _ = logger.Close() }()
-```
+完整配置请参考 [API 文档](docs/APIDOC.md)
 
 ### 结构化字段
 
