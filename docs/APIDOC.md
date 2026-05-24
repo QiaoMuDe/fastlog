@@ -323,9 +323,9 @@ Default 创建一个默认配置实例
 - `OutputFile`: true - 输出到文件
 - `LogPath`: 参数指定 - 日志文件路径由参数指定
 - `Async`: false - 不启用异步清理
-- `MaxSize`: 20MB - 单文件最大20MB
-- `MaxFiles`: 24 - 保留24个历史文件
-- `MaxAge`: 7天 - 保留7天日志
+- `MaxSize`: 20MB - 单文件最大大小为20MB, 超过后轮转
+- `MaxFiles`: 0 - 不限制历史文件保留数量
+- `MaxAge`: 0 - 不限制日志保留天数
 - `Compress`: false - 不压缩历史日志
 - `CompressType`: Gz - 压缩类型为gzip
 - `LocalTime`: true - 使用本地时间命名
@@ -351,9 +351,7 @@ Dev 创建开发环境配置
 - `Level`: DEBUG (更多信息便于调试)
 - `Caller`: true (开启调用者信息, 方便定位代码)
 - `SamplerTick`: 0 (关闭采样, 保留所有日志)
-- `MaxSize`: 10MB (小文件, 便于查看)
 - `Compress`: false (不压缩, 快速写入)
-- `RotateByDay`: false (不按天轮转)
 - `BufferEnabled`: false (禁用缓冲, 立即写入, 便于调试)
 
 **参数:**
@@ -407,9 +405,9 @@ NewConfig 创建一个默认配置实例
 - `OutputFile`: true - 输出到文件
 - `LogPath`: 参数指定 - 日志文件路径由参数指定
 - `Async`: false - 不启用异步清理
-- `MaxSize`: 20MB - 单文件最大20MB
-- `MaxFiles`: 24 - 保留24个历史文件
-- `MaxAge`: 7天 - 保留7天日志
+- `MaxSize`: 20MB - 单文件最大大小为20MB, 超过后轮转
+- `MaxFiles`: 0 - 不限制历史文件保留数量
+- `MaxAge`: 0 - 不限制日志保留天数
 - `Compress`: false - 不压缩历史日志
 - `CompressType`: Gz - 压缩类型为gzip
 - `LocalTime`: true - 使用本地时间命名
@@ -439,11 +437,10 @@ Prod 创建生产环境配置
 - `OutputConsole`: false (只输出到文件, 无终端开销)
 - `Async`: true (异步清理, 性能更好)
 - `MaxSize`: 100MB (大文件, 减少轮转频率)
-- `MaxFiles`: 14 (保留2周)
-- `MaxAge`: 14 (保留14天)
+- `MaxFiles`: 0 (不限制历史文件保留数量)
+- `MaxAge`: 30 (保留30天)
 - `Compress`: true (开启压缩, 节省磁盘)
 - `LevelRouter`: true (启用级别路由, 便于快速定位错误)
-- `BufferEnabled`: true (启用缓冲, 提升写入性能)
 
 **参数:**
 - `logPath`: 日志文件路径

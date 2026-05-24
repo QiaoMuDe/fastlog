@@ -32,9 +32,9 @@ const DefaultTimeFormat = time.DateTime // 2006-01-02 15:04:05
 //   - OutputFile: true - 输出到文件
 //   - LogPath: 参数指定 - 日志文件路径由参数指定
 //   - Async: false - 不启用异步清理
-//   - MaxSize: 20MB - 单文件最大20MB
-//   - MaxFiles: 24 - 保留24个历史文件
-//   - MaxAge: 7天 - 保留7天日志
+//   - MaxSize: 20MB - 单文件最大大小为20MB, 超过后轮转
+//   - MaxFiles: 0 - 不限制历史文件保留数量
+//   - MaxAge: 0 - 不限制日志保留天数
 //   - Compress: false - 不压缩历史日志
 //   - CompressType: Gz - 压缩类型为gzip
 //   - LocalTime: true - 使用本地时间命名
@@ -70,9 +70,9 @@ func NewConfig(logPath string) *Config {
 		OutputFile:    true,                  // 是否输出到文件
 		LogPath:       logPath,               // 日志文件路径
 		Async:         false,                 // 是否启用异步清理 (单协程、合并触发) , 关闭文件时后台清理旧日志
-		MaxSize:       20,                    // 单文件最大大小 (MB) , 超过后触发轮转。零值默认 10MB。
-		MaxFiles:      24,                    // 保留的历史日志文件数, 超过的旧文件自动删除。零值表示不限制。
-		MaxAge:        7,                     // 保留天数, 超过指定天数的旧文件自动清理。零值表示不限制。
+		MaxSize:       20,                    // 单文件最大大小 (MB)
+		MaxFiles:      0,                     // 保留的历史日志文件数, 0 表示不限制
+		MaxAge:        0,                     // 保留天数, 0 表示不限制
 		Compress:      false,                 // 是否压缩历史日志文件
 		CompressType:  comprx.CompressTypeGz, // 压缩类型, 默认: comprx.CompressTypeGz
 		LocalTime:     true,                  // 是否使用本地时间命名轮转文件
@@ -94,6 +94,7 @@ func NewConfig(logPath string) *Config {
 // 默认配置同时输出到终端和文件, 适用于开发和测试环境。
 //
 // 默认配置详情:
+//   - logPath: logs/app.log - 日志文件路径
 //   - Level: INFO - 日志级别为信息级别
 //   - Formatter: Def{} - 使用默认格式输出
 //   - Caller: false - 不记录调用者信息
@@ -107,9 +108,9 @@ func NewConfig(logPath string) *Config {
 //   - OutputFile: true - 输出到文件
 //   - LogPath: 参数指定 - 日志文件路径由参数指定
 //   - Async: false - 不启用异步清理
-//   - MaxSize: 20MB - 单文件最大20MB
-//   - MaxFiles: 24 - 保留24个历史文件
-//   - MaxAge: 7天 - 保留7天日志
+//   - MaxSize: 20MB - 单文件最大大小为20MB, 超过后轮转
+//   - MaxFiles: 0 - 不限制历史文件保留数量
+//   - MaxAge: 0 - 不限制日志保留天数
 //   - Compress: false - 不压缩历史日志
 //   - CompressType: Gz - 压缩类型为gzip
 //   - LocalTime: true - 使用本地时间命名
@@ -132,9 +133,7 @@ func Default() *Config {
 //   - Level: DEBUG (更多信息便于调试)
 //   - Caller: true (开启调用者信息, 方便定位代码)
 //   - SamplerTick: 0 (关闭采样, 保留所有日志)
-//   - MaxSize: 10MB (小文件, 便于查看)
 //   - Compress: false (不压缩, 快速写入)
-//   - RotateByDay: false (不按天轮转)
 //   - BufferEnabled: false (禁用缓冲, 立即写入, 便于调试)
 //
 // 参数:
@@ -149,9 +148,7 @@ func Dev(logPath string) *Config {
 	cfg.SamplerTick = 0
 	cfg.SamplerInitial = 0
 	cfg.SamplerThereafter = 0
-	cfg.MaxSize = 10
 	cfg.Compress = false
-	cfg.RotateByDay = false
 	cfg.BufferEnabled = false // 开发环境禁用缓冲, 立即写入
 	return cfg
 }
@@ -163,8 +160,8 @@ func Dev(logPath string) *Config {
 //   - OutputConsole: false (只输出到文件, 无终端开销)
 //   - Async: true (异步清理, 性能更好)
 //   - MaxSize: 100MB (大文件, 减少轮转频率)
-//   - MaxFiles: 14 (保留2周)
-//   - MaxAge: 14 (保留14天)
+//   - MaxFiles: 0 (不限制历史文件保留数量)
+//   - MaxAge: 30 (保留30天)
 //   - Compress: true (开启压缩, 节省磁盘)
 //   - LevelRouter: true (启用级别路由, 便于快速定位错误)
 //
@@ -179,8 +176,8 @@ func Prod(logPath string) *Config {
 	cfg.OutputConsole = false
 	cfg.Async = true
 	cfg.MaxSize = 100
-	cfg.MaxFiles = 14
-	cfg.MaxAge = 14
+	cfg.MaxFiles = 0
+	cfg.MaxAge = 30
 	cfg.Compress = true
 	cfg.LevelRouter = true
 	return cfg
@@ -199,7 +196,6 @@ func Console() *Config {
 	cfg := NewConfig("")
 	cfg.Level = DEBUG
 	cfg.OutputFile = false
-	cfg.LogPath = ""
 	cfg.SamplerTick = 0
 	cfg.SamplerInitial = 0
 	cfg.SamplerThereafter = 0
@@ -214,7 +210,6 @@ func Console() *Config {
 //   - Formatter: JSON{} (结构化日志, 方便收集系统解析)
 //   - OutputConsole: true (输出到 stdout, 容器标准做法)
 //   - OutputFile: false (不写入文件, 由容器收集)
-//   - LogPath: "" (无文件路径)
 //   - SamplerTick: DefaultSamplerTick
 //   - SamplerInitial: DefaultSamplerInitial
 //   - SamplerThereafter: DefaultSamplerThereafter
@@ -227,7 +222,6 @@ func Docker() *Config {
 	cfg.Formatter = JSON{}
 	cfg.OutputConsole = true
 	cfg.OutputFile = false
-	cfg.LogPath = ""
 	return cfg
 }
 

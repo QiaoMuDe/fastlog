@@ -49,7 +49,6 @@ fastlog.Time(key, value)        // 时间
 fastlog.Duration(key, value)    // 时长
 fastlog.Error(err)              // 错误（key 固定为 "error"）
 fastlog.Any(key, value)         // 任意类型
-fastlog.Namespace(name)         // 命名空间（用于分组）
 ```
 
 ### 高级功能

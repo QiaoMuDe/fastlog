@@ -37,9 +37,16 @@ fastlog/
 ├── http.go             # HTTP 请求日志中间件
 ├── http_test.go        # HTTP 中间件测试
 │
+├── fastlog-skill/
+│   ├── SKILL.md          # FastLog 代码生成 Skill
+│   └── evals/
+│       └── evals.json    # Skill 测试用例
+│
 ├── docs/
-│   ├── timeformat-design.md    # 可配置时间格式设计方案
-│   ├── hook-design-v2.md       # Hook 机制 V2 方案（内部机制版）
+│   ├── timeformat-design.md      # 可配置时间格式设计方案
+│   ├── hook-design.md            # Hook 机制 V1 方案
+│   ├── hook-design-v2.md         # Hook 机制 V2 方案（内部机制版）
+│   ├── buffer-enabled-design.md  # 缓冲控制设计方案
 │   └── Go语言日志库功能与高级特性完整指南.md
 │
 └── examples/
@@ -50,6 +57,8 @@ fastlog/
     ├── sampler/        # 采样器演示
     │   └── main.go
     ├── formats/        # 5 种格式完整对比
+    │   └── main.go
+    ├── levelrouter/    # 级别路由功能演示
     │   └── main.go
     ├── webbench/       # Web 高并发日志写入演示
     │   └── main.go
@@ -62,22 +71,23 @@ fastlog/
 | 文件 | 行数 | 作用 | 规范程度 |
 |------|------|------|----------|
 | `go.mod` | ~21 | Go 模块定义，Go 1.25，依赖 goccy/go-json + color + logrotatex + comprx | ✅ 标准规范 |
-| `logger.go` | ~560 | Level 体系 + Entry 结构体 + Logger 实现 + EntryPool + getCaller + hooks 支持 | ✅ 集中清晰 |
-| `logger_test.go` | ~530 | Logger 单元测试（含格式化/结构化/采样/EntryPool/getCaller/动态级别/边界测试） | ✅ 覆盖完善 |
-| `logger_levelrouter_test.go` | ~280 | 级别路由功能测试（基础路由/级别过滤/路径冲突/Caller 信息/生产配置） | ✅ 新增覆盖 |
-| `hook.go` | ~100 | 内部 Hook 接口 + levelHook 实现（级别路由核心） | ✅ 设计合理 |
-| `config.go` | ~380 | Config 结构体 + 6 种场景化配置函数 + Validate/Clone/NewWriter/NewSampler + LevelRouter 字段 | ✅ 设计合理 |
-| `config_test.go` | ~340 | Config 单元测试（场景配置/Validate/Clone/NewWriter/NewSampler/TimeFormat/LevelRouter） | ✅ 新增覆盖 |
-| `field.go` | ~309 | Field 结构体 + 12 种类型构造函数 + 取值方法 | ✅ 设计合理 |
+| `logger.go` | ~513 | Level 体系 + Entry 结构体 + Logger 实现 + EntryPool + getCaller + hooks 支持 | ✅ 集中清晰 |
+| `logger_test.go` | ~461 | Logger 单元测试（含格式化/结构化/采样/EntryPool/getCaller/动态级别/边界测试） | ✅ 覆盖完善 |
+| `logger_levelrouter_test.go` | ~235 | 级别路由功能测试（基础路由/级别过滤/路径冲突/Caller 信息/生产配置） | ✅ 新增覆盖 |
+| `hook.go` | ~72 | 内部 Hook 接口 + levelHook 实现（级别路由核心） | ✅ 设计合理 |
+| `config.go` | ~442 | Config 结构体 + 6 种场景化配置函数 + Validate/Clone/NewWriter/NewSampler + LevelRouter/BufferEnabled | ✅ 设计合理 |
+| `config_test.go` | ~350 | Config 单元测试（场景配置/Validate/Clone/NewWriter/NewSampler/TimeFormat/LevelRouter） | ✅ 新增覆盖 |
+| `field.go` | ~358 | Field 结构体 + 12 种类型构造函数 + 取值方法 | ✅ 设计合理 |
 | `field_test.go` | ~362 | Field 单元测试 | ✅ 覆盖完善 |
-| `formatter.go` | ~190 | Formatter 接口 + 5 种内置格式 | ✅ 扩展性强 |
-| `formatter_test.go` | ~435 | Formatter 单元测试 | ✅ 覆盖完善 |
-| `writer.go` | ~155 | ConsoleWriter + ColorWriter + MultiWriter | ✅ 实现完整 |
+| `formatter.go` | ~181 | Formatter 接口 + 5 种内置格式 | ✅ 扩展性强 |
+| `formatter_test.go` | ~407 | Formatter 单元测试 | ✅ 覆盖完善 |
+| `writer.go` | ~149 | ConsoleWriter + ColorWriter + MultiWriter | ✅ 实现完整 |
 | `writer_test.go` | ~184 | Writer 单元测试 | ✅ 覆盖完善 |
 | `sampler.go` | ~114 | Sampler（固定桶 + atomic）+ DefaultSampler 常量 | ✅ 新功能 |
 | `sampler_test.go` | ~101 | Sampler 单元测试 | ✅ 覆盖完善 |
-| `fastlog_test.go` | ~279 | Level 基础类型单元测试 + 动态级别测试 | ✅ 覆盖完善 |
-| `http.go` | ~60 | HTTP 请求日志中间件 | ✅ 轻量实用 |
+| `fastlog_test.go` | ~246 | Level 基础类型单元测试 + 动态级别测试 | ✅ 覆盖完善 |
+| `global.go` | ~37 | 全局默认 Logger 实例 | ✅ 轻量实用 |
+| `http.go` | ~70 | HTTP 请求日志中间件 | ✅ 轻量实用 |
 | `http_test.go` | ~73 | HTTP 中间件测试 | ⚠️ 无断言（视觉验证） |
 
 ### 1.3 目录规范评估
@@ -85,13 +95,16 @@ fastlog/
 - **优点**：
   - 文件命名清晰，按功能划分
   - 核心逻辑与示例分离
-  - 示例分六个独立子目录（basic / color / sampler / formats / webbench / asyncbench）
+  - 示例分七个独立子目录（basic / color / sampler / formats / levelrouter / webbench / asyncbench）
   - 单元测试覆盖完善（65+ 个测试用例）
 - **变更记录**：
   - `fastlog.go` 已删除，Level/Entry/callerSkip 迁入 `logger.go`，Formatter 接口迁入 `formatter.go`
   - `hook.go` 新增（内部 Hook 接口和 levelHook 实现）
   - `logger_levelrouter_test.go` 新增（级别路由功能测试）
   - `docs/hook-design-v2.md` 新增（Hook 机制 V2 方案文档）
+  - `docs/buffer-enabled-design.md` 新增（缓冲控制设计方案）
+  - `fastlog-skill/` 新增（FastLog 代码生成 Skill）
+  - `examples/levelrouter/` 新增（级别路由功能演示示例）
 
 ---
 
@@ -119,7 +132,7 @@ fastlog/
   - 基础配置：Level、Formatter、Caller、Fields、采样器参数、TimeFormat
   - 终端配置：OutputConsole、NoColor
   - 文件配置：OutputFile、LogPath、Async、MaxSize、MaxFiles、MaxAge、Compress、CompressType、LocalTime、DateDirLayout、RotateByDay
-  - 缓冲配置：MaxBufferSize、SyncInterval
+  - 缓冲配置：MaxBufferSize、SyncInterval、**BufferEnabled**
   - **级别路由**：LevelRouter（bool，启用后按级别分发到专属文件）
 - **场景化配置函数**：
   - `NewConfig(logPath)` - 通用默认配置（双输出）
@@ -138,8 +151,9 @@ fastlog/
 - 集成 logrotatex 日志轮转库
 - 集成 comprx 压缩库
 - 配置驱动，无需手动管理写入器生命周期
-- 时间格式通过 DefaultTimeFormat 统一管理
+- 时间格式通过 DefaultTimeFormat 统一管理（默认 DateTime）
 - **级别路由**：通过 LevelRouter 字段启用，自动创建级别专属文件
+- **缓冲控制**：通过 BufferEnabled 字段控制是否启用缓冲写入
 
 #### 2.2.2 日志记录器模块 (logger.go + hook.go)
 
@@ -387,8 +401,10 @@ config.NewSampler() 创建采样器
 | **P0** | **Hook 机制 V2** | **内部实现，通过 Config.LevelRouter 启用级别路由** |
 | **P0** | **级别路由功能** | **自动创建 {LEVEL}.log 文件，全量+分流双写** |
 | **P0** | **路径冲突检查** | **Validate() 检查 LogPath 与级别文件路径冲突** |
+| **P0** | **BufferEnabled 缓冲控制** | **新增 BufferEnabled 字段，控制是否启用缓冲写入** |
+| **P0** | **DefaultTimeFormat 改为 DateTime** | **默认时间格式从 RFC3339 改为 2006-01-02 15:04:05** |
 | P1 | 单元测试全面扩充 | 从 18 个测试用例增至 65+ 个 |
-| P1 | 示例更新 | 适配新的 Config API + 新增 formats 示例 |
+| P1 | 示例更新 | 适配新的 Config API + 新增 formats/levelrouter 示例 + fastlog-skill |
 | P2 | Logger 注释增强 | 明确标注必须通过 New() 构造，禁止直接声明 |
 | P2 | getCaller 保底逻辑 | 每字段独立保底，失败时用 `"?"` 标记 |
 | P2 | 采样默认值对齐 | 三处统一引用 `DefaultSamplerTick/Initial/Thereafter` 常量 |
@@ -421,8 +437,10 @@ config.NewSampler() 创建采样器
 7. **时间格式可配置**：Config.TimeFormat 控制日志时间戳和字段时间值格式
 8. **线程安全**：Mutex 保证写入安全，atomic 保证采样无锁
 9. **级别路由**：通过 Config.LevelRouter 启用，自动按级别分发到专属文件
-10. **Hook 机制**：内部扩展机制，支持未来更多扩展点
-11. **测试覆盖**：65+ 个测试用例，涵盖正常路径、错误路径、边界场景
+10. **缓冲控制**：通过 BufferEnabled 控制是否启用缓冲写入，开发环境立即落盘
+11. **Hook 机制**：内部扩展机制，支持未来更多扩展点
+12. **测试覆盖**：65+ 个测试用例，涵盖正常路径、错误路径、边界场景
+13. **代码生成 Skill**：fastlog-skill 提供 IDE 智能代码生成支持
 
 ### 7.2 当前状态
 
@@ -431,38 +449,43 @@ config.NewSampler() 创建采样器
 - **logrotatex 集成** ✅ 完成
 - **场景化配置函数** ✅ 完成
 - **动态级别调整** ✅ 完成
-- **时间格式可配置** ✅ 完成
+- **时间格式可配置** ✅ 完成（默认 DateTime）
+- **默认时间格式变更** ✅ 完成（RFC3339 → DateTime）
 - **Logger 注释增强** ✅ 完成
 - **单元测试** ✅ 完成（65+ 个用例）
 - **示例** ✅ 完成（7 个示例目录）
 - **文件结构清理** ✅ 完成
 - **Hook 机制** ✅ 完成（内部实现）
 - **级别路由** ✅ 完成（LevelRouter + 路径冲突检查）
+- **缓冲控制** ✅ 完成（BufferEnabled 字段）
+- **代码生成 Skill** ✅ 完成（fastlog-skill）
 
 ### 7.3 代码统计
 
 | 文件 | 行数 | 功能 |
 |------|------|------|
-| config.go | ~380 | 配置管理 + 场景化函数 + LevelRouter 字段 + 路径冲突检查 |
-| logger.go | ~560 | Level 体系 + Logger 实现 + EntryPool + hooks 支持 |
-| hook.go | ~100 | 内部 Hook 接口 + levelHook 实现 |
-| formatter.go | ~190 | Formatter 接口 + 5 种内置格式 |
-| field.go | ~309 | 字段系统 |
-| writer.go | ~155 | 写入器（含 ColorWriter 级别检测修复） |
+| config.go | ~442 | 配置管理 + 场景化函数 + LevelRouter/BufferEnabled 字段 + 路径冲突检查 |
+| logger.go | ~513 | Level 体系 + Logger 实现 + EntryPool + hooks 支持 |
+| hook.go | ~72 | 内部 Hook 接口 + levelHook 实现 |
+| formatter.go | ~181 | Formatter 接口 + 5 种内置格式 |
+| field.go | ~358 | 字段系统 |
+| writer.go | ~149 | 写入器（含 ColorWriter 级别检测修复） |
 | sampler.go | ~114 | 日志采样 + 默认常量 |
-| **源码合计** | **~1808** | - |
-| config_test.go | ~340 | Config 测试（含 LevelRouter） |
-| logger_test.go | ~530 | Logger 测试 |
-| logger_levelrouter_test.go | ~280 | 级别路由功能测试 |
+| http.go | ~70 | HTTP 请求日志中间件 |
+| global.go | ~37 | 全局默认 Logger 实例 |
+| **源码合计** | **~1936** | - |
+| config_test.go | ~350 | Config 测试（含 LevelRouter + BufferEnabled） |
+| logger_test.go | ~461 | Logger 测试 |
+| logger_levelrouter_test.go | ~235 | 级别路由功能测试 |
 | field_test.go | ~362 | Field 测试 |
-| formatter_test.go | ~435 | Formatter 测试 |
+| formatter_test.go | ~407 | Formatter 测试 |
 | writer_test.go | ~184 | Writer 测试 |
 | sampler_test.go | ~101 | Sampler 测试 |
-| fastlog_test.go | ~279 | Level 基础 + 动态级别测试 |
+| fastlog_test.go | ~246 | Level 基础 + 动态级别测试 |
 | http_test.go | ~73 | HTTP 中间件测试 |
-| **测试合计** | **~2584** | **65+ 个测试用例** |
+| **测试合计** | **~2419** | **65+ 个测试用例** |
 
 ---
 
 > **报告完成**
-> 已更新项目记忆，反映最新文件结构、Hook 机制、级别路由功能、测试覆盖和代码优化变更。
+> 已更新项目记忆，反映最新文件结构、Hook 机制、级别路由功能、缓冲控制、默认时间格式变更、代码生成 Skill、测试覆盖和代码优化变更。

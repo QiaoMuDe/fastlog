@@ -54,14 +54,8 @@ func TestDev(t *testing.T) {
 	if cfg.SamplerTick != 0 {
 		t.Errorf("Dev().SamplerTick should be 0 (disabled), got %v", cfg.SamplerTick)
 	}
-	if cfg.MaxSize != 10 {
-		t.Errorf("Dev().MaxSize = %d, want 10", cfg.MaxSize)
-	}
 	if cfg.Compress {
 		t.Errorf("Dev().Compress should be false")
-	}
-	if cfg.RotateByDay {
-		t.Errorf("Dev().RotateByDay should be false")
 	}
 }
 
@@ -79,11 +73,11 @@ func TestProd(t *testing.T) {
 	if cfg.MaxSize != 100 {
 		t.Errorf("Prod().MaxSize = %d, want 100", cfg.MaxSize)
 	}
-	if cfg.MaxFiles != 14 {
-		t.Errorf("Prod().MaxFiles = %d, want 14", cfg.MaxFiles)
+	if cfg.MaxFiles != 0 {
+		t.Errorf("Prod().MaxFiles = %d, want 0 (no limit)", cfg.MaxFiles)
 	}
-	if cfg.MaxAge != 14 {
-		t.Errorf("Prod().MaxAge = %d, want 14", cfg.MaxAge)
+	if cfg.MaxAge != 30 {
+		t.Errorf("Prod().MaxAge = %d, want 30", cfg.MaxAge)
 	}
 	if !cfg.Compress {
 		t.Errorf("Prod().Compress should be true")
