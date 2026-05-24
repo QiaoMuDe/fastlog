@@ -26,7 +26,7 @@ func TestDefFormat(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Format() error = %v", err)
 		}
-		want := "2026-01-15T10:30:45Z | INFO   | hello\n"
+		want := "2026-01-15 10:30:45 | INFO   | hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Def.Format() = %q, want %q", got, want)
 		}
@@ -35,7 +35,7 @@ func TestDefFormat(t *testing.T) {
 	t.Run("with caller", func(t *testing.T) {
 		entry := makeEntry("hello", "main.go:main:10")
 		b, _ := Def{}.Format(entry)
-		want := "2026-01-15T10:30:45Z | INFO   | main.go:main:10 - hello\n"
+		want := "2026-01-15 10:30:45 | INFO   | main.go:main:10 - hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Def.Format() with caller = %q, want %q", got, want)
 		}
@@ -44,7 +44,7 @@ func TestDefFormat(t *testing.T) {
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
 		b, _ := Def{}.Format(entry)
-		want := "2026-01-15T10:30:45Z | INFO   | hello k=v\n"
+		want := "2026-01-15 10:30:45 | INFO   | hello k=v\n"
 		if got := string(b); got != want {
 			t.Errorf("Def.Format() with fields = %q, want %q", got, want)
 		}
@@ -68,7 +68,7 @@ func TestDefFormat(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Format() nil fields error = %v", err)
 		}
-		want := "2026-01-15T10:30:45Z | INFO   | hello\n"
+		want := "2026-01-15 10:30:45 | INFO   | hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Def.Format() nil fields = %q, want %q", got, want)
 		}
@@ -118,8 +118,8 @@ func TestJSONFormat(t *testing.T) {
 		if data["key"] != "val" {
 			t.Errorf("JSON key = %v, want val", data["key"])
 		}
-		if data["time"] != "2026-01-15T10:30:45Z" {
-			t.Errorf("JSON time = %v, want 2026-01-15T10:30:45Z", data["time"])
+		if data["time"] != "2026-01-15 10:30:45" {
+			t.Errorf("JSON time = %v, want 2026-01-15 10:30:45", data["time"])
 		}
 	})
 }
@@ -128,7 +128,7 @@ func TestSimpleFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
 		b, _ := Simple{}.Format(entry)
-		want := "2026-01-15T10:30:45Z INFO hello\n"
+		want := "2026-01-15 10:30:45 INFO hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Simple.Format() = %q, want %q", got, want)
 		}
@@ -137,7 +137,7 @@ func TestSimpleFormat(t *testing.T) {
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
 		b, _ := Simple{}.Format(entry)
-		want := "2026-01-15T10:30:45Z INFO hello k=v\n"
+		want := "2026-01-15 10:30:45 INFO hello k=v\n"
 		if got := string(b); got != want {
 			t.Errorf("Simple.Format() with fields = %q, want %q", got, want)
 		}
@@ -148,7 +148,7 @@ func TestKVFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
 		b, _ := KV{}.Format(entry)
-		want := "time=2026-01-15T10:30:45Z level=INFO message=hello\n"
+		want := "time=2026-01-15 10:30:45 level=INFO message=hello\n"
 		if got := string(b); got != want {
 			t.Errorf("KV.Format() = %q, want %q", got, want)
 		}
@@ -157,7 +157,7 @@ func TestKVFormat(t *testing.T) {
 	t.Run("with caller", func(t *testing.T) {
 		entry := makeEntry("hello", "main.go:main:10")
 		b, _ := KV{}.Format(entry)
-		want := "time=2026-01-15T10:30:45Z level=INFO message=hello caller=main.go:main:10\n"
+		want := "time=2026-01-15 10:30:45 level=INFO message=hello caller=main.go:main:10\n"
 		if got := string(b); got != want {
 			t.Errorf("KV.Format() with caller = %q, want %q", got, want)
 		}
@@ -166,7 +166,7 @@ func TestKVFormat(t *testing.T) {
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
 		b, _ := KV{}.Format(entry)
-		want := "time=2026-01-15T10:30:45Z level=INFO message=hello k=v\n"
+		want := "time=2026-01-15 10:30:45 level=INFO message=hello k=v\n"
 		if got := string(b); got != want {
 			t.Errorf("KV.Format() with fields = %q, want %q", got, want)
 		}
@@ -177,7 +177,7 @@ func TestCompactFormat(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		entry := makeEntry("hello", "")
 		b, _ := Compact{}.Format(entry)
-		want := "[I] 2026-01-15T10:30:45Z hello\n"
+		want := "[I] 2026-01-15 10:30:45 hello\n"
 		if got := string(b); got != want {
 			t.Errorf("Compact.Format() = %q, want %q", got, want)
 		}
@@ -186,7 +186,7 @@ func TestCompactFormat(t *testing.T) {
 	t.Run("with fields", func(t *testing.T) {
 		entry := makeEntry("hello", "", String("k", "v"))
 		b, _ := Compact{}.Format(entry)
-		want := "[I] 2026-01-15T10:30:45Z hello | k=v\n"
+		want := "[I] 2026-01-15 10:30:45 hello | k=v\n"
 		if got := string(b); got != want {
 			t.Errorf("Compact.Format() with fields = %q, want %q", got, want)
 		}
@@ -197,12 +197,12 @@ func TestCompactFormat(t *testing.T) {
 			level Level
 			want  string
 		}{
-			{DEBUG, "[D] 2026-01-15T10:30:45Z hello\n"},
-			{INFO, "[I] 2026-01-15T10:30:45Z hello\n"},
-			{WARN, "[W] 2026-01-15T10:30:45Z hello\n"},
-			{ERROR, "[E] 2026-01-15T10:30:45Z hello\n"},
-			{FATAL, "[F] 2026-01-15T10:30:45Z hello\n"},
-			{PANIC, "[P] 2026-01-15T10:30:45Z hello\n"},
+			{DEBUG, "[D] 2026-01-15 10:30:45 hello\n"},
+			{INFO, "[I] 2026-01-15 10:30:45 hello\n"},
+			{WARN, "[W] 2026-01-15 10:30:45 hello\n"},
+			{ERROR, "[E] 2026-01-15 10:30:45 hello\n"},
+			{FATAL, "[F] 2026-01-15 10:30:45 hello\n"},
+			{PANIC, "[P] 2026-01-15 10:30:45 hello\n"},
 		}
 		for _, tt := range tests {
 			entry := &Entry{
@@ -257,7 +257,7 @@ func TestJSONFormatAllFieldTypes(t *testing.T) {
 		{"uint64", float64(1 << 63)},
 		{"float", 3.14},
 		{"bool", true},
-		{"time", "2025-06-01T12:00:00Z"},
+		{"time", "2025-06-01 12:00:00"},
 		{"dur", "5s"},
 		{"error", "test error"},
 		{"any", "anyval"},
@@ -344,7 +344,7 @@ func TestDefFormatMultipleFields(t *testing.T) {
 		String("c", "3"),
 	)
 	b, _ := Def{}.Format(entry)
-	want := "2026-01-15T10:30:45Z | INFO   | multi a=1, b=2, c=3\n"
+	want := "2026-01-15 10:30:45 | INFO   | multi a=1, b=2, c=3\n"
 	if got := string(b); got != want {
 		t.Errorf("Def.Format() multiple fields = %q, want %q", got, want)
 	}
@@ -356,7 +356,7 @@ func TestKVFormatMultipleFields(t *testing.T) {
 		String("b", "2"),
 	)
 	b, _ := KV{}.Format(entry)
-	want := "time=2026-01-15T10:30:45Z level=INFO message=multi a=1 b=2\n"
+	want := "time=2026-01-15 10:30:45 level=INFO message=multi a=1 b=2\n"
 	if got := string(b); got != want {
 		t.Errorf("KV.Format() multiple fields = %q, want %q", got, want)
 	}

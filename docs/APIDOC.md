@@ -28,7 +28,7 @@ const (
 ```
 
 ```go
-const DefaultTimeFormat = time.RFC3339
+const DefaultTimeFormat = time.DateTime // 2006-01-02 15:04:05
 ```
 
 DefaultTimeFormat 默认时间格式
@@ -156,8 +156,8 @@ Write 写入数据到控制台, 自动根据日志级别着色
 type Compact struct{}
 ```
 
-Compact 极简格式 格式: [I] 2025-01-15T10:30:45Z 用户登录成功 特点: 级别首字母 + 时间戳，简洁易读，适合容器环境
-时间格式遵循 Config.TimeFormat，默认 time.RFC3339
+Compact 极简格式 格式: [I] 2025-01-15 10:30:45 用户登录成功 特点: 级别首字母 + 时间戳，简洁易读，适合容器环境
+时间格式遵循 Config.TimeFormat，默认 time.DateTime (2006-01-02 15:04:05)
 
 #### func (f Compact) Format
 
@@ -257,8 +257,8 @@ type Config struct {
 	SyncInterval time.Duration
 
 	// TimeFormat 时间格式
-	// 默认 time.RFC3339，支持 Go time 包所有格式常量
-	// 常用值: time.RFC3339, time.DateTime, time.TimeOnly
+	// 默认 time.DateTime (2006-01-02 15:04:05)，支持 Go time 包所有格式常量
+	// 常用值: time.DateTime, time.RFC3339, time.TimeOnly
 	TimeFormat string
 
 	// LevelRouter 启用级别路由
@@ -334,7 +334,7 @@ Default 创建一个默认配置实例
 - `BufferEnabled`: true - 启用缓冲写入
 - `MaxBufferSize`: 256KB - 缓冲区256KB
 - `SyncInterval`: 1s - 每秒同步
-- `TimeFormat`: RFC3339 - 时间格式为RFC3339
+- `TimeFormat`: 2006-01-02 15:04:05 - 时间格式为 DateTime
 
 **返回:**
 - `*Config`: 配置实例, 所有字段都设置了默认值
@@ -418,7 +418,7 @@ NewConfig 创建一个默认配置实例
 - `BufferEnabled`: true - 启用缓冲写入
 - `MaxBufferSize`: 256KB - 缓冲区256KB
 - `SyncInterval`: 1s - 每秒同步
-- `TimeFormat`: RFC3339 - 时间格式为RFC3339
+- `TimeFormat`: 2006-01-02 15:04:05 - 时间格式为 DateTime
 
 **参数:**
 - `logPath`: 日志文件路径
@@ -841,7 +841,7 @@ Value 将字段值转换为字符串返回
 - `UintType`/`Uint64Type`: 转为 10 进制无符号字符串
 - `Float64Type`: 转为浮点数字符串
 - `BoolType`: 转为 "true" 或 "false"
-- `TimeType`: 转为 RFC3339 格式时间字符串
+- `TimeType`: 转为 DateTime 格式时间字符串 (2006-01-02 15:04:05)
 - `DurationType`: 转为持续时间字符串 (如 "1h30m")
 - `AnyType`: 使用 fmt.Sprintf("%v") 格式化
 - 其他类型: 返回空字符串

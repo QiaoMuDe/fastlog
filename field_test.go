@@ -88,8 +88,8 @@ func TestFieldTime(t *testing.T) {
 	if f.Type() != TimeType {
 		t.Errorf("Field.Type() = %v, want %v", f.Type(), TimeType)
 	}
-	if f.Value() != "2025-01-15T10:30:45Z" {
-		t.Errorf("Field.Value() = %q, want %q", f.Value(), "2025-01-15T10:30:45Z")
+	if f.Value() != "2025-01-15 10:30:45" {
+		t.Errorf("Field.Value() = %q, want %q", f.Value(), "2025-01-15 10:30:45")
 	}
 }
 
@@ -239,8 +239,8 @@ func TestFieldToInterface(t *testing.T) {
 	t.Run("TimeType", func(t *testing.T) {
 		now := time.Date(2025, 1, 15, 10, 30, 45, 0, time.UTC)
 		f := Time("k", now)
-		if got := f.toInterface(); got != "2025-01-15T10:30:45Z" {
-			t.Errorf("toInterface() = %v, want RFC3339 string", got)
+		if got := f.toInterface(); got != "2025-01-15 10:30:45" {
+			t.Errorf("toInterface() = %v, want DateTime string", got)
 		}
 	})
 
@@ -362,7 +362,7 @@ func TestFieldValueBoundary(t *testing.T) {
 	})
 
 	t.Run("zero time", func(t *testing.T) {
-		if got := Time("k", time.Time{}).Value(); got != "0001-01-01T00:00:00Z" {
+		if got := Time("k", time.Time{}).Value(); got != "0001-01-01 00:00:00" {
 			t.Errorf("Time(zero) Value = %q", got)
 		}
 	})

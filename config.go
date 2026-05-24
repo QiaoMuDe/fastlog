@@ -12,7 +12,7 @@ import (
 )
 
 // DefaultTimeFormat 默认时间格式
-const DefaultTimeFormat = time.RFC3339
+const DefaultTimeFormat = time.DateTime // 2006-01-02 15:04:05
 
 // NewConfig 创建一个默认配置实例
 //
@@ -43,7 +43,7 @@ const DefaultTimeFormat = time.RFC3339
 //   - BufferEnabled: true - 默认启用缓冲写入
 //   - MaxBufferSize: 256KB - 缓冲区256KB
 //   - SyncInterval: 1s - 每秒同步
-//   - TimeFormat: RFC3339 - 时间格式为RFC3339
+//   - TimeFormat: 2006-01-02 15:04:05 - 时间格式为 DateTime
 //
 // 参数:
 //   - logPath: 日志文件路径
@@ -85,7 +85,7 @@ func NewConfig(logPath string) *Config {
 		SyncInterval:  1 * time.Second, // 同步间隔, 零值默认 1秒。
 
 		// 时间格式
-		TimeFormat: DefaultTimeFormat, // 时间格式, 默认: time.RFC3339
+		TimeFormat: DefaultTimeFormat, // 时间格式, 默认: time.DateTime
 	}
 }
 
@@ -118,7 +118,7 @@ func NewConfig(logPath string) *Config {
 //   - BufferEnabled: true - 默认启用缓冲写入
 //   - MaxBufferSize: 256KB - 缓冲区256KB
 //   - SyncInterval: 1s - 每秒同步
-//   - TimeFormat: RFC3339 - 时间格式为RFC3339
+//   - TimeFormat: 2006-01-02 15:04:05 - 时间格式为 DateTime
 //
 // 返回:
 //   - *Config: 配置实例, 所有字段都设置了默认值
@@ -322,8 +322,8 @@ type Config struct {
 	SyncInterval time.Duration
 
 	// TimeFormat 时间格式
-	// 默认 time.RFC3339, 支持 Go time 包所有格式常量
-	// 常用值: time.RFC3339, time.DateTime, time.TimeOnly
+	// 默认 time.DateTime (2006-01-02 15:04:05)，支持 Go time 包所有格式常量
+	// 常用值: time.DateTime, time.RFC3339, time.TimeOnly
 	TimeFormat string
 
 	// LevelRouter 启用级别路由

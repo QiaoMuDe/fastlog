@@ -178,7 +178,7 @@ func main() {
     defer func() { _ = logger.Close() }()
 
     logger.Info("容器启动成功")
-    // 输出: {"time":"2025-01-15T10:30:45Z","level":"INFO","message":"容器启动成功"}
+    // 输出: {"time":"2025-01-15 10:30:45","level":"INFO","message":"容器启动成功"}
 }
 ```
 
@@ -396,27 +396,27 @@ func main() {
 
 ### Def 格式（默认）
 ```
-2025-01-15T10:30:45+08:00 | INFO    | main.go:main:15 - 用户登录成功
+2025-01-15 10:30:45 | INFO    | main.go:main:15 - 用户登录成功
 ```
 
 ### JSON 格式
 ```json
-{"time":"2025-01-15T10:30:45+08:00","level":"INFO","message":"用户登录成功","username":"alice"}
+{"time":"2025-01-15 10:30:45","level":"INFO","message":"用户登录成功","username":"alice"}
 ```
 
 ### Simple 格式
 ```
-2025-01-15T10:30:45 INFO 用户登录成功
+2025-01-15 10:30:45 INFO 用户登录成功
 ```
 
 ### KV 格式
 ```
-time=2025-01-15T10:30:45+08:00 level=INFO message=用户登录成功 username=alice
+time=2025-01-15 10:30:45 level=INFO message=用户登录成功 username=alice
 ```
 
 ### Compact 格式
 ```
-[I] 2025-01-15T10:30:45Z 用户登录成功 | username=alice
+[I] 2025-01-15 10:30:45 用户登录成功 | username=alice
 ```
 
 ## 注意事项

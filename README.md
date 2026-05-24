@@ -21,7 +21,7 @@
 | 🎨 **彩色输出** | 基于 [color](https://gitee.com/MM-Q/color) 库，自动检测日志级别着色，支持 `NoColor` 开关，兼容 Windows |
 | 📋 **三级 API** | 标准日志 `Info()`、格式化日志 `Infof()`、结构化日志 `Infow()` |
 | 🔧 **Config 配置** | 场景化配置函数，开箱即用，支持自定义调整 |
-| ⏰ **时间格式可配置** | 通过 `TimeFormat` 自定义时间格式，默认 RFC3339，`DefaultTimeFormat` 常量统一管理 |
+| ⏰ **时间格式可配置** | 通过 `TimeFormat` 自定义时间格式，默认 `2006-01-02 15:04:05`，`DefaultTimeFormat` 常量统一管理 |
 | 📝 **多格式支持** | 内置 5 种格式：Def、JSON、Simple、KV、Compact，支持自定义 |
 | 🧩 **结构化字段** | 12 种字段类型，类型安全，零装箱分配 |
 | 🎯 **日志采样** | 固定桶 + atomic 无锁设计，参考 zap，有效防洪 |
@@ -191,25 +191,25 @@ logger.Infow("用户登录",
 ```go
 // Def 格式（默认）
 logger := fastlog.New(fastlog.NewConfig("logs/app.log"))
-// 输出: 2025-01-15T10:30:45 | INFO    | main.go:main:15 - 用户登录成功
+// 输出: 2025-01-15 10:30:45 | INFO    | main.go:main:15 - 用户登录成功
 
 // JSON 格式
 cfg := fastlog.NewConfig("logs/app.log")
 cfg.Formatter = fastlog.JSON{}
 logger := fastlog.New(cfg)
-// 输出: {"time":"2025-01-15T10:30:45","level":"INFO","message":"用户登录成功"}
+// 输出: {"time":"2025-01-15 10:30:45","level":"INFO","message":"用户登录成功"}
 
 // Simple 格式
 cfg.Formatter = fastlog.Simple{}
-// 输出: 2025-01-15T10:30:45 INFO 用户登录成功
+// 输出: 2025-01-15 10:30:45 INFO 用户登录成功
 
 // KV 格式
 cfg.Formatter = fastlog.KV{}
-// 输出: time=2025-01-15T10:30:45 level=INFO message=用户登录成功
+// 输出: time=2025-01-15 10:30:45 level=INFO message=用户登录成功
 
-// Compact 格式（时间格式遵循 TimeFormat，默认 RFC3339）
+// Compact 格式（时间格式遵循 TimeFormat，默认 2006-01-02 15:04:05）
 cfg.Formatter = fastlog.Compact{}
-// 输出: [I] 2025-01-15T10:30:45Z 用户登录成功 | username=alice count=42
+// 输出: [I] 2025-01-15 10:30:45 用户登录成功 | username=alice count=42
 ```
 
 ### 动态设置日志级别
